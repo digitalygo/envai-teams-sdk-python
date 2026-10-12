@@ -1,0 +1,99 @@
+[
+  {
+    "name": "unsupported-version",
+    "event": {
+      "v": 3,
+      "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      "seq": 1,
+      "ts": "2026-10-12T22:00:00Z",
+      "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "agent": null,
+      "type": "turn.started",
+      "data": {
+        "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "input": "hello"
+      }
+    }
+  },
+  {
+    "name": "replay-seq-zero",
+    "event": {
+      "v": 2,
+      "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      "seq": 0,
+      "ts": "2026-10-12T22:00:00Z",
+      "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "agent": null,
+      "type": "turn.started",
+      "data": {
+        "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "input": "hello"
+      }
+    }
+  },
+  {
+    "name": "missing-turn",
+    "event": {
+      "v": 2,
+      "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      "seq": 1,
+      "ts": "2026-10-12T22:00:00Z",
+      "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "turn_id": null,
+      "agent": null,
+      "type": "turn.started",
+      "data": {
+        "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "input": "hello"
+      }
+    }
+  },
+  {
+    "name": "bad-chat-id",
+    "event": {
+      "v": 2,
+      "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      "seq": 1,
+      "ts": "2026-10-12T22:00:00Z",
+      "chat_id": "invalid",
+      "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "agent": null,
+      "type": "turn.started",
+      "data": {
+        "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "input": "hello"
+      }
+    }
+  },
+  {
+    "name": "wrong-tool-kind",
+    "event": {
+      "v": 2,
+      "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+      "seq": 4,
+      "ts": "2026-10-12T22:00:00Z",
+      "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "agent": {
+        "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "name": "orchestrator",
+        "role": "orchestrator",
+        "parent_id": null
+      },
+      "type": "agent.tool.request",
+      "data": {
+        "kind": "server",
+        "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+        "tool_name": "fixture_echo",
+        "args": {},
+        "signature": {
+          "alg": "EdDSA",
+          "kid": "sdk-fixture-only",
+          "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+        }
+      }
+    }
+  }
+]

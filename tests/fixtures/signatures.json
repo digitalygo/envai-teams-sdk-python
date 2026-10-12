@@ -1,0 +1,65 @@
+{
+  "purpose": "Public deterministic test vectors only. RFC8032 test key, never credentials.",
+  "jwks": {
+    "keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "use": "sig",
+        "alg": "EdDSA",
+        "kid": "sdk-fixture-only",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "name": "empty",
+      "args_json": "{}",
+      "canonical": "{}",
+      "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+      "tool_name": "fixture_echo",
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "sdk-fixture-only",
+        "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+      }
+    },
+    {
+      "name": "nested",
+      "args_json": "{\"z\":1,\"a\":{\"b\":true,\"a\":null},\"list\":[{},[],\"quote\\\"\\n\"]}",
+      "canonical": "{\"a\":{\"a\":null,\"b\":true},\"list\":[{},[],\"quote\\\"\\n\"],\"z\":1}",
+      "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA1",
+      "tool_name": "fixture_echo",
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "sdk-fixture-only",
+        "sig": "d1IZ4gdiB5-VZyTruPzA92D0Cy1oFvh8qHOyG3THHGN4mcZ8X0b5Qz4Qfw6BaiAyOzXcsLaE5r5ltyiUcGJlBg"
+      }
+    },
+    {
+      "name": "unicode",
+      "args_json": "{\"é\":\"café\",\"\\ud83d\\ude00\":\"astral\",\"\\ue000\":\"bmp\",\"a\":\"e\\u0301\"}",
+      "canonical": "{\"a\":\"é\",\"é\":\"café\",\"😀\":\"astral\",\"\":\"bmp\"}",
+      "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA2",
+      "tool_name": "fixture_echo",
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "sdk-fixture-only",
+        "sig": "r4ILyIPgXJ1nfGwBoKNGKmtlrYqK53roxv_GGl6Hs8Sngzj38vsPlNnI_J4LULxYokEBI0XprwU4E4dtdutwCA"
+      }
+    },
+    {
+      "name": "numbers",
+      "args_json": "{\"numbers\":[-0.0,1e-7,1e-6,1e20,1e21,333333333.33333329,4.50,2e-3,1e-27]}",
+      "canonical": "{\"numbers\":[0,1e-7,0.000001,100000000000000000000,1e+21,333333333.3333333,4.5,0.002,1e-27]}",
+      "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA3",
+      "tool_name": "fixture_echo",
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "sdk-fixture-only",
+        "sig": "EL9oc6zQBxfyc5x7-8V7QQ3q6rNbiV8tssTwUz21VNP4mirN_An9E4p9NHawGFhOHkuvxfTMMURIK_JTj2dDAA"
+      }
+    }
+  ]
+}

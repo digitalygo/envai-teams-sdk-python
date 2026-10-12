@@ -1,0 +1,1583 @@
+{
+  "sendChatMessage": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/messages",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChatMessageRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatMessageAccepted"
+    },
+    "response_type": "ChatMessageAccepted",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "streamChatEvents": {
+    "method": "GET",
+    "path": "/chats/{chat_id}/events",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "after",
+        "in": "query",
+        "required": false,
+        "description": "Replay every retained event strictly after this sequence number. The cursor is meaningful only inside the resident runtime's bounded in-memory replay window; eviction or restart resets the sequence without an epoch or cursor-expired signal.\n",
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "example": 42
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "description": "SSE frames whose `data` field contains one ATP event envelope"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": true,
+    "public": true
+  },
+  "cancelChatTurn": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/cancel",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/TurnAccepted"
+    },
+    "response_type": "TurnAccepted",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "steerChatTurn": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/steer",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/SteerRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/TurnAccepted"
+    },
+    "response_type": "TurnAccepted",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "resolveChatTool": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/tool-output",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ToolOutputRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "resolveChatApproval": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/approval",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ApprovalRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "forkChat": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/fork",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ForkChatRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatForked"
+    },
+    "response_type": "ChatForked",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "restoreChat": {
+    "method": "POST",
+    "path": "/chats/{chat_id}/restore",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/RestoreChatRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/RestoreChatAccepted"
+    },
+    "response_type": "RestoreChatAccepted",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getCapabilities": {
+    "method": "GET",
+    "path": "/capabilities",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/Capabilities"
+    },
+    "response_type": "Capabilities",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "healthCheck": {
+    "method": "GET",
+    "path": "/up",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "example": "up"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-03-01T12:00:00+00:00"
+            },
+            "app": {
+              "type": "string",
+              "example": "Laravel"
+            },
+            "env": {
+              "type": "string",
+              "example": "local"
+            }
+          }
+        }
+      }
+    },
+    "response_type": "HealthCheckResponse",
+    "unwrap": false,
+    "auth": false,
+    "stream": false,
+    "public": true
+  },
+  "getJwks": {
+    "method": "GET",
+    "path": "/.well-known/jwks.json",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/JwksDocument"
+    },
+    "response_type": "JwksDocument",
+    "unwrap": false,
+    "auth": false,
+    "stream": false,
+    "public": true
+  },
+  "createWorkspace": {
+    "method": "POST",
+    "path": "/workspaces",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/WorkspaceCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceResource"
+    },
+    "response_type": "Workspace",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listWorkspaces": {
+    "method": "GET",
+    "path": "/workspaces",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceCollection"
+    },
+    "response_type": "list[Workspace]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getWorkspace": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceResource"
+    },
+    "response_type": "Workspace",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateWorkspace": {
+    "method": "PUT",
+    "path": "/workspaces/{workspace_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/WorkspaceUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceResource"
+    },
+    "response_type": "Workspace",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createUserTool": {
+    "method": "POST",
+    "path": "/tools",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/UserToolCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/UserToolResource"
+    },
+    "response_type": "UserTool",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listUserTools": {
+    "method": "GET",
+    "path": "/tools",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/UserToolCollection"
+    },
+    "response_type": "list[UserTool]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getUserTool": {
+    "method": "GET",
+    "path": "/tools/{name}",
+    "params": [
+      {
+        "name": "name",
+        "in": "path",
+        "required": true,
+        "description": "Client tool name within the caller's user registry, unique per user",
+        "schema": {
+          "type": "string",
+          "example": "send_email"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/UserToolResource"
+    },
+    "response_type": "UserTool",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateUserTool": {
+    "method": "PUT",
+    "path": "/tools/{name}",
+    "params": [
+      {
+        "name": "name",
+        "in": "path",
+        "required": true,
+        "description": "Client tool name within the caller's user registry, unique per user",
+        "schema": {
+          "type": "string",
+          "example": "send_email"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/UserToolUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/UserToolResource"
+    },
+    "response_type": "UserTool",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteUserTool": {
+    "method": "DELETE",
+    "path": "/tools/{name}",
+    "params": [
+      {
+        "name": "name",
+        "in": "path",
+        "required": true,
+        "description": "Client tool name within the caller's user registry, unique per user",
+        "schema": {
+          "type": "string",
+          "example": "send_email"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createChat": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/chats",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChatCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatResource"
+    },
+    "response_type": "Chat",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listChats": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatCollection"
+    },
+    "response_type": "list[Chat]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getChat": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatResource"
+    },
+    "response_type": "Chat",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listCompletions": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/completions",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "description": "Filter by completion status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "running",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        }
+      },
+      {
+        "name": "model_orchestrator",
+        "in": "query",
+        "required": false,
+        "description": "Filter by orchestrator model id",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "started_at[from]",
+        "in": "query",
+        "required": false,
+        "description": "Earliest started_at, inclusive, ISO 8601",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      {
+        "name": "started_at[to]",
+        "in": "query",
+        "required": false,
+        "description": "Latest started_at, inclusive, ISO 8601",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "description": "Items per page, default 15, maximum 100",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 15
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/CompletionCollection"
+    },
+    "response_type": "CompletionCollection",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getCompletion": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "completion_id",
+        "in": "path",
+        "required": true,
+        "description": "Completion id `cmpl_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][mM][pP][lL]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cmpl_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/CompletionResource"
+    },
+    "response_type": "Completion",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "indexWorkspaceFiles": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "path",
+        "in": "query",
+        "required": true,
+        "description": "Absolute workspace-relative path. The root `/` is allowed for the directory listing only. Must start with a slash and must not contain `..`, backslashes, control characters, duplicate or trailing slashes.\n",
+        "schema": {
+          "type": "string",
+          "maxLength": 1024,
+          "example": "/wiki/guide.md"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceFileResource"
+    },
+    "response_type": "WorkspaceFile",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createWorkspaceFile": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/files",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/WorkspaceFileRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceFileResource"
+    },
+    "response_type": "WorkspaceFile",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateWorkspaceFile": {
+    "method": "PUT",
+    "path": "/workspaces/{workspace_id}/files",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/WorkspaceFileRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/WorkspaceFileResource"
+    },
+    "response_type": "WorkspaceFile",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteWorkspaceFile": {
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}/files",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "path",
+        "in": "query",
+        "required": true,
+        "description": "Absolute workspace-relative path. The root `/` is allowed for the directory listing only. Must start with a slash and must not contain `..`, backslashes, control characters, duplicate or trailing slashes.\n",
+        "schema": {
+          "type": "string",
+          "maxLength": 1024,
+          "example": "/wiki/guide.md"
+        }
+      },
+      {
+        "name": "recursive",
+        "in": "query",
+        "required": false,
+        "description": "Whether to delete a directory recursively, default false",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "downloadWorkspaceFile": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files/download",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "path",
+        "in": "query",
+        "required": true,
+        "description": "Absolute workspace-relative path. The root `/` is allowed for the directory listing only. Must start with a slash and must not contain `..`, backslashes, control characters, duplicate or trailing slashes.\n",
+        "schema": {
+          "type": "string",
+          "maxLength": 1024,
+          "example": "/wiki/guide.md"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "format": "binary"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "convertWorkspaceFileToPdf": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/files/convert-to-pdf",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ConvertToPdfRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "string",
+      "format": "binary"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createAgent": {
+    "method": "POST",
+    "path": "/agents",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/AgentCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/AgentResource"
+    },
+    "response_type": "Agent",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listAgents": {
+    "method": "GET",
+    "path": "/agents",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/AgentCollection"
+    },
+    "response_type": "list[Agent]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getAgent": {
+    "method": "GET",
+    "path": "/agents/{agent_id}",
+    "params": [
+      {
+        "name": "agent_id",
+        "in": "path",
+        "required": true,
+        "description": "Agent definition id `agt_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[aA][gG][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "agt_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/AgentResource"
+    },
+    "response_type": "Agent",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateAgent": {
+    "method": "PUT",
+    "path": "/agents/{agent_id}",
+    "params": [
+      {
+        "name": "agent_id",
+        "in": "path",
+        "required": true,
+        "description": "Agent definition id `agt_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[aA][gG][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "agt_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/AgentUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/AgentResource"
+    },
+    "response_type": "Agent",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteAgent": {
+    "method": "DELETE",
+    "path": "/agents/{agent_id}",
+    "params": [
+      {
+        "name": "agent_id",
+        "in": "path",
+        "required": true,
+        "description": "Agent definition id `agt_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[aA][gG][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "agt_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createTeam": {
+    "method": "POST",
+    "path": "/teams",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/TeamCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/TeamResource"
+    },
+    "response_type": "Team",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listTeams": {
+    "method": "GET",
+    "path": "/teams",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/TeamCollection"
+    },
+    "response_type": "list[Team]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getTeam": {
+    "method": "GET",
+    "path": "/teams/{team_id}",
+    "params": [
+      {
+        "name": "team_id",
+        "in": "path",
+        "required": true,
+        "description": "Team id `team_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[tT][eE][aA][mM]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "team_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/TeamResource"
+    },
+    "response_type": "Team",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateTeam": {
+    "method": "PUT",
+    "path": "/teams/{team_id}",
+    "params": [
+      {
+        "name": "team_id",
+        "in": "path",
+        "required": true,
+        "description": "Team id `team_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[tT][eE][aA][mM]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "team_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/TeamUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/TeamResource"
+    },
+    "response_type": "Team",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteTeam": {
+    "method": "DELETE",
+    "path": "/teams/{team_id}",
+    "params": [
+      {
+        "name": "team_id",
+        "in": "path",
+        "required": true,
+        "description": "Team id `team_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[tT][eE][aA][mM]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "team_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listModels": {
+    "method": "GET",
+    "path": "/models",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ModelList"
+    },
+    "response_type": "ModelList",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createApiKey": {
+    "method": "POST",
+    "path": "/api-keys",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/ApiKeyCreate"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ApiKeyCreated"
+    },
+    "response_type": "CreateApiKeyResponse",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listApiKeys": {
+    "method": "GET",
+    "path": "/api-keys",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ApiKeyCollection"
+    },
+    "response_type": "list[ApiKey]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteApiKey": {
+    "method": "DELETE",
+    "path": "/api-keys/{key_id}",
+    "params": [
+      {
+        "name": "key_id",
+        "in": "path",
+        "required": true,
+        "description": "Api key id `key_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "key_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "testGenerateImage": {
+    "method": "POST",
+    "path": "/tests/images/generate",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/TestImageGenerateRequest"
+    },
+    "media": "multipart/form-data",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/TestImageGenerateResource"
+    },
+    "response_type": "TestGenerateImageResponse",
+    "unwrap": true,
+    "auth": false,
+    "stream": false,
+    "public": false
+  },
+  "createImageGeneration": {
+    "method": "POST",
+    "path": "/images/generations",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/ImageGenerationRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ImageGenerationAcceptedResource"
+    },
+    "response_type": "ImageGenerationAcceptedRecord",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getImageGeneration": {
+    "method": "GET",
+    "path": "/images/generations/{record}",
+    "params": [
+      {
+        "name": "record",
+        "in": "path",
+        "required": true,
+        "description": "Image generation request id `igr_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[iI][gG][rR]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "igr_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ImageGenerationStatusResource"
+    },
+    "response_type": "ImageGenerationStatusRecord",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "uploadImage": {
+    "method": "POST",
+    "path": "/images/uploads",
+    "params": [],
+    "request": {
+      "$ref": "#/components/schemas/ImageUploadRequest"
+    },
+    "media": "multipart/form-data",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ImageUploadResource"
+    },
+    "response_type": "ImageUploadRecord",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listImageModels": {
+    "method": "GET",
+    "path": "/images/models",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ModelCatalogResource"
+    },
+    "response_type": "list[ModelCatalogEntry]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "downloadArtifact": {
+    "method": "GET",
+    "path": "/artifacts/download",
+    "params": [
+      {
+        "name": "generation",
+        "in": "query",
+        "required": true,
+        "description": "Opaque generation id `igr_<ulid>`. The value is covered by the signature.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^igr_[0-9A-Za-z]{26}$",
+          "example": "igr_01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      },
+      {
+        "name": "artifact",
+        "in": "query",
+        "required": true,
+        "description": "Opaque artifact id `art_<ulid>`. The value is covered by the signature.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^art_[0-9A-Za-z]{26}$",
+          "example": "art_01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      },
+      {
+        "name": "expires",
+        "in": "query",
+        "required": false,
+        "description": "Signed URL expiration timestamp, never beyond the generation deadline.\n",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "example": 1786320000
+        }
+      },
+      {
+        "name": "signature",
+        "in": "query",
+        "required": true,
+        "description": "HMAC signature of the relative URL",
+        "schema": {
+          "type": "string",
+          "example": "6f8d2c4a9b1e5f7a3c8d0e2b4a6c8e0f"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "format": "binary"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": false,
+    "stream": false,
+    "public": true
+  },
+  "handleProviderWebhook": {
+    "method": "POST",
+    "path": "/webhooks/providers/{provider}",
+    "params": [
+      {
+        "name": "provider",
+        "in": "path",
+        "required": true,
+        "description": "Provider receiving the webhook",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "replicate",
+            "vertex",
+            "fal",
+            "openai",
+            "black-forest-labs",
+            "recraft",
+            "byteplus"
+          ],
+          "example": "replicate"
+        }
+      },
+      {
+        "name": "callback_token",
+        "in": "query",
+        "required": false,
+        "description": "Optional attempt callback token. When present it must match the callback token of an attempt for the provider, with fallback to provider job id and provider request id lookup.\n",
+        "schema": {
+          "type": "string",
+          "example": "0192f3a4-6b1c-4a3e-8f2d-5c9b1a2d3e4f"
+        }
+      },
+      {
+        "name": "webhook-id",
+        "in": "header",
+        "required": false,
+        "description": "Replicate webhook event id, sent as plain value for signature verification",
+        "schema": {
+          "type": "string",
+          "example": "msg_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "webhook-timestamp",
+        "in": "header",
+        "required": false,
+        "description": "Replicate webhook event timestamp, unix seconds within the tolerance window",
+        "schema": {
+          "type": "string",
+          "example": "1786320000"
+        }
+      },
+      {
+        "name": "webhook-signature",
+        "in": "header",
+        "required": false,
+        "description": "Replicate webhook HMAC signature over `webhook-id.webhook-timestamp.body`",
+        "schema": {
+          "type": "string",
+          "example": "v1,abc123def456ghi789"
+        }
+      },
+      {
+        "name": "X-Fal-Webhook-Request-Id",
+        "in": "header",
+        "required": false,
+        "description": "Fal webhook request id",
+        "schema": {
+          "type": "string",
+          "example": "req_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Fal-Webhook-User-Id",
+        "in": "header",
+        "required": false,
+        "description": "Fal webhook user id",
+        "schema": {
+          "type": "string",
+          "example": "usr_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Fal-Webhook-Timestamp",
+        "in": "header",
+        "required": false,
+        "description": "Fal webhook timestamp",
+        "schema": {
+          "type": "string",
+          "example": "1786320000"
+        }
+      },
+      {
+        "name": "X-Fal-Webhook-Signature",
+        "in": "header",
+        "required": false,
+        "description": "Fal webhook signature",
+        "schema": {
+          "type": "string",
+          "example": "abc123def456"
+        }
+      },
+      {
+        "name": "X-BFL-Signature",
+        "in": "header",
+        "required": false,
+        "description": "Black Forest Labs webhook signature",
+        "schema": {
+          "type": "string",
+          "example": "abc123def456"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ProviderWebhookPayload"
+    },
+    "media": "application/json",
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/WebhookOk"
+    },
+    "response_type": "WebhookOk",
+    "unwrap": false,
+    "auth": false,
+    "stream": false,
+    "public": false
+  }
+}

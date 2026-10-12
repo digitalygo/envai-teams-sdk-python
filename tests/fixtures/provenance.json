@@ -1,0 +1,16 @@
+{
+  "repository": "digitalygo/envai-teams",
+  "commit": "55275860c9a950eaad8e39e9d2b728149084779c",
+  "protocol_version": 2,
+  "operations": 52,
+  "files": {
+    "envai-api-sdk-foundation.md": "55e1ea8059809339cc257d9bf9c4efe735ee50876dd59753a7e281fa5214946b",
+    "events-invalid.json": "ffd363a7ca563a58f57ccbbad3dc4651f2e467c8b49b65c748534b93889a45ce",
+    "events-valid.json": "74c13afa306ac1d8bb518097b7d09f9262c2f468cc2624b4942c8a99019d00e2",
+    "events.json": "f22869556e488f1e208addf258a25c502966746fcc8e2747c07856d30c28aee7",
+    "openapi.yaml": "a68b1eb9cae0500c95104d97118d0d287b887969b9bc2b9dde62bb1e08a400b1",
+    "operations.json": "19ff34aeff2381413ace8fdbafe557ce94378aa6247f163e2cf7dfb830832fcd",
+    "signatures.json": "eafc33bad34ba93fbee121f61080cc8901109ba567380b9b95d141d6c7bcfc83",
+    "sse-cases.json": "05bba69df6858f6b7ac4d4b45c87c1266cb017515b064891d4fd09488948ae23"
+  }
+}

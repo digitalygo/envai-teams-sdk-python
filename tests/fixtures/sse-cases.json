@@ -1,0 +1,22 @@
+[
+  {
+    "name": "comments-crlf-multiline-bom",
+    "wire": "﻿: heartbeat\r\nretry: 1000\r\ndata: {\"hello\":\r\ndata: \"world\"}\r\n\r\n",
+    "data": [
+      "{\"hello\":\n\"world\"}"
+    ]
+  },
+  {
+    "name": "multiple-and-unknown",
+    "wire": "event: unused\ndata: one\n\ndata: two\n\n",
+    "data": [
+      "one",
+      "two"
+    ]
+  },
+  {
+    "name": "truncated-no-dispatch",
+    "wire": "data: partial",
+    "data": []
+  }
+]

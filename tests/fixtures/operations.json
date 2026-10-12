@@ -1,0 +1,314 @@
+[
+  {
+    "id": "sendChatMessage",
+    "method": "POST",
+    "path": "/chats/{chat_id}/messages",
+    "authenticated": true
+  },
+  {
+    "id": "streamChatEvents",
+    "method": "GET",
+    "path": "/chats/{chat_id}/events",
+    "authenticated": true
+  },
+  {
+    "id": "cancelChatTurn",
+    "method": "POST",
+    "path": "/chats/{chat_id}/cancel",
+    "authenticated": true
+  },
+  {
+    "id": "steerChatTurn",
+    "method": "POST",
+    "path": "/chats/{chat_id}/steer",
+    "authenticated": true
+  },
+  {
+    "id": "resolveChatTool",
+    "method": "POST",
+    "path": "/chats/{chat_id}/tool-output",
+    "authenticated": true
+  },
+  {
+    "id": "resolveChatApproval",
+    "method": "POST",
+    "path": "/chats/{chat_id}/approval",
+    "authenticated": true
+  },
+  {
+    "id": "forkChat",
+    "method": "POST",
+    "path": "/chats/{chat_id}/fork",
+    "authenticated": true
+  },
+  {
+    "id": "restoreChat",
+    "method": "POST",
+    "path": "/chats/{chat_id}/restore",
+    "authenticated": true
+  },
+  {
+    "id": "getCapabilities",
+    "method": "GET",
+    "path": "/capabilities",
+    "authenticated": true
+  },
+  {
+    "id": "healthCheck",
+    "method": "GET",
+    "path": "/up",
+    "authenticated": false
+  },
+  {
+    "id": "getJwks",
+    "method": "GET",
+    "path": "/.well-known/jwks.json",
+    "authenticated": false
+  },
+  {
+    "id": "createWorkspace",
+    "method": "POST",
+    "path": "/workspaces",
+    "authenticated": true
+  },
+  {
+    "id": "listWorkspaces",
+    "method": "GET",
+    "path": "/workspaces",
+    "authenticated": true
+  },
+  {
+    "id": "getWorkspace",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}",
+    "authenticated": true
+  },
+  {
+    "id": "updateWorkspace",
+    "method": "PUT",
+    "path": "/workspaces/{workspace_id}",
+    "authenticated": true
+  },
+  {
+    "id": "createUserTool",
+    "method": "POST",
+    "path": "/tools",
+    "authenticated": true
+  },
+  {
+    "id": "listUserTools",
+    "method": "GET",
+    "path": "/tools",
+    "authenticated": true
+  },
+  {
+    "id": "getUserTool",
+    "method": "GET",
+    "path": "/tools/{name}",
+    "authenticated": true
+  },
+  {
+    "id": "updateUserTool",
+    "method": "PUT",
+    "path": "/tools/{name}",
+    "authenticated": true
+  },
+  {
+    "id": "deleteUserTool",
+    "method": "DELETE",
+    "path": "/tools/{name}",
+    "authenticated": true
+  },
+  {
+    "id": "createChat",
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/chats",
+    "authenticated": true
+  },
+  {
+    "id": "listChats",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats",
+    "authenticated": true
+  },
+  {
+    "id": "getChat",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}",
+    "authenticated": true
+  },
+  {
+    "id": "listCompletions",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/completions",
+    "authenticated": true
+  },
+  {
+    "id": "getCompletion",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}",
+    "authenticated": true
+  },
+  {
+    "id": "indexWorkspaceFiles",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files",
+    "authenticated": true
+  },
+  {
+    "id": "createWorkspaceFile",
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/files",
+    "authenticated": true
+  },
+  {
+    "id": "updateWorkspaceFile",
+    "method": "PUT",
+    "path": "/workspaces/{workspace_id}/files",
+    "authenticated": true
+  },
+  {
+    "id": "deleteWorkspaceFile",
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}/files",
+    "authenticated": true
+  },
+  {
+    "id": "downloadWorkspaceFile",
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files/download",
+    "authenticated": true
+  },
+  {
+    "id": "convertWorkspaceFileToPdf",
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/files/convert-to-pdf",
+    "authenticated": true
+  },
+  {
+    "id": "createAgent",
+    "method": "POST",
+    "path": "/agents",
+    "authenticated": true
+  },
+  {
+    "id": "listAgents",
+    "method": "GET",
+    "path": "/agents",
+    "authenticated": true
+  },
+  {
+    "id": "getAgent",
+    "method": "GET",
+    "path": "/agents/{agent_id}",
+    "authenticated": true
+  },
+  {
+    "id": "updateAgent",
+    "method": "PUT",
+    "path": "/agents/{agent_id}",
+    "authenticated": true
+  },
+  {
+    "id": "deleteAgent",
+    "method": "DELETE",
+    "path": "/agents/{agent_id}",
+    "authenticated": true
+  },
+  {
+    "id": "createTeam",
+    "method": "POST",
+    "path": "/teams",
+    "authenticated": true
+  },
+  {
+    "id": "listTeams",
+    "method": "GET",
+    "path": "/teams",
+    "authenticated": true
+  },
+  {
+    "id": "getTeam",
+    "method": "GET",
+    "path": "/teams/{team_id}",
+    "authenticated": true
+  },
+  {
+    "id": "updateTeam",
+    "method": "PUT",
+    "path": "/teams/{team_id}",
+    "authenticated": true
+  },
+  {
+    "id": "deleteTeam",
+    "method": "DELETE",
+    "path": "/teams/{team_id}",
+    "authenticated": true
+  },
+  {
+    "id": "listModels",
+    "method": "GET",
+    "path": "/models",
+    "authenticated": true
+  },
+  {
+    "id": "createApiKey",
+    "method": "POST",
+    "path": "/api-keys",
+    "authenticated": true
+  },
+  {
+    "id": "listApiKeys",
+    "method": "GET",
+    "path": "/api-keys",
+    "authenticated": true
+  },
+  {
+    "id": "deleteApiKey",
+    "method": "DELETE",
+    "path": "/api-keys/{key_id}",
+    "authenticated": true
+  },
+  {
+    "id": "testGenerateImage",
+    "method": "POST",
+    "path": "/tests/images/generate",
+    "authenticated": false
+  },
+  {
+    "id": "createImageGeneration",
+    "method": "POST",
+    "path": "/images/generations",
+    "authenticated": true
+  },
+  {
+    "id": "getImageGeneration",
+    "method": "GET",
+    "path": "/images/generations/{record}",
+    "authenticated": true
+  },
+  {
+    "id": "uploadImage",
+    "method": "POST",
+    "path": "/images/uploads",
+    "authenticated": true
+  },
+  {
+    "id": "listImageModels",
+    "method": "GET",
+    "path": "/images/models",
+    "authenticated": true
+  },
+  {
+    "id": "downloadArtifact",
+    "method": "GET",
+    "path": "/artifacts/download",
+    "authenticated": false
+  },
+  {
+    "id": "handleProviderWebhook",
+    "method": "POST",
+    "path": "/webhooks/providers/{provider}",
+    "authenticated": false
+  }
+]

@@ -1,0 +1,238 @@
+# Envai Teams Python SDK
+
+Typed synchronous and asynchronous clients for the current Envai Teams API and
+Agent Team Protocol (ATP v2). Python 3.11+. This is an **alpha SDK**; no package
+release or production deployment is implied by this repository.
+
+## Install from a checkout
+
+```sh
+python -m pip install .
+# Development and verification
+python -m pip install -e '.[dev]'
+```
+
+The distribution is `envai-teams-sdk`; import `envai`. HTTP uses HTTPX, models use
+Pydantic, schema validation uses the pinned JSON Schema, and client-tool signatures
+use `cryptography` Ed25519 plus the `rfc8785` implementation. No generated code or
+schema validator downloads remote references at runtime.
+
+## Quick start
+
+```python
+import os
+from envai import EnvaiClient, models
+
+with EnvaiClient(os.environ['ENVAI_API_KEY'], base_url='https://your-edge.example/api/v1') as client:
+    workspace = client.workspaces.create(body=models.WorkspaceCreateRequest(name='Research'))
+    # Choose a team already configured for this account.
+    chat = client.chats.create(workspace.id, body=models.ChatCreateRequest(team_id='team_YOUR_ULID'))
+    result = client.chats.send_and_wait(chat.id, 'Summarize the project', timeout=120)
+    print(result.text)
+    print(result.turn_id, result.last_seq, result.usage, result.cost)
+```
+
+No credentials are read implicitly or printed in client representations. Configure
+an API key explicitly. The example reads an environment variable only in application
+code. IDs are opaque strings, never UUID-coerced.
+
+## Async and individual events
+
+```python
+from envai import AsyncEnvaiClient
+from envai.event_models import AgentTextDeltaEvent
+
+async def run(api_key: str, chat_id: str):
+    async with AsyncEnvaiClient(api_key, base_url='https://your-edge.example') as client:
+        async for event in client.chats.send_and_stream(chat_id, 'Hello', timeout=120):
+            if isinstance(event, AgentTextDeltaEvent) and event.agent.role == 'orchestrator':
+                print(event.data.delta, end='')
+            if event.terminal:
+                print(event.type)
+```
+
+`send_and_stream` opens SSE and waits for the first **ping before sending once**.
+The first HTTP 200 is insufficient on the current server: replay happens before
+live subscription registration. This workaround may wait one heartbeat interval.
+Only matching `turn_id` events are returned; `agent.done` is not a turn terminal.
+`send_and_wait` aggregates only the orchestrator's text. Failed/cancelled terminal
+events remain explicit in `TurnResult.terminal_event`; they are not turned into
+successful text-only results.
+
+For existing turns or explicit lifecycle control, use `client.chats.events(chat_id,
+after=checkpoint)` and `client.chats.send_message(...)` separately. Streams are
+context managers, have one reader, expose `last_seq`, `live`, and `reconnects`, and
+support `max_reconnects`, `max_duration`, `max_frame_bytes` and a `threading.Event`
+`cancel`. Async streams also support ordinary task cancellation. Closing an iterator
+releases the HTTP response. Sync cancellation is cooperative at reads/backoff;
+`stream_read_timeout` bounds an idle read. Remote `chats.cancel` is a separate,
+explicit mutation; closing a local stream never cancels a remote turn.
+
+## API surface
+
+Services: `workspaces`, `tools`, `chats`, `completions`, `files`, `agents`, `teams`,
+`models`, `api_keys`, `images`, `capabilities`. Resources and ordinary collections
+are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`.
+`completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
+origin, never a response-supplied URL.
+
+The generated primitive layer retains all **52 operation IDs** in
+`src/envai/_contracts/operations.json`; every primitive has a snake_case method
+(e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
+[the generated API inventory](docs/api-inventory.md). Health uses `/api/v1/up`;
+JWKS is public and defaults to the **origin** `/.well-known/jwks.json`.
+`jwks_url` can be overridden. The provider-webhook and local image-test primitives
+are included for inventory completeness and are **experimental integration
+surfaces**, not normal application workflows.
+
+Generated request and response models are in `envai.models`; 28 typed event
+classes and their payloads are in `envai.event_models` / `envai.models`.
+Known events are validated strictly against the current contract. A malformed
+known event raises `ProtocolError` with the original data in `.raw`; a valid
+future type returns `UnknownEvent` with data unchanged. Unknown capability names
+are governed by the pinned HTTP contract, while unknown valid ATP event types are
+accepted independently of the capabilities discovery list.
+
+Optional request fields preserve omission. In particular, `ApiKeyCreate(name='x')`
+omits `expires_at`; only explicit `expires_at='never'` means no expiration.
+Never log the plaintext token returned by key creation. Cost numbers retain
+floating-point precision from the wire without rounding to cents or estimating
+billing from local price tables.
+
+Multipart methods accept HTTPX-style file tuples. Binary methods return `bytes`;
+no download is automatically written to disk. For a returned artifact URL use
+`images.download_signed_url(url)`: it preserves query bytes/order, allows only the
+configured origin and current `/api/v1/artifacts/download` path, and never sends
+Bearer authentication. The raw artifact primitive uses the current
+`artifact`, `expires`, `generation`, `signature` query fields in Laravel's canonical
+order. Legacy `path=` artifact URLs are intentionally unsupported.
+
+## Transport policy and observability
+
+Both clients accept `timeout`, `connect_timeout`, `stream_read_timeout`, `retry`,
+`transport`, `observer`, `base_url`, and `jwks_url`. An injected HTTPX transport
+supports tests, proxies, custom TLS and application-specific routing. Environment
+proxy discovery is disabled to avoid silently routing secrets through process-wide
+proxy settings. Use a configured transport when a proxy is desired.
+
+Only GET requests are automatically retried on transport failure or 429/502/503/504,
+with bounded exponential jitter and bounded `Retry-After`. POST, PUT and DELETE
+are never automatically retried, even when a status or network failure looks
+transient. Per-call `RequestOptions` supports timeout and cooperative cancellation.
+A mutation with an ambiguous network result must be reconciled by the application.
+Redirects are not followed, including same-origin redirects.
+
+`observer(name, details)` receives small structural events such as `http.retry`,
+`stream.reconnect`, `stream.gap`, `stream.duplicate`, and `tool.error`. It never
+receives credentials, URLs, tool arguments, output, or response bodies. Observer
+exceptions are isolated from delivery behavior. Typed HTTP exceptions expose
+`http_status`, `type`, `code`, `message`, `details`, and `request_id`; their string
+representation deliberately omits potentially sensitive server messages/details.
+
+## Opt-in client tools
+
+No local tools, filesystem access, shell commands, or handlers are installed by
+default. Server registration (`client.tools.create`) and agent authorization
+(`external_tools_enabled=[{'name': 'your_tool'}]`) are separate from local handler
+registration. Both are required for a server-visible client tool.
+
+See [examples/client_tools.py](examples/client_tools.py) for a complete bounded
+async runner. The runner requires explicit deployment/account `scope`, `chat_id`,
+`turn_id`, and a state store:
+
+```python
+from envai import ClientToolRegistry, SQLiteToolState, AsyncClientToolRunner
+
+registry = ClientToolRegistry()
+async def echo(args, context):
+    context.check_cancelled()
+    return {'echo': args['text']}
+registry.register('echo', echo,
+    {'type': 'object', 'properties': {'text': {'type': 'string'}}, 'required': ['text']},
+    timeout=120)
+
+# Explicitly select a persistent database path. Nothing is created implicitly.
+state = SQLiteToolState('/application-owned-data/envai-claims.sqlite3')
+runner = AsyncClientToolRunner(client, registry, store=state,
+    scope='production/account-id', chat_id=chat_id, turn_id=accepted_turn_id,
+    max_concurrency=4)
+```
+
+Every request is snapshotted, validated, canonicalized with RFC 8785 and verified
+with Ed25519 **before any handler runs**. Integers outside the safe exact
+range (±(2^53−1)) are normalized to binary64 before both verification and
+handler execution, matching the server and JavaScript numeric domain. Overflow
+and non-finite values are rejected. Use strings when exact huge integers matter. JWKS caches have configurable TTL and one
+refresh on unknown kid/verification failure. Unsupported algorithms and invalid
+signatures fail closed. Locally registered argument schemas are cloned and cannot
+retrieve remote references. Unknown/invalid local tools produce controlled error
+outputs. Structured results are JSON-serialized exactly once; outputs are capped
+at 128 KiB. Empty strings become a controlled error because the current gateway
+rejects them despite the OpenAPI schema lacking `minLength`.
+
+`ToolStateStore` is a pluggable protocol. Its atomic `claim` must commit before
+returning true, and claims must not automatically expire. SQLite uses atomic
+insertion and FULL synchronous commits. The key is `(scope, chat_id, call_id)`;
+use a stable, non-secret deployment/account scope, and preserve the database.
+`MemoryToolState()` is an explicit ephemeral option only. Stores retain hashes and
+status, never arguments/outputs/credentials. A conflicting payload for the same
+claim is rejected. Results observed before requests create resolved tombstones.
+
+Statuses are `running`, `ambiguous`, `submitted`, and `resolved`. The runner stores
+`ambiguous` **before POSTing output**, marks `submitted` only on HTTP success, and
+marks `resolved` on the corresponding stream result. It never retries delivery or
+reexecutes a duplicate call; a later 404/409 does not prove earlier success. Inspect
+`.get(...)` and reconcile ambiguous states externally. A crash between side effect
+and durable completion cannot be made exactly-once by an SDK: handlers must use
+`context.call_id` as an idempotency key, transactions, or explicit reconciliation.
+A signature proves integrity/origin, not freshness.
+
+Concurrency is bounded with no unbounded handler queue. Saturation returns a
+controlled error. Handler deadlines use a conservative margin below the registered
+timeout, since the server timer starts before delivery and no absolute deadline
+is transmitted. Observed tool result/turn terminal cancels local work. Async runners
+require native async handlers; sync runners use worker threads and cooperative
+`ToolContext` cancellation. Python cannot forcibly terminate arbitrary threads:
+a timed-out sync handler retains its concurrency slot until it exits, and must
+check cancellation before every effect. Runner lifecycle is bound to one known
+turn; it does not infer permission to execute unrelated turns.
+
+## Current alpha limitations
+
+- Replay is only best-effort while the same chat runtime stays resident. The
+  server keeps 10,000 in-memory events, drops overflowing live subscriber events,
+  resets sequence on restart/eviction, and supplies no epoch/cursor-expired signal.
+  Upward gaps trigger one replay attempt, then `ReplayGapError`; the SDK cannot
+  detect every reset or promise durable replay. Do not silently reuse a checkpoint
+  after a known restart. Reconcile or explicitly start a new observation epoch.
+- Replay/subscribe is not atomic. The first-ping workaround reduces the known
+  attach race; it is not a server-level durability guarantee.
+- `steer` currently records `turn.steered` without injecting instructions into the
+  LLM. Approval resolution is a 409 stub. Neither is automatically invoked.
+- Context persistence/rehydration is best-effort and may lose history; the SDK
+  cannot assert durable context restore from a successful acknowledgment.
+- A second tool output is 409 while the turn is active and may be 404 after cleanup.
+  Neither response alone reconciles an ambiguous earlier delivery.
+
+## Development and contract provenance
+
+Pinned source: `digitalygo/envai-teams`, alpha commit
+`55275860c9a950eaad8e39e9d2b728149084779c`. Exact input hashes and shared fixture
+provenance are in `tests/fixtures/provenance.json`.
+
+```sh
+python scripts/generate.py --check
+ruff check src scripts tests examples
+mypy src
+pytest --cov=envai --cov-report=term-missing
+python -m build
+```
+
+Regenerate only the typed models and REST primitives with
+`python scripts/generate.py`; SSE/tool behavior is handwritten. CI runs Python
+3.11–3.13, lint, type checks, contract drift checks, wheel build/import, all mocked
+HTTP operations, shared ATP/SSE/JCS/Ed25519 vectors and concurrency/replay/error
+regressions. Runtime branch coverage is gated at 90%; generated models/primitives
+are excluded from coverage but independently covered by the operation inventory
+and response-schema tests. Tests never call Envai production endpoints or require
+credentials. MIT, Copyright (c) 2026 DigItalyGo.

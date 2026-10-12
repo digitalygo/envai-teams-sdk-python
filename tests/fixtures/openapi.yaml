@@ -1,0 +1,5267 @@
+openapi: 3.1.0
+info:
+  title: Envai AaaS API — execution plane and control plane
+  description: >
+    Contract for the Envai AaaS HTTP surface covering both the execution plane and the control
+    plane. The execution plane serves the Agent Team Protocol (ATP) through the Go gateway: the
+    caller sends messages to a chat, steers or cancels the active turn through small control
+    endpoints, restores a chat from client held context, and reads every agent's activity from
+    one multiplexed SSE stream which is the
+    single source of truth. The chat is the only execution entity: one chat holds one history
+    and hosts many turns, and no parallel run or session lifecycle exists beside it. All
+    endpoints live under the canonical `/api/v1` prefix; legacy `/v1` paths are not aliases and
+    receive no redirect. Event envelopes and per-type payloads are defined once in `events.json`
+    and referenced by the events endpoint through external `$ref`.
+
+    The control plane surface served by Laravel is in scope here: workspaces, chats, completion
+    metadata, agent definitions, teams, models, api keys, image operations, signed artifacts and
+    provider webhooks. Control plane responses use the Laravel JsonResource `{data: ...}`
+    wrapper for single resources and collections, except the provider webhook which answers a
+    bare `{status: ok}` and the model catalogs which answer a top-level `{object, data,
+    defaults}` object. Since 1.1.0 the image operations are reserved to authenticated api
+    keys. Since 1.2.0 the workspace files api exposes the workspace fake filesystem
+    (wiki, skills and `MEMORY.md` are plain files under it) through the control plane.
+  version: 2.0.0
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:8111/api/v1
+    description: Local development edge (control plane single entrypoint)
+  - url: http://localhost:8081/api/v1
+    description: Local development execution-plane gateway only
+
+security:
+  - bearerAuth: []
+
+paths:
+  /chats/{chat_id}/messages:
+    post:
+      operationId: sendChatMessage
+      summary: Send a message and start a turn
+      description: >
+        Sends a user message to the chat. The message opens a turn: the
+        gateway resolves the team from `chat.team_id` and starts the
+        orchestrator loop, and the turn is identified by the orchestrator
+        completion id `cmpl_<ulid>` returned as `turn_id`. The server emits
+        `turn.started` with the message as the turn input. The request is
+        rejected with 409 when a turn is already in progress for the chat,
+        with 503 `server_error`/`gateway_draining` while the gateway is
+        draining, and with 404 when the chat does not exist.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatMessageRequest'
+      responses:
+        '202':
+          description: Message accepted, turn started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: A turn is already in progress for this chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  code: turn_in_progress
+                  message: A turn is already in progress for this chat.
+                  details: null
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/GatewayDrainingError'
+
+  /chats/{chat_id}/events:
+    get:
+      operationId: streamChatEvents
+      summary: Stream chat events
+      description: >
+        Server-Sent Events stream with one `data:` line per event, JSON
+        encoded. Attach with `after=<seq>` to receive retained events strictly
+        after that sequence number. In the current implementation the replay
+        window is bounded and in memory; eviction or restart discards events,
+        resets sequence to 1 and exposes no epoch or cursor-expired signal.
+        Within a resident runtime, positive sequence numbers are monotonic and
+        continuous across turns. A wire-only `ping` with `seq: 0` is emitted
+        periodically to keep proxies and load balancers from closing the idle
+        stream. Each `data:` line is one Agent Team Protocol event envelope;
+        `type` discriminates `data`, and the envelope and every per-type payload
+        are defined in `events.json`.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+        - $ref: '#/components/parameters/AfterSeq'
+      responses:
+        '200':
+          description: Event stream
+          headers:
+            Cache-Control:
+              description: Streams must not be buffered by proxies
+              schema:
+                type: string
+                example: no-cache
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE frames whose `data` field contains one ATP event envelope
+              x-event-schema:
+                $ref: './events.json#/$defs/Event'
+              example: >
+                data: {"v":2,"id":"evt_01j5abcdefghjkmnpqrstvwxyz","seq":42,"ts":"2026-08-17T14:00:00Z","chat_id":"cht_01j5abcdefghjkmnpqrstvwxyz","turn_id":"cmpl_01j5abcdefghjkmnpqrstvwxyz","agent":null,"type":"turn.completed","data":{"turn_id":"cmpl_01j5abcdefghjkmnpqrstvwxyz","usage":{"input_tokens":120,"output_tokens":450,"cost_usd":0.42,"duration_ms":8123,"sprite_ms":0},"cost":0.42,"chat_usage":{"input_tokens":300,"output_tokens":900,"cost_usd":0.95,"duration_ms":16246,"sprite_ms":0},"chat_cost":0.95,"finish_reason":"completed"}}
+        '400':
+          $ref: '#/components/responses/InvalidRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /chats/{chat_id}/cancel:
+    post:
+      operationId: cancelChatTurn
+      summary: Cancel the active turn
+      description: >
+        Stops the active turn and emits `turn.cancelled`. In flight subagents
+        are cancelled through context propagation. The request is rejected
+        with 409 when no turn is in progress for the chat.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      responses:
+        '202':
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnAccepted'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: No turn is in progress for this chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  code: no_turn_in_progress
+                  message: No turn is in progress for this chat.
+                  details: null
+
+  /chats/{chat_id}/steer:
+    post:
+      operationId: steerChatTurn
+      summary: Record guidance for the active turn
+      description: >
+        Validates that a turn is active and records guidance by echoing
+        `turn.steered`. `target_agent_id` is optional and targets the
+        orchestrator when omitted. In the current alpha implementation the
+        text is not injected into the running LLM loop.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SteerRequest'
+      responses:
+        '202':
+          description: Guidance accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnAccepted'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /chats/{chat_id}/tool-output:
+    post:
+      operationId: resolveChatTool
+      summary: Resolve a client tool call
+      description: >
+        Resolves a client tool call (`agent.tool.request`) with the client
+        output. The body carries `call_id` and `output` (required; `output`
+        is the double-encoded JSON string of the client tool contract) and
+        `is_error` (optional, default false). Resolution is at most once by
+        `call_id` while the turn remains active; the broker and its tombstones
+        are discarded at the terminal event. It is
+        not transparently retry-safe because duplicates do not return the
+        original success response. A
+        duplicate while the turn is active answers 409
+        `tool_already_resolved`, a late output after the timeout answers 409
+        `tool_timed_out`; after the terminal event the same `call_id` answers
+        404, as does an unknown `call_id` or one belonging to a different chat,
+        without leaking existence. Success
+        answers 204 No Content and echoes `agent.tool.result` on the stream.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolOutputRequest'
+      responses:
+        '204':
+          description: Tool call resolved
+        '400':
+          $ref: '#/components/responses/InvalidRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: The tool call is already resolved or timed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  code: tool_already_resolved
+                  message: Tool call already resolved.
+                  details: null
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /chats/{chat_id}/approval:
+    post:
+      operationId: resolveChatApproval
+      summary: Resolve an approval
+      description: >
+        Resolves a pending `approval.request` with the user's decision. Not
+        implemented: the endpoint is a stub and answers 409 until approval
+        resolution is supported.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '409':
+          description: Not implemented, approval resolution is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  message: Approval resolution is not implemented.
+                  details: null
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /chats/{chat_id}/fork:
+    post:
+      operationId: forkChat
+      summary: Branch a chat
+      description: >
+        Copies the conversation context of the source chat into a destination
+        chat created beforehand through the control plane. The gateway
+        validates that the destination chat exists, belongs to the same
+        workspace and user and carries no history and no active turn;
+        violations answer 422. The request is rejected with 409 when a turn is
+        in progress for the source chat. After a successful fork the two chats
+        evolve independently.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForkChatRequest'
+      responses:
+        '200':
+          description: Chat forked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatForked'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: A turn is in progress for this chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  code: turn_in_progress
+                  message: A turn is in progress for this chat.
+                  details: null
+        '422':
+          description: Invalid fork destination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: validation_error
+                  code: invalid_fork_destination
+                  message: The destination chat is not valid for forking.
+                  details: null
+
+  /chats/{chat_id}/restore:
+    post:
+      operationId: restoreChat
+      summary: Restore a chat from client held context
+      description: >
+        Rebuilds the orchestrator from the `orchestrator_context` supplied in
+        the body: the compacted context first, followed by orchestrator
+        assistant messages. Restore is the client driven rehydration path; the
+        gateway can hydrate chats automatically from persisted context when it
+        is available and readable. Loading is fail-open on DB/JSON errors and
+        persistence is asynchronous best-effort, so the restored in-memory
+        context is not a durability acknowledgement. The request is rejected
+        with 409 when
+        a turn is in progress for the chat and with 404 when the chat does not
+        exist. Restore replaces the in-memory context, schedules persistence and
+        does not open a turn, so `turn_id` answers null.
+      tags:
+        - Chat execution
+      parameters:
+        - $ref: '#/components/parameters/ChatId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreChatRequest'
+      responses:
+        '200':
+          description: Chat restored from the supplied context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreChatAccepted'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: A turn is already in progress for this chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: conflict
+                  code: turn_in_progress
+                  message: A turn is already in progress for this chat.
+                  details: null
+        '422':
+          description: Invalid orchestrator context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  type: validation_error
+                  code: invalid_orchestrator_context
+                  message: The orchestrator context is not valid.
+                  details: null
+
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      summary: Advertised protocol metadata
+      description: >
+        Returns protocol metadata and positively advertised names. The current
+        alpha response is not exhaustive and a feature name may advertise an
+        endpoint/event surface without proving the full intended semantics.
+      tags:
+        - Capabilities
+      responses:
+        '200':
+          description: Server capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /up:
+    get:
+      operationId: healthCheck
+      summary: Health check endpoint
+      description: Returns the current status of the API including timestamp and environment info
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: up
+                      timestamp:
+                        type: string
+                        format: date-time
+                        example: '2026-03-01T12:00:00+00:00'
+                      app:
+                        type: string
+                        example: Laravel
+                      env:
+                        type: string
+                        example: local
+
+  /.well-known/jwks.json:
+    servers:
+      - url: http://localhost:8111
+        description: Local development server
+    get:
+      operationId: getJwks
+      summary: Publish the public signing keys
+      description: >
+        Public endpoint serving the JSON Web Key Set of the control plane. It
+        publishes every Ed25519 signing key, active and retired, with its
+        `kid` (`sig_<ulid>`), so tokens signed before a rotation keep
+        verifying. No authentication.
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: JSON Web Key Set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwksDocument'
+
+  /workspaces:
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace
+      description: >
+        Creates a workspace with id `wsp_<ulid>` owned by the authenticated
+        user. The workspace owns the wiki, skills and `MEMORY.md` state and does
+        not own a team. Teams are selected per chat at chat creation.
+      tags:
+        - Workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceCreateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listWorkspaces
+      summary: List workspaces
+      description: Lists the workspaces owned by the authenticated user.
+      tags:
+        - Workspaces
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workspaces owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /workspaces/{workspace_id}:
+    get:
+      operationId: getWorkspace
+      summary: Get a workspace
+      tags:
+        - Workspaces
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workspace found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      operationId: updateWorkspace
+      summary: Update a workspace
+      description: >
+        Updates the workspace configuration. The workspace does not own a team,
+        so no team field is accepted here. The team is selected at chat creation
+        through `team_id`.
+      tags:
+        - Workspaces
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUpdateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workspace updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /tools:
+    post:
+      operationId: createUserTool
+      summary: Register a client tool
+      description: >
+        Registers a user-scoped client tool with id `twl_<ulid>`. The tool
+        is shared across all the caller's workspaces and becomes visible to
+        an agent only when its name is in
+        `agent_definitions.external_tools_enabled` and it is registered by
+        the same user on the platform. `name` must match
+        `^[a-z][a-z0-9_]{0,254}$`, must be unique per user and must not be a
+        reserved platform tool name (`read`, `list`, `stat`, `write`,
+        `execute`, `wiki_read`, `wiki_ls`, `wiki_write`, `skill_read`,
+        `skill_list`, `skill_write`, `exa_search`, `exa_contents`,
+        `calculator`, `convert_units`, `delegate_task`). `parameters` must
+        be a JSON Schema with root type `object`; `timeout_seconds` defaults
+        to 120 and is capped at 600.
+      tags:
+        - Tools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserToolCreateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Client tool registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserToolResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listUserTools
+      summary: List the user's client tools
+      description: Lists the client tools registered by the caller.
+      tags:
+        - Tools
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Client tools registered by the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserToolCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /tools/{name}:
+    get:
+      operationId: getUserTool
+      summary: Get a client tool
+      description: Returns a client tool registered by the caller, by name.
+      tags:
+        - Tools
+      parameters:
+        - $ref: '#/components/parameters/ToolName'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Client tool found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserToolResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      operationId: updateUserTool
+      summary: Update a client tool
+      description: >
+        Updates a client tool. Only `description`, `parameters` and
+        `timeout_seconds` are updatable; `name`, `kind`, `workspace_id` and
+        `user_id` are prohibited.
+      tags:
+        - Tools
+      parameters:
+        - $ref: '#/components/parameters/ToolName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserToolUpdateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Client tool updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserToolResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      operationId: deleteUserTool
+      summary: Delete a client tool
+      description: Removes the client tool from the user's registry.
+      tags:
+        - Tools
+      parameters:
+        - $ref: '#/components/parameters/ToolName'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Client tool deleted
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /workspaces/{workspace_id}/chats:
+    post:
+      operationId: createChat
+      summary: Create a chat inside a workspace
+      description: >
+        Creates a chat with id `cht_<ulid>` inside the workspace. The chat
+        selects the team through a mandatory `team_id`. `chats.team_id` is a
+        required 31-character `team_<ulid>` reference with a foreign key to
+        `teams`; chat creation validates that the team exists and belongs to
+        the chat owner, 422 otherwise. Omitting `team_id` is rejected with 422.
+      tags:
+        - Chats
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCreateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Chat created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listChats
+      summary: List chats of a workspace
+      tags:
+        - Chats
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chats of the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /workspaces/{workspace_id}/chats/{chat_id}:
+    get:
+      operationId: getChat
+      summary: Get a chat
+      tags:
+        - Chats
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ChatId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chat found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /workspaces/{workspace_id}/chats/{chat_id}/completions:
+    get:
+      operationId: listCompletions
+      summary: List completion metadata of a chat
+      description: >
+        Lists the metadata-only completion records of a chat, newest first.
+        Results are paginated with `per_page` (default 15, maximum 100) and
+        can be filtered by `status`, `model_orchestrator` and the `started_at`
+        range (`from` and `to`, inclusive, ISO 8601). Records never include
+        message content.
+      tags:
+        - Completions
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ChatId'
+        - name: status
+          in: query
+          required: false
+          description: Filter by completion status
+          schema:
+            type: string
+            enum: [running, succeeded, failed, canceled]
+        - name: model_orchestrator
+          in: query
+          required: false
+          description: Filter by orchestrator model id
+          schema:
+            type: string
+        - name: started_at[from]
+          in: query
+          required: false
+          description: Earliest started_at, inclusive, ISO 8601
+          schema:
+            type: string
+            format: date-time
+        - name: started_at[to]
+          in: query
+          required: false
+          description: Latest started_at, inclusive, ISO 8601
+          schema:
+            type: string
+            format: date-time
+        - name: per_page
+          in: query
+          required: false
+          description: Items per page, default 15, maximum 100
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 15
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Completion metadata of the chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}:
+    get:
+      operationId: getCompletion
+      summary: Get completion metadata
+      description: Returns the metadata-only record of a single completion of the chat.
+      tags:
+        - Completions
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ChatId'
+        - $ref: '#/components/parameters/CompletionId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Completion metadata found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /workspaces/{workspace_id}/files:
+    get:
+      operationId: indexWorkspaceFiles
+      summary: Read a workspace file or directory
+      description: >
+        Reads a single workspace file or directory through the fake filesystem
+        api. Files answer the descriptor plus `content`, directories answer
+        the descriptor plus alphabetically sorted `entries` (at most 500). The
+        root `/` is allowed only here and lists the top level entries
+        (`MEMORY.md`, `wiki`, `skills`). A missing file answers 404 with type
+        `file_not_found`; a missing workspace answers 404 with type
+        `not_found`.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FilePathQuery'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: File or directory read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceFileResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+    post:
+      operationId: createWorkspaceFile
+      summary: Create a workspace file
+      description: >
+        Creates a file at the given absolute workspace-relative path, creating
+        missing parent directories. The response is the 201 descriptor without
+        `content`. An existing file or directory at the path answers 409 with
+        type `file_conflict`. Content must be non empty, valid UTF-8, at most
+        1048576 bytes and at most 1000 lines; `/MEMORY.md` is additionally
+        capped at 12000 characters. The root `/` and the protected `/wiki` and
+        `/skills` paths are accepted as existing directories only, so create
+        answers 409 for them. A missing workspace answers 404 with type
+        `not_found`.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceFileRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: File created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceFileResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '409':
+          $ref: '#/components/responses/FileConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+    put:
+      operationId: updateWorkspaceFile
+      summary: Update a workspace file
+      description: >
+        Overwrites the content of an existing file. The response is the 200
+        descriptor without `content`. A missing file answers 404 with type
+        `file_not_found`; targeting a directory answers 409 with type
+        `file_conflict`. Content validation matches create: non empty, valid
+        UTF-8, at most 1048576 bytes and 1000 lines, and 12000 characters for
+        `/MEMORY.md`. A missing workspace answers 404 with type `not_found`.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceFileRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: File updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceFileResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '409':
+          $ref: '#/components/responses/FileConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+    delete:
+      operationId: deleteWorkspaceFile
+      summary: Delete a workspace file or directory
+      description: >
+        Deletes a file or directory. `recursive=true` deletes a non empty
+        directory, the default is false. The filesystem root and the protected
+        `/wiki` and `/skills` directories cannot be deleted and answer 409
+        with type `file_conflict`. A missing path answers 404 with type
+        `file_not_found`. A missing workspace answers 404 with type
+        `not_found`.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FilePathQuery'
+        - $ref: '#/components/parameters/FileRecursiveQuery'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '204':
+          description: File or directory deleted
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '409':
+          $ref: '#/components/responses/FileConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+  /workspaces/{workspace_id}/files/download:
+    get:
+      operationId: downloadWorkspaceFile
+      summary: Download a workspace file
+      description: >
+        Downloads the raw bytes of a file as an attachment. The content type
+        comes from the extension map (markdown, text, pdf, json, csv, html,
+        xml, yaml, image and archive types) with `application/octet-stream`
+        as fallback; `text/*` types get `charset=utf-8` appended by the
+        framework. Targeting a directory answers 409 with type
+        `file_conflict`; a file too large to read answers 422 with type
+        `file_too_large`; a malformed service response answers 422 with type
+        `file_service_error`. Errors answer the standard JSON envelope.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/FilePathQuery'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            text/markdown:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Always `attachment` with the sanitized file name
+              schema:
+                type: string
+                example: 'attachment; filename="guide.md"'
+            Content-Length:
+              description: File size in bytes
+              schema:
+                type: integer
+                example: 2048
+            X-Content-Type-Options:
+              description: Always `nosniff`
+              schema:
+                type: string
+                example: nosniff
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '409':
+          $ref: '#/components/responses/FileConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+  /workspaces/{workspace_id}/files/convert-to-pdf:
+    post:
+      operationId: convertWorkspaceFileToPdf
+      summary: Convert a markdown or text file to PDF
+      description: >
+        Converts a `.md`, `.markdown` or `.txt` file to PDF and returns the
+        document as an attachment. The conversion itself executes inside the
+        fake filesystem service (pandoc/typst sidecar); authentication,
+        ownership and the per-route throttle remain on this api. Other
+        extensions are rejected with 422 before conversion. A missing file
+        answers 404 with type `file_not_found`; a directory answers 409 with
+        type `file_conflict`; a pdf larger than the configured cap answers
+        422 with type `file_too_large`. When the file service is unavailable
+        the request answers 503 with type `file_service_unavailable`. A
+        missing workspace answers 404 with type `not_found`.
+      tags:
+        - Workspace files
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertToPdfRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Always `attachment` with the base name and `.pdf` extension
+              schema:
+                type: string
+                example: 'attachment; filename="guide.pdf"'
+            Content-Length:
+              description: PDF size in bytes
+              schema:
+                type: integer
+                example: 4096
+            X-Content-Type-Options:
+              description: Always `nosniff`
+              schema:
+                type: string
+                example: nosniff
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/FileNotFoundError'
+        '409':
+          $ref: '#/components/responses/FileConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/FileServiceUnavailableError'
+
+  /agents:
+    post:
+      operationId: createAgent
+      summary: Create an agent definition
+      description: >
+        Creates an agent definition with id `agt_<ulid>` owned by the
+        authenticated user. `mode` is `primary` or `subagent`. The optional
+        `model` must be available in the catalog, `name` must be unique among
+        the owner's agent definitions and `config` must not contain
+        `max_tokens` at any nesting depth. The four jsonb fields default to
+        empty values when omitted.
+      tags:
+        - Agents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Agent definition created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listAgents
+      summary: List agent definitions
+      description: Lists the agent definitions owned by the authenticated user.
+      tags:
+        - Agents
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Agent definitions owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /agents/{agent_id}:
+    get:
+      operationId: getAgent
+      summary: Get an agent definition
+      tags:
+        - Agents
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Agent definition found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      operationId: updateAgent
+      summary: Update an agent definition
+      description: >
+        Updates the agent definition with a subset of the creation fields;
+        at least one updatable field is required and `user_id` is prohibited.
+        Field semantics match creation, including the `max_tokens` prohibition
+        on `config` and the catalog availability check on `model`.
+      tags:
+        - Agents
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Agent definition updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      operationId: deleteAgent
+      summary: Delete an agent definition
+      description: >
+        Deletes the agent definition. The request is rejected with 422 when
+        the agent is the orchestrator of at least one team.
+      tags:
+        - Agents
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Agent definition deleted
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /teams:
+    post:
+      operationId: createTeam
+      summary: Create a team
+      description: >
+        Creates a team with id `team_<ulid>` owned by the authenticated user.
+        `orchestrator_id` is required and must reference a primary-mode agent
+        owned by the caller. The optional `members` array is ordered:
+        `position` is derived from the array order, `role` is nullable and a
+        member cannot be the orchestrator.
+      tags:
+        - Teams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listTeams
+      summary: List teams
+      description: Lists the teams owned by the authenticated user with their members.
+      tags:
+        - Teams
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Teams owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /teams/{team_id}:
+    get:
+      operationId: getTeam
+      summary: Get a team
+      tags:
+        - Teams
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      operationId: updateTeam
+      summary: Update a team
+      description: >
+        Updates the team with a subset of `name`, `description`,
+        `orchestrator_id` and `members`; at least one updatable field is
+        required. When `members` is present the member list is replaced
+        wholesale, and an empty array clears all members. `user_id` and
+        per-member `position` and `user_id` are prohibited.
+      tags:
+        - Teams
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamUpdateRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      operationId: deleteTeam
+      summary: Delete a team
+      description: >
+        Deletes the team. A team that still has chats cannot be deleted: the
+        request is rejected with 422 until its chats are reassigned or removed.
+      tags:
+        - Teams
+      parameters:
+        - $ref: '#/components/parameters/TeamId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Team deleted
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /models:
+    get:
+      operationId: listModels
+      summary: List the LLM model catalog
+      description: >
+        Returns the LLM model catalog with team entries and the platform
+        defaults per role. LLM entries report `deprecated` and `sunset_at` and
+        carry the informational OpenRouter metadata synchronized from the
+        upstream catalog; models unavailable upstream and models past sunset
+        never appear, deprecated models appear with `deprecated: true`. Team
+        entries are the caller's teams. The response is a top-level
+        `{object, data, defaults}` object without a data wrapper.
+      tags:
+        - Models
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelList'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /api-keys:
+    post:
+      operationId: createApiKey
+      summary: Create an api key
+      description: >
+        Creates a long lived api key for the authenticated user. The plaintext
+        token `envai_sk_<ulid><jwt>` appears only in the 201 response and is
+        never persisted: the control plane stores the sha256 hash of the token,
+        the `jti` (`key_<ulid>`), the signing key `kid` (`sig_<ulid>`),
+        nullable `expires_at` and `revoked_at`, the owner `user_id`, `name`
+        and `scopes`. The jwt is signed with EdDSA and carries no workspace or
+        chat claim.
+      tags:
+        - Api keys
+      security:
+        - session: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyCreate'
+      responses:
+        '201':
+          description: Api key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreated'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    get:
+      operationId: listApiKeys
+      summary: List api keys
+      description: >
+        Lists the api keys owned by the authenticated user with their
+        metadata. The plaintext token is never included.
+      tags:
+        - Api keys
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Api keys owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+
+  /api-keys/{key_id}:
+    delete:
+      operationId: deleteApiKey
+      summary: Revoke an api key
+      description: >
+        Revokes the api key: the control plane sets `revoked_at` and adds the
+        `jti` to the Redis denylist so the key stops working immediately even
+        when the jwt has a far future expiry. The row is never deleted. The
+        request is rejected with 403 when the key belongs to another user and
+        with 404 when the key does not exist.
+      tags:
+        - Api keys
+      parameters:
+        - $ref: '#/components/parameters/KeyId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Api key revoked
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /tests/images/generate:
+    post:
+      operationId: testGenerateImage
+      summary: Test image generation endpoint
+      description: >
+        Local and testing only echo endpoint for image generation contract
+        validation. Accepts a multipart upload of up to 4 images and echoes the
+        received prompt, model code and file metadata. No authentication. The
+        request is rate limited to 10 requests per minute. The request is
+        rejected with 404 when the application environment is not `local` or
+        `testing`, and with 422 when the payload or the `model_code` is
+        invalid or unsupported.
+      tags:
+        - Tests
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TestImageGenerateRequest'
+      security: []
+      responses:
+        '200':
+          description: Multipart upload received and echoed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestImageGenerateResource'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /images/generations:
+    post:
+      operationId: createImageGeneration
+      summary: Create an asynchronous image generation
+      description: >
+        Accepts a canonical JSON image generation request and returns 202 with
+        the accepted generation record. The request is processed
+        asynchronously: the caller tracks progress through `status_url`.
+        Requires an authenticated api key or web session: a missing or invalid
+        token is rejected with 401, and the route is throttled to 30 requests
+        per minute per user (429 when exceeded). Validation follows the
+        Laravel `GenerateRequest`:
+        required `model`, `prompt` and `webhook_url` (public HTTPS only, no
+        private or reserved addresses), optional input images (`input_images`
+        list up to 10 items, or singular `input_image`), `mask_image` and
+        `objects_image` (each requiring `input_image` and mutually exclusive
+        with `input_images`), `resolution`, `dimensions`, `aspect_ratio`,
+        `format`, `quality`, `model_settings` and `providers`. Model specific
+        validation happens server side: unknown or unsupported models,
+        unsupported quality, resolution or aspect ratio combinations and
+        unsafe input image URLs are rejected with 422 before provider
+        dispatch. Upload records referenced with `upload_id` must belong to
+        the authenticated user and be unexpired: absent, foreign, legacy (no
+        owner) or expired records all answer the same 422 `Upload record not
+        found.` without leaking existence. Referenced uploads are also subject
+        to an aggregate budget of 50 MiB: the `size` of every referenced
+        upload record is summed across all collected inputs (`input_images`,
+        `input_image`, `mask_image` and `objects_image`) and every occurrence
+        counts, so repeating the same `upload_id` in multiple inputs is
+        counted multiple times. Exceeding the budget rejects the request with
+        422 before any record is created and before provider dispatch.
+      tags:
+        - Images
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageGenerationRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Generation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageGenerationAcceptedResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /images/generations/{record}:
+    get:
+      operationId: getImageGeneration
+      summary: Get image generation status
+      description: >
+        Returns the current lifecycle status of an asynchronous image
+        generation. The `record` path segment is the generation request id
+        `igr_<ulid>`. Requires an authenticated api key or web session: a
+        missing or invalid token is rejected with 401. Access is scoped to the
+        authenticated user: a record owned by another user, a legacy record
+        without an owner or an unknown id all answer the same 404. `expires_at` is always present and is exactly two hours after
+        creation; `submitted_at` and `completed_at` are null until the
+        corresponding lifecycle phase happens; `result`, `error`, `files`,
+        `price`, `usage`, `cost_usd` and `duration_ms` appear only when
+        available.
+      tags:
+        - Images
+      parameters:
+        - $ref: '#/components/parameters/ImageGenerationRecordId'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Generation status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageGenerationStatusResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /images/uploads:
+    post:
+      operationId: uploadImage
+      summary: Upload an input image
+      description: >
+        Uploads a single image for later use in a generation request through
+        `upload_id`. Requires an authenticated api key or web session: a
+        missing or invalid token is rejected with 401, and the route is
+        throttled to 20 requests per minute per user (429 when exceeded). The
+        file must be an image of type png, jpeg, webp or gif and at most 10240
+        kilobytes. The record is staged for two hours and binds to exactly one
+        generation; a bound upload cannot be reused by another generation. It
+        returns id `upl_<ulid>`. A per user disk quota applies: the summed `size` of the
+        user's unexpired uploads cannot exceed the configurable
+        `envai.images.upload_quota_bytes` cap (default 200 MiB), and crossing
+        it answers 422 `The upload storage quota has been exceeded.`. When the
+        quota lock is not available the request answers 422 `Upload
+        temporarily unavailable, retry.`.
+      tags:
+        - Images
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /images/models:
+    get:
+      operationId: listImageModels
+      summary: List the image model catalog
+      description: >
+        Returns the image model catalog grouped by canonical model. Each entry
+        lists the providers able to serve the model, the price classes with a
+        provider weighted average price and the model settings. Price classes
+        are informational: `average_price` is a provider weighted average, not
+        a guaranteed quote, and a setting applies to the providers listed in
+        its `providers` array, not as a universal constraint. Requires an
+        authenticated api key or web session: a missing or invalid token is
+        rejected with 401. The catalog is not filtered by user.
+      tags:
+        - Images
+      security:
+        - session: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelCatalogResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /artifacts/download:
+    get:
+      operationId: downloadArtifact
+      summary: Download a generated artifact
+      description: >
+        Serves a generated artifact through a relative signed URL. The
+        `generation` (`igr_<ulid>`) and `artifact` (`art_<ulid>`) query
+        parameters are opaque identifiers covered by the signature, so
+        tampering with either value or with the signature is rejected with
+        403, and the caller can never select a disk or an object path. The
+        optional `expires` parameter is included in every temporary signed URL
+        and never exceeds the generation deadline. An expired signature, or an
+        unknown, expired, foreign, keyless or malformed generation, returns a
+        generic 404. The body is the decrypted
+        artifact with the recorded content type (png, jpeg, webp, svg or
+        octet-stream), `Content-Disposition: attachment`,
+        `X-Content-Type-Options: nosniff`, a restrictive
+        `Content-Security-Policy` and `Cache-Control: no-store`. No
+        authentication.
+      tags:
+        - Artifacts
+      parameters:
+        - $ref: '#/components/parameters/ArtifactGeneration'
+        - $ref: '#/components/parameters/ArtifactArtifact'
+        - $ref: '#/components/parameters/ArtifactExpires'
+        - $ref: '#/components/parameters/ArtifactSignature'
+      security: []
+      responses:
+        '200':
+          description: Artifact content
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Always `attachment` with the artifact file name
+              schema:
+                type: string
+                example: 'attachment; filename="01ARZ3NDEK_0.jpeg"'
+            X-Content-Type-Options:
+              description: Always `nosniff`
+              schema:
+                type: string
+                example: nosniff
+            Content-Security-Policy:
+              description: Restrictive policy for SVG responses
+              schema:
+                type: string
+                example: "default-src 'none'; style-src 'unsafe-inline'"
+            Cache-Control:
+              description: Always `no-store`
+              schema:
+                type: string
+                example: no-store
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /webhooks/providers/{provider}:
+    post:
+      operationId: handleProviderWebhook
+      summary: Receive a provider webhook
+      description: >
+        Receives an asynchronous image generation webhook from a provider. The
+        `provider` path segment selects the provider and the body is a
+        provider specific JSON object; an empty body is tolerated by the
+        parsers. The optional `callback_token` query
+        parameter matches the attempt callback token, with fallback to
+        provider job and request id lookup. A webhook is processed only when it matches an
+        active request and attempt. Unknown, unmatched, expired and late
+        callbacks return the same generic 200 `{status: ok}` without a data
+        wrapper and persist no row, hash or payload; matched duplicates are
+        dropped idempotently. Every callback passes through one uniform
+        provider webhook rate limit applied before matching. Signature headers are optional
+        per provider: replicate uses Svix style `webhook-id`,
+        `webhook-timestamp` and `webhook-signature`, fal uses
+        `X-Fal-Webhook-Request-Id`, `X-Fal-Webhook-User-Id`,
+        `X-Fal-Webhook-Timestamp` and `X-Fal-Webhook-Signature`, and
+        black-forest-labs uses `X-BFL-Signature`. Missing or invalid signatures
+        answer 401 with type `provider_error`; vertex, openai, recraft and
+        byteplus do not support webhooks and answer 405 with type
+        `provider_error`; unknown providers answer 422. No authentication.
+      tags:
+        - Webhooks
+      parameters:
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/WebhookCallbackToken'
+        - $ref: '#/components/parameters/WebhookIdHeader'
+        - $ref: '#/components/parameters/WebhookTimestampHeader'
+        - $ref: '#/components/parameters/WebhookSignatureHeader'
+        - $ref: '#/components/parameters/FalWebhookRequestIdHeader'
+        - $ref: '#/components/parameters/FalWebhookUserIdHeader'
+        - $ref: '#/components/parameters/FalWebhookTimestampHeader'
+        - $ref: '#/components/parameters/FalWebhookSignatureHeader'
+        - $ref: '#/components/parameters/BflSignatureHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderWebhookPayload'
+      security: []
+      responses:
+        '200':
+          description: Webhook acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookOk'
+        '401':
+          $ref: '#/components/responses/ProviderAuthError'
+        '405':
+          $ref: '#/components/responses/ProviderMethodNotAllowedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Long lived api key token `envai_sk_<ulid><jwt>` signed with EdDSA,
+        validated at the gateway handshake against the control plane JWKS
+        (`GET /.well-known/jwks.json`).
+    session:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Laravel web session cookie used by dashboard callers
+  parameters:
+    AfterSeq:
+      name: after
+      in: query
+      required: false
+      description: >
+        Replay every retained event strictly after this sequence number. The
+        cursor is meaningful only inside the resident runtime's bounded
+        in-memory replay window; eviction or restart resets the sequence without
+        an epoch or cursor-expired signal.
+      schema:
+        type: integer
+        minimum: 0
+        example: 42
+
+    WorkspaceId:
+      name: workspace_id
+      in: path
+      required: true
+      description: Workspace id `wsp_<ulid>`, 30 characters
+      schema:
+        type: string
+        pattern: '^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: wsp_01j5abcdefghjkmnpqrstvwxyz
+    ToolName:
+      name: name
+      in: path
+      required: true
+      description: Client tool name within the caller's user registry, unique per user
+      schema:
+        type: string
+        example: send_email
+    ChatId:
+      name: chat_id
+      in: path
+      required: true
+      description: Chat id `cht_<ulid>`, 30 characters
+      schema:
+        type: string
+        pattern: '^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: cht_01j5abcdefghjkmnpqrstvwxyz
+    CompletionId:
+      name: completion_id
+      in: path
+      required: true
+      description: Completion id `cmpl_<ulid>`, 31 characters
+      schema:
+        type: string
+        pattern: '^[cC][mM][pP][lL]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+    AgentId:
+      name: agent_id
+      in: path
+      required: true
+      description: Agent definition id `agt_<ulid>`, 30 characters
+      schema:
+        type: string
+        pattern: '^[aA][gG][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: agt_01j5abcdefghjkmnpqrstvwxyz
+    TeamId:
+      name: team_id
+      in: path
+      required: true
+      description: Team id `team_<ulid>`, 31 characters
+      schema:
+        type: string
+        pattern: '^[tT][eE][aA][mM]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: team_01j5abcdefghjkmnpqrstvwxyz
+    KeyId:
+      name: key_id
+      in: path
+      required: true
+      description: Api key id `key_<ulid>`, 30 characters
+      schema:
+        type: string
+        pattern: '^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: key_01j5abcdefghjkmnpqrstvwxyz
+    ImageGenerationRecordId:
+      name: record
+      in: path
+      required: true
+      description: Image generation request id `igr_<ulid>`, 30 characters
+      schema:
+        type: string
+        pattern: '^[iI][gG][rR]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+        example: igr_01j5abcdefghjkmnpqrstvwxyz
+    Provider:
+      name: provider
+      in: path
+      required: true
+      description: Provider receiving the webhook
+      schema:
+        type: string
+        enum:
+          - replicate
+          - vertex
+          - fal
+          - openai
+          - black-forest-labs
+          - recraft
+          - byteplus
+        example: replicate
+    WebhookCallbackToken:
+      name: callback_token
+      in: query
+      required: false
+      description: >
+        Optional attempt callback token. When present it must match the
+        callback token of an attempt for the provider, with fallback to
+        provider job id and provider request id lookup.
+      schema:
+        type: string
+        example: 0192f3a4-6b1c-4a3e-8f2d-5c9b1a2d3e4f
+    WebhookIdHeader:
+      name: webhook-id
+      in: header
+      required: false
+      description: Replicate webhook event id, sent as plain value for signature verification
+      schema:
+        type: string
+        example: msg_01j5abcdefghjkmnpqrstvwxyz
+    WebhookTimestampHeader:
+      name: webhook-timestamp
+      in: header
+      required: false
+      description: Replicate webhook event timestamp, unix seconds within the tolerance window
+      schema:
+        type: string
+        example: '1786320000'
+    WebhookSignatureHeader:
+      name: webhook-signature
+      in: header
+      required: false
+      description: Replicate webhook HMAC signature over `webhook-id.webhook-timestamp.body`
+      schema:
+        type: string
+        example: v1,abc123def456ghi789
+    FalWebhookRequestIdHeader:
+      name: X-Fal-Webhook-Request-Id
+      in: header
+      required: false
+      description: Fal webhook request id
+      schema:
+        type: string
+        example: req_01j5abcdefghjkmnpqrstvwxyz
+    FalWebhookUserIdHeader:
+      name: X-Fal-Webhook-User-Id
+      in: header
+      required: false
+      description: Fal webhook user id
+      schema:
+        type: string
+        example: usr_01j5abcdefghjkmnpqrstvwxyz
+    FalWebhookTimestampHeader:
+      name: X-Fal-Webhook-Timestamp
+      in: header
+      required: false
+      description: Fal webhook timestamp
+      schema:
+        type: string
+        example: '1786320000'
+    FalWebhookSignatureHeader:
+      name: X-Fal-Webhook-Signature
+      in: header
+      required: false
+      description: Fal webhook signature
+      schema:
+        type: string
+        example: abc123def456
+    BflSignatureHeader:
+      name: X-BFL-Signature
+      in: header
+      required: false
+      description: Black Forest Labs webhook signature
+      schema:
+        type: string
+        example: abc123def456
+    ArtifactGeneration:
+      name: generation
+      in: query
+      required: true
+      description: >
+        Opaque generation id `igr_<ulid>`. The value is covered by the
+        signature.
+      schema:
+        type: string
+        pattern: '^igr_[0-9A-Za-z]{26}$'
+        example: igr_01ARZ3NDEKTSV4RRFFQ69G5FAV
+    ArtifactArtifact:
+      name: artifact
+      in: query
+      required: true
+      description: >
+        Opaque artifact id `art_<ulid>`. The value is covered by the
+        signature.
+      schema:
+        type: string
+        pattern: '^art_[0-9A-Za-z]{26}$'
+        example: art_01ARZ3NDEKTSV4RRFFQ69G5FAV
+    ArtifactExpires:
+      name: expires
+      in: query
+      required: false
+      description: >
+        Signed URL expiration timestamp, never beyond the generation deadline.
+      schema:
+        type: integer
+        format: int64
+        example: 1786320000
+    ArtifactSignature:
+      name: signature
+      in: query
+      required: true
+      description: HMAC signature of the relative URL
+      schema:
+        type: string
+        example: 6f8d2c4a9b1e5f7a3c8d0e2b4a6c8e0f
+    FilePathQuery:
+      name: path
+      in: query
+      required: true
+      description: >
+        Absolute workspace-relative path. The root `/` is allowed for the
+        directory listing only. Must start with a slash and must not contain
+        `..`, backslashes, control characters, duplicate or trailing slashes.
+      schema:
+        type: string
+        maxLength: 1024
+        example: /wiki/guide.md
+    FileRecursiveQuery:
+      name: recursive
+      in: query
+      required: false
+      description: Whether to delete a directory recursively, default false
+      schema:
+        type: boolean
+        default: false
+
+  schemas:
+    Error:
+      type: object
+      description: Standard error envelope shared by both planes
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - type
+            - message
+          properties:
+            type:
+              type: string
+              description: Error type identifier
+              enum:
+                - unauthenticated
+                - invalid_request
+                - not_found
+                - conflict
+                - validation_error
+                - access_denied
+                - provider_error
+                - server_error
+                - internal_error
+                - file_not_found
+                - file_conflict
+                - invalid_path
+                - file_too_large
+                - file_service_error
+                - file_service_unavailable
+                - too_many_requests
+            code:
+              type:
+                - string
+                - 'null'
+              description: >
+                Optional machine-readable error code, for example
+                `turn_in_progress`, `no_turn_in_progress` or
+                `invalid_fork_destination`. Null when not applicable.
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type:
+                - object
+                - 'null'
+              description: Additional error details (for example validation errors)
+
+    ChatMessageRequest:
+      type: object
+      description: Payload to send a user message to a chat
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          description: User message, becomes the turn input
+          example: Summarize the last week of traffic
+
+    ChatMessageAccepted:
+      type: object
+      description: >
+        Acknowledgment for an accepted message. The message opened a turn
+        identified by `turn_id` (the orchestrator completion id).
+      required:
+        - status
+        - turn_id
+      properties:
+        status:
+          type: string
+          enum:
+            - accepted
+          example: accepted
+        turn_id:
+          type: string
+          description: Turn id `cmpl_<ulid>` of the started turn
+          pattern: '^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+
+    TurnAccepted:
+      type: object
+      description: >
+        Acknowledgment for an accepted asynchronous chat control operation
+        (cancel, steer). Carries the `turn_id` of the affected turn.
+      required:
+        - turn_id
+      properties:
+        turn_id:
+          type: string
+          description: Turn id `cmpl_<ulid>` of the affected turn
+          pattern: '^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+
+    ToolOutputRequest:
+      type: object
+      description: Payload to resolve a pending client tool call
+      required:
+        - call_id
+        - output
+      properties:
+        call_id:
+          type: string
+          description: Id `tc_<ulid>` of the `agent.tool.request` being resolved
+          maxLength: 64
+          example: tc_01j5abcdefghjkmnpqrstvwxyz
+        output:
+          type: string
+          description: Client output delivered to the resumed branch. 128 KiB limit enforced by the gateway.
+          maxLength: 131072
+          example: '{"order_id": "ord_123", "total_cents": 4900}'
+        is_error:
+          type: boolean
+          default: false
+          description: Whether the client tool failed, default false
+          example: false
+
+    ApprovalRequest:
+      type: object
+      description: Payload to resolve a pending approval
+      required:
+        - approval_id
+        - approve
+      properties:
+        approval_id:
+          type: string
+          description: Id of the `approval.request` being resolved
+          example: appr_01j5abcdefghjkmnpqrstvwxyz
+        approve:
+          type: boolean
+          description: Whether the action is approved
+          example: true
+        reason:
+          type: string
+          description: User note attached to the decision
+          example: Approved, keep the budget under 10 dollars
+
+    SteerRequest:
+      type: object
+      description: >
+        Payload to record guidance for an active turn. `target_agent_id` is
+        optional and targets the orchestrator when omitted. Current alpha emits
+        `turn.steered` but does not inject the text into the running LLM loop.
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          description: Guidance text
+          example: Prefer the cheaper provider for this turn
+        target_agent_id:
+          type:
+            - string
+            - 'null'
+          pattern: '^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          description: >
+            Running agent instance id `ag_<ulid>`, null or absent targets the
+            orchestrator. A value that is present but does not match the agent
+            id shape, including the explicit empty string, is rejected with
+            422 validation_error and no event is recorded.
+          example: ag_01j5abcdefghjkmnpqrstvwxyz
+
+    ForkChatRequest:
+      type: object
+      description: >
+        Payload to fork a chat. The destination chat must exist, belong to the
+        same workspace and user and carry no history and no active turn; it is
+        created beforehand through the control plane.
+      required:
+        - destination_chat_id
+      properties:
+        destination_chat_id:
+          type: string
+          description: Chat id `cht_<ulid>` of the destination chat
+          pattern: '^cht_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cht_01j5abcdefghjkmnpqrstvwxyz
+
+    ChatForked:
+      type: object
+      description: Fork acknowledgement with the source and destination chats
+      required:
+        - source_chat_id
+        - destination_chat_id
+      properties:
+        source_chat_id:
+          type: string
+          description: Chat id `cht_<ulid>` of the source chat
+          pattern: '^cht_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cht_01j5abcdefghjkmnpqrstvwxyz
+        destination_chat_id:
+          type: string
+          description: Chat id `cht_<ulid>` of the destination chat
+          pattern: '^cht_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cht_01j5abcdefghjkmnpqrstvwxyz
+
+    OrchestratorContextItem:
+      type: object
+      description: >
+        One element of the `orchestrator_context` supplied on restore. The
+        first element must have `kind` `compacted`, the compacted context
+        summary; subsequent elements are `assistant` orchestrator messages
+        emitted after the compact point.
+      required:
+        - kind
+        - content
+      properties:
+        kind:
+          type: string
+          enum:
+            - compacted
+            - assistant
+          description: >
+            `compacted` is the compacted context summary and must be the
+            first element of the context; `assistant` is an orchestrator
+            assistant message following the compact.
+          example: compacted
+        turn_id:
+          type:
+            - string
+            - 'null'
+          description: >
+            Turn id `cmpl_<ulid>` the assistant message belongs to, null when
+            not applicable.
+          pattern: '^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+        content:
+          type: string
+          description: Compacted context summary or assistant message content
+          example: "Ecco l'analisi del traffico: 12k visitatori, +8% rispetto alla scorsa settimana."
+
+    RestoreChatRequest:
+      type: object
+      description: >
+        Payload to restore a chat from client held context. The
+        `orchestrator_context` lists the compacted context first, followed by
+        orchestrator assistant messages. It replaces in-memory history and
+        schedules asynchronous best-effort persistence; the accepted response
+        does not prove that durable storage succeeded.
+      required:
+        - orchestrator_context
+      properties:
+        orchestrator_context:
+          type: array
+          description: >
+            The orchestrator context, the compacted context first followed by
+            orchestrator assistant messages. The first element must have
+            `kind` `compacted`.
+          items:
+            $ref: '#/components/schemas/OrchestratorContextItem'
+          minItems: 1
+          example:
+            - kind: compacted
+              content: Compattazione del contesto fino al turno cmpl_01j5abcdefghjkmnpqrstvwxyz.
+            - kind: assistant
+              turn_id: cmpl_01j5abcdefghjkmnpqrstvwxyz
+              content: "Ecco l'analisi del traffico: 12k visitatori, +8% rispetto alla scorsa settimana."
+
+    RestoreChatAccepted:
+      type: object
+      description: >
+        Acknowledgment for a restore request. The chat was rehydrated from the
+        supplied orchestrator context; `turn_id` is always null because
+        restore does not open a turn.
+      required:
+        - status
+        - turn_id
+      properties:
+        status:
+          type: string
+          enum:
+            - restored
+          example: restored
+        turn_id:
+          type:
+            - string
+            - 'null'
+          description: Always null, restore does not open a turn
+          example: null
+
+    Capabilities:
+      type: object
+      description: >
+        Event families and optional features advertised by the server. `event_types`
+        is a positive discovery list rather than a parser allowlist, `tool_kinds`
+        lists the supported tool kinds and `features` positively advertised
+        protocol surfaces. A feature name does not by itself prove that every
+        intended semantic is implemented; for example the server advertises
+        `replay` while retention is an in-memory window. `steer` is not
+        advertised: the endpoint records `turn.steered` but does not inject the
+        text into the running LLM loop. Clients remain forward compatible with
+        valid ATP events absent from this response.
+      required:
+        - protocol_version
+        - families
+        - event_types
+        - tool_kinds
+        - features
+      properties:
+        protocol_version:
+          type: integer
+          description: Protocol version implemented by the server, currently 2
+          example: 2
+        families:
+          type: array
+          description: Event families the server may emit
+          items:
+            type: string
+            enum:
+              - turn
+              - agent
+        event_types:
+          type: array
+          description: Dotted event types the server actually emits; additive and not an exhaustive parser allowlist
+          items:
+            type: string
+          example:
+            - ping
+            - turn.started
+            - turn.completed
+            - turn.cancelled
+            - turn.failed
+            - turn.steered
+            - agent.started
+            - agent.text.delta
+            - agent.text.done
+            - agent.delegated
+            - agent.tool.start
+            - agent.tool.complete
+            - agent.tool.request
+            - agent.tool.result
+            - agent.context.compacting
+            - agent.context.compacted
+            - agent.done
+        tool_kinds:
+          type: array
+          description: Tool kinds supported by the server
+          items:
+            type: string
+            enum:
+              - server
+              - client
+              - knowledge
+              - code
+        features:
+          type: array
+          description: Optional protocol features implemented by the server
+          items:
+            type: string
+            enum:
+              - replay
+              - fork
+              - restore
+              - ping
+              - background_delegation
+              - client_tools
+
+    Workspace:
+      type: object
+      description: >
+        A workspace owns the wiki, skills and `MEMORY.md` state. It does not own
+        a team. Teams are selected per chat through `chat.team_id`. The
+        `user_id` property is the owner user.
+      required:
+        - id
+        - user_id
+        - name
+        - metadata
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Workspace id `wsp_<ulid>`, 30 characters
+          example: wsp_01j5abcdefghjkmnpqrstvwxyz
+        user_id:
+          type: string
+          description: Owner user id `usr_<ulid>`, 30 characters
+          example: usr_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          maxLength: 255
+          example: Product analytics
+        metadata:
+          $ref: '#/components/schemas/WorkspaceMetadata'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    WorkspaceResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single workspace
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Workspace'
+
+    WorkspaceCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+
+    WorkspaceMetadata:
+      type: object
+      description: >
+        Laravel metadata is stored and returned as JSON derived from a PHP
+        array, so it can be an associative JSON object or a JSON list. The
+        default is an empty array.
+      oneOf:
+        - type: object
+          description: Associative JSON object
+        - type: array
+          description: JSON list
+
+    WorkspaceCreateRequest:
+      type: object
+      description: >
+        Payload to create a workspace. No team field: the workspace does not own
+        a team.
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Product analytics
+        metadata:
+          $ref: '#/components/schemas/WorkspaceMetadata'
+
+    WorkspaceUpdateRequest:
+      type: object
+      description: >
+        Payload to update a workspace. No team field: teams are selected per
+        chat. At least one of `name` or `metadata` must be provided.
+      anyOf:
+        - required:
+            - name
+        - required:
+            - metadata
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Product analytics
+        metadata:
+          $ref: '#/components/schemas/WorkspaceMetadata'
+
+    UserTool:
+      type: object
+      description: >
+        A user-scoped client tool with id `twl_<ulid>`. The `kind` is always
+        `client`. The tool is shared across all the caller's workspaces and
+        is visible to an agent only when its `name` is in the agent
+        definition `external_tools_enabled` and it is registered by the same
+        user on the platform. Names are unique per user.
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - kind
+        - description
+        - parameters
+        - timeout_seconds
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Tool id `twl_<ulid>`, 30 characters
+          example: twl_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          maxLength: 255
+          description: >
+            Tool name, unique per user, matching `^[a-z][a-z0-9_]{0,254}$`.
+            Reserved platform tool names are rejected.
+          example: send_email
+        kind:
+          type: string
+          enum:
+            - client
+          description: Always `client`
+          example: client
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description shown to the LLM, null when not set
+          example: Send an email through the client SMTP server
+        parameters:
+          type: object
+          description: >
+            JSON Schema describing the tool arguments, shown to the LLM. The
+            root `type` must be `object`.
+          example:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Recipient email
+            required:
+              - to
+        timeout_seconds:
+          type: integer
+          default: 120
+          minimum: 1
+          maximum: 600
+          description: >
+            Resolution deadline for `agent.tool.request` of this tool,
+            default 120 seconds, max 600.
+          example: 120
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserToolResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single user tool
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/UserTool'
+
+    UserToolCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserTool'
+
+    UserToolCreateRequest:
+      type: object
+      description: >
+        Payload to register a client tool for the caller's user registry.
+        `name` and `parameters` are required; `kind` defaults to `client`;
+        `description` is optional; `timeout_seconds` defaults to 120 (min 1,
+        max 600). `workspace_id` and `user_id` are prohibited.
+      additionalProperties: false
+      required:
+        - name
+        - parameters
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-z][a-z0-9_]{0,254}$'
+          description: >
+            Tool name, unique per user. Reserved platform tool names are
+            rejected.
+          example: send_email
+        kind:
+          type: string
+          enum:
+            - client
+          default: client
+          description: Always `client`
+          example: client
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description shown to the LLM
+          example: Send an email through the client SMTP server
+        parameters:
+          type: object
+          description: >
+            JSON Schema describing the tool arguments. The root `type` must
+            be `object`.
+          required:
+            - type
+          additionalProperties: true
+          properties:
+            type:
+              const: object
+          example:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Recipient email
+            required:
+              - to
+        timeout_seconds:
+          type: integer
+          default: 120
+          minimum: 1
+          maximum: 600
+          description: Resolution deadline in seconds, default 120, max 600
+          example: 120
+
+    UserToolUpdateRequest:
+      type: object
+      description: >
+        Payload to update a client tool in the user's registry. Only
+        `description`, `parameters` and `timeout_seconds` are accepted;
+        `name`, `kind`, `workspace_id` and `user_id` are prohibited. At
+        least one field is required.
+      additionalProperties: false
+      anyOf:
+        - required:
+            - description
+        - required:
+            - parameters
+        - required:
+            - timeout_seconds
+      properties:
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description shown to the LLM
+        parameters:
+          type: object
+          description: >
+            JSON Schema describing the tool arguments. The root `type` must
+            be `object`.
+          required:
+            - type
+          additionalProperties: true
+          properties:
+            type:
+              const: object
+          example:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Recipient email
+            required:
+              - to
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 600
+          description: Resolution deadline in seconds, max 600
+
+    Chat:
+      type: object
+      description: >
+        A chat inside a workspace with id `cht_<ulid>`. The `team_id` selects
+        the team for the chat. It is a required 31-character `team_<ulid>`
+        reference with a foreign key to `teams`, validated at chat creation to
+        exist and belong to the chat owner. The `user_id` property is the
+        owner user.
+      required:
+        - id
+        - workspace_id
+        - user_id
+        - team_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Chat id `cht_<ulid>`, 30 characters
+          example: cht_01j5abcdefghjkmnpqrstvwxyz
+        workspace_id:
+          type: string
+          description: Workspace id `wsp_<ulid>`, 30 characters
+          example: wsp_01j5abcdefghjkmnpqrstvwxyz
+        user_id:
+          type: string
+          description: Owner user id `usr_<ulid>`, 30 characters
+          example: usr_01j5abcdefghjkmnpqrstvwxyz
+        team_id:
+          type: string
+          maxLength: 31
+          description: >
+            Team id (conventionally `team_<ulid>`), up to 31 characters,
+            selected at chat creation. It is a foreign key to `teams`; chat
+            creation validates that the team exists and belongs to the chat
+            owner, 422 otherwise.
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ChatResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single chat
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Chat'
+
+    ChatCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chat'
+
+    ChatCreateRequest:
+      type: object
+      description: >
+        Payload to create a chat inside a workspace. The chat selects the team
+        through a mandatory `team_id`. Chat creation validates that the team
+        exists and belongs to the chat owner, 422 otherwise; omitting `team_id`
+        is also 422.
+      required:
+        - team_id
+      properties:
+        team_id:
+          type: string
+          maxLength: 31
+          description: >
+            Team id (conventionally `team_<ulid>`), up to 31 characters. It is
+            a foreign key to `teams`; chat creation validates that the team
+            exists and belongs to the chat owner, 422 otherwise.
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+
+    Completion:
+      type: object
+      description: >
+        Metadata-only record of a model turn inside a chat, with id
+        `cmpl_<ulid>`. It never contains message content: usage, cost and
+        lifecycle fields summarize the turn while the content lives in the
+        execution plane stream. The `user_id` property is the owner user.
+      required:
+        - id
+        - workspace_id
+        - chat_id
+        - team_id
+        - user_id
+        - models_subagents
+        - started_at
+        - usage
+        - cost_usd
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Completion id `cmpl_<ulid>`, 31 characters
+          example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+        workspace_id:
+          type: string
+          description: Workspace id `wsp_<ulid>`, 30 characters
+          example: wsp_01j5abcdefghjkmnpqrstvwxyz
+        chat_id:
+          type: string
+          description: Chat id `cht_<ulid>`, 30 characters
+          example: cht_01j5abcdefghjkmnpqrstvwxyz
+        team_id:
+          type: string
+          maxLength: 31
+          description: Team id `team_<ulid>` selected by the chat at creation
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+        user_id:
+          type: string
+          description: Owner user id `usr_<ulid>`, 30 characters
+          example: usr_01j5abcdefghjkmnpqrstvwxyz
+        model_orchestrator:
+          type: [string, 'null']
+          description: Model id used by the team orchestrator, or null when not yet resolved
+          example: anthropic/claude-sonnet-4
+        models_subagents:
+          type: array
+          description: Model ids used by the subagents of the turn
+          items:
+            type: string
+          example: ['openai/gpt-4o']
+        started_at:
+          type: string
+          format: date-time
+          description: Turn start timestamp in UTC
+        finished_at:
+          type: [string, 'null']
+          format: date-time
+          description: Turn end timestamp in UTC, null while the turn is running
+        duration_ms:
+          type: [integer, 'null']
+          description: Turn duration in milliseconds, null while the turn is running
+        usage:
+          type: object
+          description: Aggregated usage metadata of the turn
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            sprite_cpu_ms:
+              type: integer
+            sprite_ram_gb_ms:
+              type: integer
+        cost_usd:
+          type: number
+          format: double
+          description: Aggregated turn cost in USD (LLM plus Fly.io Sprites), sub-cent precision
+        status:
+          type: string
+          enum: [running, succeeded, failed, canceled]
+        finish_reason:
+          type: [string, 'null']
+          enum: [stop, error, canceled, null]
+        content_hash:
+          type: [string, 'null']
+          description: Optional hash of the turn content; the content itself is never stored
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CompletionResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single completion
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Completion'
+
+    CompletionCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper for a paginated completion list
+      required:
+        - data
+        - links
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Completion'
+        links:
+          type: object
+          properties:
+            first:
+              type: [string, 'null']
+            last:
+              type: [string, 'null']
+            prev:
+              type: [string, 'null']
+            next:
+              type: [string, 'null']
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            from:
+              type: [integer, 'null']
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            to:
+              type: [integer, 'null']
+            total:
+              type: integer
+
+    Agent:
+      type: object
+      description: >
+        An agent definition with id `agt_<ulid>` owned by a user with id
+        `usr_<ulid>`. `mode` is `primary` (usable as team orchestrator) or
+        `subagent`. `config` must not contain `max_tokens` at any nesting
+        depth. The `user_id` property is the owner user.
+      required:
+        - id
+        - user_id
+        - name
+        - description
+        - system_prompt
+        - model
+        - mode
+        - tools_enabled
+        - external_tools_enabled
+        - permissions
+        - can_write_knowledge
+        - can_write_skills
+        - config
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Agent definition id `agt_<ulid>`, 30 characters
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        user_id:
+          type: string
+          description: Owner user id `usr_<ulid>`, 30 characters
+          example: usr_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          maxLength: 255
+          description: Agent name, unique per owner
+          example: researcher
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description, null when not set
+          example: Research specialist
+        system_prompt:
+          type: string
+          description: System prompt of the agent
+        model:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          description: >
+            Model id of the catalog, for example
+            `anthropic/claude-sonnet-4-5`. Null means the platform default
+            for the role is used at runtime.
+          example: anthropic/claude-sonnet-4-5
+        mode:
+          type: string
+          description: Agent mode
+          enum:
+            - primary
+            - subagent
+        tools_enabled:
+          type: array
+          description: Tools enabled for the agent, default empty list
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        external_tools_enabled:
+          type: array
+          description: >
+            Tools the agent may receive from the caller, default empty list.
+            A client tool is visible to the agent only when its name is here
+            and it is registered by the same user on the platform
+            (`user_tools`); no derived restrictions apply to client tools.
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        permissions:
+          type: object
+          additionalProperties: true
+          description: Free form permissions object, default empty object
+        can_write_knowledge:
+          type: boolean
+          description: Whether the agent may write wiki knowledge, default false
+        can_write_skills:
+          type: boolean
+          description: Whether the agent may write skills, default false
+        config:
+          type: object
+          additionalProperties: true
+          description: >
+            Free form agent configuration, default empty object. Must not
+            contain `max_tokens` at any nesting depth.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AgentResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single agent definition
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Agent'
+
+    AgentCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+
+    AgentCreateRequest:
+      type: object
+      description: >
+        Payload to create an agent definition. `name`, `system_prompt` and
+        `mode` are required; `user_id` is prohibited. `description` and
+        `model` are optional and `model` must be available in the catalog
+        when provided. The four jsonb fields default to empty values when
+        omitted.
+      required:
+        - name
+        - system_prompt
+        - mode
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Agent name, unique per owner
+          example: researcher
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description
+        system_prompt:
+          type: string
+          minLength: 1
+          description: System prompt of the agent
+        model:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          description: >
+            Model id of the catalog. When provided it must be available (not
+            removed or past sunset), otherwise the request is rejected with
+            422.
+          example: anthropic/claude-sonnet-4-5
+        mode:
+          type: string
+          description: Agent mode
+          enum:
+            - primary
+            - subagent
+        tools_enabled:
+          type: array
+          description: Tools enabled for the agent, default empty list
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        external_tools_enabled:
+          type: array
+          description: >
+            Tools the agent may receive from the caller, default empty list.
+            A client tool is visible to the agent only when its name is here
+            and it is registered by the same user on the platform
+            (`user_tools`).
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        permissions:
+          type: object
+          additionalProperties: true
+          description: Free form permissions object, default empty object
+        can_write_knowledge:
+          type: boolean
+          description: Whether the agent may write wiki knowledge, default false
+        can_write_skills:
+          type: boolean
+          description: Whether the agent may write skills, default false
+        config:
+          type: object
+          additionalProperties: true
+          description: >
+            Free form agent configuration, default empty object. Must not
+            contain `max_tokens` at any nesting depth.
+
+    AgentUpdateRequest:
+      type: object
+      description: >
+        Payload to update an agent definition. Any subset of the creation
+        fields is accepted and at least one updatable field is required;
+        `user_id` is prohibited. Field semantics match creation.
+      anyOf:
+        - required:
+            - name
+        - required:
+            - description
+        - required:
+            - system_prompt
+        - required:
+            - model
+        - required:
+            - mode
+        - required:
+            - tools_enabled
+        - required:
+            - external_tools_enabled
+        - required:
+            - permissions
+        - required:
+            - can_write_knowledge
+        - required:
+            - can_write_skills
+        - required:
+            - config
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Agent name, unique per owner
+          example: researcher
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description
+        system_prompt:
+          type: string
+          minLength: 1
+          description: System prompt of the agent
+        model:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          description: >
+            Model id of the catalog. When provided it must be available (not
+            removed or past sunset), otherwise the request is rejected with
+            422.
+          example: anthropic/claude-sonnet-4-5
+        mode:
+          type: string
+          description: Agent mode
+          enum:
+            - primary
+            - subagent
+        tools_enabled:
+          type: array
+          description: Tools enabled for the agent, default empty list
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        external_tools_enabled:
+          type: array
+          description: >
+            Tools the agent may receive from the caller, default empty list.
+            A client tool is visible to the agent only when its name is here
+            and it is registered by the same user on the platform
+            (`user_tools`).
+          items:
+            $ref: '#/components/schemas/AgentTool'
+        permissions:
+          type: object
+          additionalProperties: true
+          description: Free form permissions object, default empty object
+        can_write_knowledge:
+          type: boolean
+          description: Whether the agent may write wiki knowledge, default false
+        can_write_skills:
+          type: boolean
+          description: Whether the agent may write skills, default false
+        config:
+          type: object
+          additionalProperties: true
+          description: >
+            Free form agent configuration, default empty object. Must not
+            contain `max_tokens` at any nesting depth.
+
+    AgentTool:
+      type: object
+      description: >
+        Tool reference of `tools_enabled` or `external_tools_enabled`. The
+        `name` is required; additional keys are allowed. For
+        `external_tools_enabled`, `name` matches a client tool registered by
+        the same user on the platform (`user_tools`).
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Tool name
+          example: read_wiki
+      additionalProperties: true
+
+    Team:
+      type: object
+      description: >
+        A team with id `team_<ulid>` owned by a user with id `usr_<ulid>`.
+        It has exactly one orchestrator, a primary-mode agent owned by the
+        same user, and an ordered member list. The `user_id` property is
+        the owner user.
+      required:
+        - id
+        - user_id
+        - name
+        - description
+        - orchestrator_id
+        - members
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Team id `team_<ulid>`, 31 characters
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+        user_id:
+          type: string
+          description: Owner user id `usr_<ulid>`, 30 characters
+          example: usr_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          maxLength: 255
+          description: Team name, unique per owner
+          example: Research team
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description, null when not set
+        orchestrator_id:
+          type: string
+          description: >
+            Agent definition id `agt_<ulid>`, 30 characters, of the
+            primary-mode orchestrator agent owned by the same user
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        members:
+          type: array
+          description: Ordered team members, sorted by position
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TeamResource:
+      type: object
+      description: Laravel JsonResource wrapper for a single team
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Team'
+
+    TeamCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+
+    TeamCreateRequest:
+      type: object
+      description: >
+        Payload to create a team. `name` and `orchestrator_id` are required;
+        `orchestrator_id` must reference a primary-mode agent owned by the
+        caller. `members` is optional and ordered: `position` is derived from
+        the array order. `user_id` and per-member `position` and `user_id`
+        are prohibited.
+      required:
+        - name
+        - orchestrator_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Team name, unique per owner
+          example: Research team
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description
+        orchestrator_id:
+          type: string
+          description: >
+            Agent definition id `agt_<ulid>`, 30 characters. Must reference a
+            primary-mode agent owned by the caller, otherwise the request is
+            rejected with 422.
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        members:
+          type: array
+          description: >
+            Ordered member list; `position` is derived from the array order.
+            Empty when absent.
+          items:
+            $ref: '#/components/schemas/TeamMemberCreateRequest'
+
+    TeamUpdateRequest:
+      type: object
+      description: >
+        Payload to update a team. Any subset of `name`, `description`,
+        `orchestrator_id` and `members` is accepted and at least one updatable
+        field is required. When `members` is present the member list is
+        replaced wholesale, and an empty array clears all members. `user_id`
+        and per-member `position` and `user_id` are prohibited.
+      anyOf:
+        - required:
+            - name
+        - required:
+            - description
+        - required:
+            - orchestrator_id
+        - required:
+            - members
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Team name, unique per owner
+          example: Research team
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 65535
+          description: Free text description
+        orchestrator_id:
+          type: string
+          description: >
+            Agent definition id `agt_<ulid>`, 30 characters. Must reference a
+            primary-mode agent owned by the caller, otherwise the request is
+            rejected with 422. When the orchestrator changes without
+            `members`, it must not be an existing member.
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        members:
+          type: array
+          description: >
+            Ordered member list; `position` is derived from the array order.
+            When present the previous member list is replaced; an empty array
+            clears all members.
+          items:
+            $ref: '#/components/schemas/TeamMemberCreateRequest'
+
+    TeamMember:
+      type: object
+      description: >
+        Team member record with the resolved agent name and the pivot
+        position and role.
+      required:
+        - agent_definition_id
+        - name
+        - position
+        - role
+      properties:
+        agent_definition_id:
+          type: string
+          description: Agent definition id `agt_<ulid>`, 30 characters
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          description: Name of the member agent definition
+          example: researcher
+        position:
+          type: integer
+          description: Member position in the team, derived from the request array order
+          example: 0
+        role:
+          type:
+            - string
+            - 'null'
+          description: Team scoped role label, null when not set
+          example: research
+
+    TeamMemberCreateRequest:
+      type: object
+      description: >
+        Member reference accepted in team create and update payloads.
+        `agent_definition_id` must reference an agent definition owned by the
+        caller, must be distinct from the other members and cannot be the
+        orchestrator. `position` is derived from the array order and is
+        prohibited here; `user_id` is prohibited.
+      required:
+        - agent_definition_id
+      properties:
+        agent_definition_id:
+          type: string
+          description: Agent definition id `agt_<ulid>`, 30 characters
+          example: agt_01j5abcdefghjkmnpqrstvwxyz
+        role:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          description: Team scoped role label, null when not set
+          example: research
+
+    ApiKey:
+      type: object
+      description: >
+        Api key metadata. The plaintext token is never included: it appears
+        only in the 201 creation response.
+      required:
+        - id
+        - name
+        - scopes
+        - expires_at
+        - revoked_at
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Api key id `key_<ulid>`, 30 characters, the jwt `jti`
+          example: key_01j5abcdefghjkmnpqrstvwxyz
+        name:
+          type: string
+          maxLength: 255
+          description: Api key name
+          example: ci-deploy
+        scopes:
+          type: array
+          description: Capability scopes of the key, default `["completions:write"]`
+          items:
+            type: string
+            enum:
+              - completions:write
+          example:
+            - completions:write
+        expires_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: >
+            Expiration timestamp, null when the key never expires. The jwt
+            omits `exp` in that case and stays valid until revocation.
+          example: '2026-09-09T00:00:00+00:00'
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Revocation timestamp, null while the key is active
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    ApiKeyCreated:
+      type: object
+      description: Laravel JsonResource wrapper for a created api key
+      required:
+        - data
+      properties:
+        data:
+          description: Api key metadata plus the plaintext token shown once
+          allOf:
+            - $ref: '#/components/schemas/ApiKey'
+            - type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: >
+                    Plaintext token `envai_sk_<ulid><jwt>`, shown exactly once
+                    at creation and never persisted
+                  example: envai_sk_01j5abcdefghjkmnpqrstvwxyz.eyJhbGciOiJFZERTQSIsImtpZCI6InNpZ18wMWo1YWJjZGVmZ2hqa21ucHFyc3R2d3h5eiJ9.eyJzdWIiOiJ1c3JfMDFqNWFiY2RlZmdoamttbnBxcnN0dnd4eXoiLCJqdGkiOiJrZXlfMDFqNWFiY2RlZmdoamttbnBxcnN0dnd4eXoiLCJzY29wZXMiOlsiY29tcGxldGlvbnM6d3JpdGUiXSwiaWF0IjoxNzg2MzIwMDAwLCJleHAiOjE3ODg5MTIwMDB9.WLT23fZdpGKu9WldiGSAl9fEl_HZiU_HeG_-_8IXe3mPEafsxdVa6ilRefxjdBJ8uH2Clp8HJNZc5UQIveeCDg
+
+    ApiKeyCollection:
+      type: object
+      description: Laravel JsonResource collection wrapper for api keys
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          description: Api key metadata without the token
+          items:
+            $ref: '#/components/schemas/ApiKey'
+
+    ApiKeyCreate:
+      type: object
+      description: >
+        Payload to create an api key. `user_id` is prohibited: the owner is
+        the authenticated user. `scopes` defaults to `["completions:write"]`
+        and `expires_at` defaults to `30d`.
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Api key name
+          example: ci-deploy
+        scopes:
+          type: array
+          description: Capability scopes of the key, default `["completions:write"]`
+          default:
+            - completions:write
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - completions:write
+        expires_at:
+          type: string
+          description: >
+            Expiration window, default `30d`. `never` creates a key without
+            expiry that stays valid until revocation.
+          default: 30d
+          enum:
+            - 30d
+            - 90d
+            - 1y
+            - never
+
+    JwksDocument:
+      type: object
+      description: JSON Web Key Set of the control plane signing keys
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          description: Every signing key, active and retired
+          items:
+            $ref: '#/components/schemas/Jwk'
+
+    Jwk:
+      type: object
+      description: >
+        Ed25519 public signing key entry. `kid` is the signing key id
+        `sig_<ulid>`; retired keys stay published so tokens signed before the
+        rotation keep verifying.
+      required:
+        - kty
+        - crv
+        - x
+        - kid
+        - use
+        - alg
+      properties:
+        kty:
+          type: string
+          enum:
+            - OKP
+        crv:
+          type: string
+          enum:
+            - Ed25519
+        x:
+          type: string
+          description: Base64url encoded Ed25519 public key
+          example: dD07wck58mMvxA2ouG0EGZe9DUhqTZmGJVpAJyM8VHE
+        kid:
+          type: string
+          description: Signing key id `sig_<ulid>`, 30 characters
+          example: sig_01j5abcdefghjkmnpqrstvwxyz
+        use:
+          type: string
+          enum:
+            - sig
+        alg:
+          type: string
+          enum:
+            - EdDSA
+
+    ModelList:
+      type: object
+      description: >
+        Top-level model catalog response without a data wrapper: `object` is
+        always `list`, `data` mixes LLM entries and team alias entries and
+        `defaults` carries the platform default model id per role.
+      required:
+        - object
+        - data
+        - defaults
+      properties:
+        object:
+          type: string
+          enum:
+            - list
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelListEntry'
+        defaults:
+          $ref: '#/components/schemas/ModelDefaults'
+
+    ModelListEntry:
+      type: object
+      description: Single catalog entry, either an LLM or a team alias
+      oneOf:
+        - $ref: '#/components/schemas/LlmModelEntry'
+        - $ref: '#/components/schemas/TeamModelEntry'
+
+    LlmModelEntry:
+      type: object
+      description: >
+        LLM entry of the catalog. `owned_by` is the model provider. Models
+        that are unavailable upstream or past sunset are removed from the
+        catalog and never appear; deprecated models appear with
+        `deprecated: true` until sunset. The OpenRouter metadata fields are
+        informational copies of the upstream catalog: `pricing` never drives
+        billing, which uses the provider `usage.cost`.
+      required:
+        - id
+        - object
+        - created
+        - owned_by
+        - type
+        - deprecated
+        - sunset_at
+      properties:
+        id:
+          type: string
+          description: Canonical model id
+          example: anthropic/claude-sonnet-4-5
+        object:
+          type: string
+          enum:
+            - model
+        created:
+          type: integer
+          description: Unix timestamp of the model release date
+          example: 1759190400
+        owned_by:
+          type: string
+          description: Model provider
+          example: anthropic
+        type:
+          type: string
+          enum:
+            - llm
+        deprecated:
+          type: boolean
+          description: Whether the model is in the deprecation period before sunset
+          example: false
+        sunset_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: ISO 8601 sunset date, null when the model is never removed
+          example: '2027-05-21T00:00:00+00:00'
+        display_name:
+          type:
+            - string
+            - 'null'
+          description: Human readable model name from the upstream catalog
+          example: Claude Sonnet 4.5
+        description:
+          type:
+            - string
+            - 'null'
+          description: Model description from the upstream catalog
+        canonical_slug:
+          type:
+            - string
+            - 'null'
+          description: Permanent upstream slug for the model
+        hugging_face_id:
+          type:
+            - string
+            - 'null'
+          description: Hugging Face model id when the upstream catalog publishes one
+        context_length:
+          type:
+            - integer
+            - 'null'
+          description: Maximum context window size in tokens
+          example: 200000
+        max_completion_tokens:
+          type:
+            - integer
+            - 'null'
+          description: Maximum completion tokens reported by the top provider
+          example: 8192
+        pricing:
+          $ref: '#/components/schemas/OpenRouterPricing'
+        architecture:
+          $ref: '#/components/schemas/OpenRouterArchitecture'
+        supported_parameters:
+          type:
+            - array
+            - 'null'
+          description: Parameter names accepted by the model
+          items:
+            type: string
+        default_parameters:
+          type:
+            - object
+            - 'null'
+          description: Default parameter values published by the upstream catalog
+          additionalProperties: true
+        reasoning:
+          type:
+            - object
+            - 'null'
+          description: Reasoning capabilities published by the upstream catalog
+          additionalProperties: true
+        knowledge_cutoff:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Knowledge cutoff date published by the upstream catalog
+          example: '2024-06-30'
+        upstream_expiration_date:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: >
+            Upstream deprecation date. It is informational and never sets the
+            local `sunset_at` lifecycle field.
+          example: '2026-12-31'
+        alias_target:
+          $ref: '#/components/schemas/OpenRouterAliasTarget'
+        is_moderated:
+          type:
+            - boolean
+            - 'null'
+          description: Whether the top provider moderates the model
+        synced_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: When the entry was last synchronized from the upstream catalog
+
+    OpenRouterPricing:
+      type:
+        - object
+        - 'null'
+      description: >
+        Informational pricing copied verbatim from the upstream catalog.
+        Values are exact decimal strings and are never converted to floats;
+        nested provider overrides are preserved as published. Billing uses the
+        provider `usage.cost`, not this object.
+      additionalProperties:
+        oneOf:
+          - type: string
+          - type: number
+          - type: array
+          - type: object
+
+    OpenRouterArchitecture:
+      type:
+        - object
+        - 'null'
+      description: Technical capabilities published by the upstream catalog
+      properties:
+        modality:
+          type:
+            - string
+            - 'null'
+        input_modalities:
+          type: array
+          items:
+            type: string
+        output_modalities:
+          type: array
+          items:
+            type: string
+        tokenizer:
+          type:
+            - string
+            - 'null'
+        instruct_type:
+          type:
+            - string
+            - 'null'
+
+    OpenRouterAliasTarget:
+      type:
+        - object
+        - 'null'
+      description: Alias target published by the upstream catalog for router models
+      properties:
+        name:
+          type:
+            - string
+            - 'null'
+        slug:
+          type:
+            - string
+            - 'null'
+
+    TeamModelEntry:
+      type: object
+      description: >
+        Team entry of the catalog. `team_id` is the team key. `deprecated` is
+        always false and `sunset_at` is always null.
+      required:
+        - id
+        - object
+        - type
+        - owned_by
+        - team_id
+        - deprecated
+        - sunset_at
+      properties:
+        id:
+          type: string
+          description: Team key `team_<ulid>`
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+        object:
+          type: string
+          enum:
+            - model
+        type:
+          type: string
+          enum:
+            - team
+        owned_by:
+          type: string
+          enum:
+            - envai
+        team_id:
+          type: string
+          description: Team id `team_<ulid>`
+          example: team_01j5abcdefghjkmnpqrstvwxyz
+        created:
+          type: integer
+          description: Unix timestamp of the team creation
+          example: 1759190400
+        deprecated:
+          type: boolean
+          enum:
+            - false
+        sunset_at:
+          type:
+            - string
+            - 'null'
+          enum:
+            - null
+
+    ModelDefaults:
+      type: object
+      description: >
+        Platform default model id per role, used at runtime when no model is
+        configured.
+      required:
+        - orchestrator
+        - subagent
+      properties:
+        orchestrator:
+          type: string
+          description: Default model id for the orchestrator role
+          example: anthropic/claude-sonnet-4-5
+        subagent:
+          type: string
+          description: Default model id for the subagent role
+          example: openai/gpt-5-mini
+
+    TestImageGenerateRequest:
+      type: object
+      description: >
+        Multipart payload for `POST /tests/images/generate`. Sends up to 4
+        image files together with the prompt and the model code. The files
+        array must contain at least one image and each file must be a valid
+        image of at most 10240 kilobytes.
+      required:
+        - files
+        - prompt
+        - model_code
+      properties:
+        files:
+          type: array
+          description: Image files to echo back, 1 to 4 items, each at most 10240 KB
+          minItems: 1
+          maxItems: 4
+          items:
+            type: string
+            format: binary
+            description: Image file
+        prompt:
+          type: string
+          description: Prompt echoed back unchanged
+          minLength: 1
+          maxLength: 5000
+          example: A beautiful sunset over the mountains
+        model_code:
+          type: string
+          description: >
+            Model code echoed back unchanged. When present it must be known to
+            the provider registry, otherwise the request is rejected with 422.
+          minLength: 1
+          maxLength: 255
+          example: google/nano-banana-2
+
+    TestImageFileMetadata:
+      type: object
+      description: Metadata of a single uploaded file
+      required:
+        - original_name
+        - mime_type
+        - size
+      properties:
+        original_name:
+          type: string
+          description: Original client file name
+          example: photo1.jpg
+        mime_type:
+          type: string
+          description: Client declared mime type
+          example: image/jpeg
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 24576
+
+    TestImageGenerateResource:
+      type: object
+      description: Laravel JsonResource wrapper for the test generation echo
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          description: Echoed test generation payload
+          required:
+            - status
+            - prompt
+            - model_code
+            - files_count
+            - files
+            - received_at
+          properties:
+            status:
+              type: string
+              description: Echo status, always `received` on success
+              enum:
+                - received
+            prompt:
+              type: string
+              description: Received prompt
+              example: A beautiful sunset over the mountains
+            model_code:
+              type: string
+              description: Received model code
+              example: google/nano-banana-2
+            files_count:
+              type: integer
+              description: Number of received files
+              example: 2
+            files:
+              type: array
+              description: Metadata of each received file
+              items:
+                $ref: '#/components/schemas/TestImageFileMetadata'
+            received_at:
+              type: string
+              format: date-time
+              description: ISO 8601 reception timestamp
+              example: '2026-08-11T10:00:00+00:00'
+
+    InputImage:
+      type: object
+      description: >
+        Input image reference used by `input_images`, `input_image`,
+        `mask_image` and `objects_image`. The `type` selects how `payload`
+        must be interpreted: `url` (public http or https URL, private and
+        reserved addresses rejected), `base64` (raw or data URI prefixed base64
+        of a png, jpeg or webp image, at most 10485760 characters) or
+        `upload_id` (id of an existing, unexpired image upload record).
+      additionalProperties: false
+      required:
+        - type
+        - payload
+      properties:
+        type:
+          type: string
+          enum:
+            - url
+            - base64
+            - upload_id
+          description: Input image payload type
+        payload:
+          type: string
+          description: >
+            URL, base64 image data or upload record id depending on `type`.
+            Max length 10485760 characters.
+          maxLength: 10485760
+        reference:
+          type:
+            - string
+            - 'null'
+          description: Optional client reference for the image
+          maxLength: 255
+          example: style_ref
+        mime_type:
+          type:
+            - string
+            - 'null'
+          description: Declared image mime type; null when not declared
+          enum:
+            - image/png
+            - image/jpeg
+            - image/webp
+            - null
+
+    ImageDimensions:
+      type: object
+      description: Explicit output dimensions
+      additionalProperties: false
+      required:
+        - width
+        - height
+      properties:
+        width:
+          type: integer
+          minimum: 1
+          example: 1024
+        height:
+          type: integer
+          minimum: 1
+          example: 1024
+
+    ImageGenerationRequest:
+      type: object
+      description: >
+        Canonical JSON payload for `POST /images/generations`. Mutual
+        exclusions are enforced: `input_image` and `input_images` are mutually
+        exclusive, `mask_image` and `objects_image` require `input_image` and
+        cannot be combined with `input_images`. Unknown top level fields are
+        rejected with 422. Upload records referenced with `upload_id` count
+        against an aggregate budget of 50 MiB summed across all inputs, one
+        occurrence at a time; exceeding the budget is rejected with 422 before
+        record creation and provider dispatch.
+      additionalProperties: false
+      required:
+        - model
+        - prompt
+        - webhook_url
+      properties:
+        model:
+          type: string
+          description: >
+            Canonical model code, for example `google/nano-banana-2`,
+            `flux/flux-2-max` or `openai/gpt-image-1.5`. Unknown or
+            unsupported models are rejected with 422 before provider dispatch.
+          maxLength: 255
+          example: google/nano-banana-2
+        prompt:
+          type: string
+          description: Generation prompt, trimmed before validation
+          minLength: 1
+          maxLength: 5000
+          example: A beautiful sunset over the mountains
+        webhook_url:
+          type: string
+          description: >
+            Public HTTPS callback URL, at most 2048 characters. Private,
+            reserved, loopback or metadata addresses are rejected.
+          maxLength: 2048
+          format: uri
+          example: https://example.com/webhook
+        input_images:
+          type: array
+          description: >
+            List of input images, at most 10 items. Mutually exclusive with
+            `input_image`, `mask_image` and `objects_image`.
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/InputImage'
+        input_image:
+          $ref: '#/components/schemas/InputImage'
+        mask_image:
+          $ref: '#/components/schemas/InputImage'
+        objects_image:
+          $ref: '#/components/schemas/InputImage'
+        resolution:
+          type: string
+          description: Output resolution; model dependent support
+          enum:
+            - 0.5k
+            - 1k
+            - 2k
+            - 3k
+            - 4k
+        dimensions:
+          $ref: '#/components/schemas/ImageDimensions'
+        aspect_ratio:
+          type: string
+          description: Output aspect ratio; extreme or malformed values rejected
+          enum:
+            - 1:1
+            - 16:9
+            - 9:16
+            - 4:3
+            - 3:4
+            - 3:2
+            - 2:3
+            - 21:9
+            - 9:21
+            - as_input_image
+        format:
+          type: string
+          description: Output format; some models clamp `webp` upstream
+          enum:
+            - png
+            - jpeg
+            - webp
+            - svg
+        quality:
+          type: integer
+          description: Output quality between 1 and 100; model dependent support
+          minimum: 1
+          maximum: 100
+          example: 90
+        model_settings:
+          type: object
+          description: Free form model specific settings, for example `safety_tolerance` or `seed`
+          additionalProperties: true
+          example:
+            safety_tolerance: 2
+            seed: 42
+        providers:
+          type: array
+          description: >
+            Allowed provider list, at least 1 distinct entry, for example
+            `replicate`. Absent means the router picks the provider.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+
+    ImageGenerationAcceptedRecord:
+      type: object
+      description: Image generation record returned at 202
+      required:
+        - id
+        - status
+        - provider
+        - initial_provider
+        - routed
+        - model
+        - webhook_url
+        - status_url
+        - created_at
+        - expires_at
+      properties:
+        id:
+          type: string
+          description: Image generation request id `igr_<ulid>`, 30 characters
+          pattern: '^[iI][gG][rR]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: igr_01j5abcdefghjkmnpqrstvwxyz
+        status:
+          $ref: '#/components/schemas/ImageGenerationLifecycleStatus'
+        provider:
+          type: string
+          description: Provider selected by the router
+          example: replicate
+        initial_provider:
+          type: string
+          description: Provider selected before fallback routing
+          example: replicate
+        routed:
+          type: boolean
+          description: Whether the request was routed to a provider different from the initial one
+          example: false
+        model:
+          type: string
+          description: Requested canonical model code
+          example: google/nano-banana-2
+        webhook_url:
+          type: string
+          format: uri
+          description: Webhook URL notified on completion
+          example: https://example.com/webhook
+        status_url:
+          type: string
+          format: uri
+          description: URL to poll the generation status
+          example: http://localhost:8111/api/v1/images/generations/igr_01j5abcdefghjkmnpqrstvwxyz
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 creation timestamp
+          example: '2026-08-11T10:00:00+00:00'
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 deadline, exactly two hours after creation and never null
+          example: '2026-08-11T12:00:00+00:00'
+
+    ImageGenerationLifecycleStatus:
+      type: string
+      description: >
+        Current persisted lifecycle status of the generation. The 202 response
+        reflects the lifecycle state persisted at creation time and is not
+        guaranteed to be `accepted`: it may already reflect a later state when
+        the provider answers synchronously.
+      enum:
+        - accepted
+        - submitted
+        - queued
+        - processing
+        - succeeded
+        - failed
+        - cancelled
+      example: accepted
+
+    ImageGenerationAcceptedResource:
+      type: object
+      description: Laravel JsonResource wrapper for an accepted generation
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ImageGenerationAcceptedRecord'
+
+    ImageGenerationStatusRecord:
+      type: object
+      description: Image generation lifecycle status record
+      required:
+        - id
+        - status
+        - provider
+        - initial_provider
+        - routed
+        - model
+        - created_at
+        - submitted_at
+        - completed_at
+        - expires_at
+      properties:
+        id:
+          type: string
+          description: Image generation request id `igr_<ulid>`, 30 characters
+          pattern: '^[iI][gG][rR]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: igr_01j5abcdefghjkmnpqrstvwxyz
+        status:
+          $ref: '#/components/schemas/ImageGenerationLifecycleStatus'
+        provider:
+          type: string
+          description: Current provider serving the request
+          example: replicate
+        initial_provider:
+          type: string
+          description: Provider selected before fallback routing
+          example: replicate
+        routed:
+          type: boolean
+          description: Whether the request was routed to a provider different from the initial one
+          example: false
+        model:
+          type: string
+          description: Requested canonical model code
+          example: google/nano-banana-2
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 creation timestamp
+        submitted_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: ISO 8601 submission timestamp, null until submitted
+        completed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: ISO 8601 completion timestamp, null until a terminal state
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 deadline, exactly two hours after creation and never null
+        result:
+          type: object
+          description: Normalized result payload persisted at finalization, present when available
+          properties:
+            model:
+              type: string
+              description: Canonical model code
+            provider:
+              type: string
+              description: Provider that produced the result
+            prompt:
+              type: string
+              description: Generation prompt
+            images:
+              type: array
+              description: Generated images
+              items:
+                type: object
+                properties:
+                  provider_asset_id:
+                    type:
+                      - string
+                      - 'null'
+                    description: Provider asset id when reported
+                  mime_type:
+                    type:
+                      - string
+                      - 'null'
+                    description: Detected mime type, null when unknown
+                  source_url:
+                    type:
+                      - string
+                      - 'null'
+                    description: Source URL of the image, local download or public URL when available
+                  format:
+                    type:
+                      - string
+                      - 'null'
+                    description: Output format, null when not derivable from the mime type
+            dimensions:
+              type:
+                - object
+                - 'null'
+              description: Output dimensions, present when reported by the provider
+              properties:
+                width:
+                  type: integer
+                  minimum: 1
+                height:
+                  type: integer
+                  minimum: 1
+            aspect_ratio:
+              type:
+                - string
+                - 'null'
+              description: Output aspect ratio, present when reported by the provider
+              example: 16:9
+            format:
+              type:
+                - string
+                - 'null'
+              description: Effective output format, resolved from the requested format or the first file mime type
+              example: jpeg
+            quality:
+              type:
+                - integer
+                - 'null'
+              description: Output quality between 1 and 100, present when reported by the provider
+              minimum: 1
+              maximum: 100
+            warnings:
+              oneOf:
+                - type: object
+                  description: Associative warnings object
+                  additionalProperties: true
+                - type: array
+                  description: Warnings list, empty when none
+        error:
+          type: object
+          description: Failure payload, present when the generation failed
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            meta:
+              type: object
+              additionalProperties: true
+        files:
+          type: array
+          description: Public result files, present when the generation produced files
+          items:
+            type: object
+            required:
+              - artifact_id
+              - mime_type
+              - size
+              - download_url
+            properties:
+              artifact_id:
+                type: string
+                description: Opaque artifact identifier `art_<ulid>`
+              mime_type:
+                type: string
+                description: Detected mime type
+              size:
+                type: integer
+                format: int64
+                description: Plaintext file size in bytes
+              download_url:
+                type:
+                  - string
+                  - 'null'
+                description: >
+                  Relative signed download URL carrying the opaque generation
+                  and artifact identifiers.
+        price:
+          $ref: '#/components/schemas/ImagePrice'
+        usage:
+          $ref: '#/components/schemas/ImageUsage'
+        cost_usd:
+          type: number
+          format: double
+          description: >
+            Total cost in USD across all attempts, present only when every
+            priced attempt is quoted in USD. Absent with mixed currencies or
+            when no attempt has a price.
+          example: 0.067
+        duration_ms:
+          type: integer
+          description: >
+            Elapsed milliseconds from `submitted_at` to `completed_at`,
+            present only when the generation reached a terminal state.
+          example: 1542
+
+    ImageGenerationStatusResource:
+      type: object
+      description: Laravel JsonResource wrapper for a generation status
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ImageGenerationStatusRecord'
+
+    ImagePrice:
+      type: object
+      description: >
+        Price persisted with the generation record and calculated at
+        finalization. The amount is a decimal string with 6 digits after the
+        point in the given currency.
+      required:
+        - amount
+        - currency
+        - source
+      properties:
+        amount:
+          type: string
+          description: Decimal amount with 6 decimal digits
+          pattern: '^\d+\.\d{6}$'
+          example: '0.067000'
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          example: USD
+        source:
+          type: string
+          description: Price source
+          example: calculated
+
+    ImageUsage:
+      type: object
+      description: Usage counters persisted at finalization
+      required:
+        - schema_version
+        - attempts_total
+        - attempts_priced
+      properties:
+        schema_version:
+          type: integer
+          description: Usage payload schema version
+          example: 1
+        attempts_total:
+          type: integer
+          description: Total attempts recorded for the generation request
+        attempts_priced:
+          type: integer
+          description: Attempts with a price set
+
+    ImageUploadRecord:
+      type: object
+      description: Uploaded input image record staged for two hours and bindable to one generation
+      required:
+        - id
+        - mime_type
+        - size
+        - original_filename
+        - expires_at
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Image upload id `upl_<ulid>`, 30 characters
+          pattern: '^[uU][pP][lL]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$'
+          example: upl_01j5abcdefghjkmnpqrstvwxyz
+        mime_type:
+          type: string
+          description: Detected mime type
+          example: image/png
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 24576
+        original_filename:
+          type: string
+          description: Original client file name
+          example: test.png
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 staging expiry, exactly two hours after upload; one upload binds to exactly one generation, after which the parent generation deadline is authoritative
+          example: '2026-08-12T10:00:00+00:00'
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 creation timestamp
+          example: '2026-08-11T10:00:00+00:00'
+
+    ImageUploadResource:
+      type: object
+      description: Laravel JsonResource wrapper for an uploaded image
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ImageUploadRecord'
+
+    ImageUploadRequest:
+      type: object
+      description: >
+        Multipart payload for `POST /images/uploads`. A single image file of
+        type png, jpeg, webp or gif, at most 10240 kilobytes.
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Image file to store
+
+    ModelCatalogEntry:
+      type: object
+      description: Canonical model entry of the image model catalog
+      required:
+        - model
+        - providers
+        - price_classes
+        - model_settings
+      properties:
+        model:
+          type: string
+          description: Canonical model code
+          example: google/nano-banana-2
+        providers:
+          type: array
+          description: Providers able to serve the model
+          items:
+            type: string
+          example:
+            - vertex
+            - fal
+            - replicate
+        price_classes:
+          type: array
+          description: Price classes of the model
+          items:
+            $ref: '#/components/schemas/ModelPriceClass'
+        model_settings:
+          type: array
+          description: Model settings exposed by the providers
+          items:
+            $ref: '#/components/schemas/ModelSetting'
+
+    ModelPriceClass:
+      type: object
+      description: >
+        Informational price class of a model. `average_price` is the provider
+        weighted average across the providers that expose the class, not a
+        guaranteed quote.
+      required:
+        - key
+        - label
+        - providers_count
+        - average_price
+      properties:
+        key:
+          type: string
+          description: Price class key, for example `resolution_1k` or `flat`
+          example: resolution_1k
+        label:
+          type: string
+          description: Human readable label
+          example: 1K resolution
+        providers_count:
+          type: integer
+          description: Number of providers contributing to the average
+          example: 3
+        average_price:
+          type: object
+          description: Provider weighted average price
+          required:
+            - amount
+            - currency
+          properties:
+            amount:
+              type:
+                - string
+                - 'null'
+              description: Decimal amount with 6 decimal digits, null when unknown
+              pattern: '^\d+\.\d{6}$'
+              example: '0.064833'
+            currency:
+              type:
+                - string
+                - 'null'
+              description: ISO 4217 currency code
+              example: USD
+
+    ModelSetting:
+      type: object
+      description: >
+        Model setting exposed by one or more providers. The setting applies to
+        the providers listed in `providers` only; it is not a universal
+        constraint for the model.
+      required:
+        - key
+        - type
+        - providers
+      properties:
+        key:
+          type: string
+          description: Setting key, for example `quality_mode` or `seed`
+          example: quality_mode
+        type:
+          type: string
+          description: Setting value type
+          example: string
+        providers:
+          type: array
+          description: Providers supporting the setting
+          items:
+            type: string
+        default:
+          description: Default value when supported
+        enum:
+          type:
+            - array
+            - 'null'
+          description: Allowed values when the setting is an enum
+          items:
+            type: string
+        range:
+          type:
+            - array
+            - 'null'
+          description: Inclusive minimum and maximum when the setting is numeric
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+        defaults_by_provider:
+          type:
+            - object
+            - 'null'
+          description: Per provider default values when they differ
+          additionalProperties: true
+
+    ModelCatalogResource:
+      type: object
+      description: Laravel JsonResource collection wrapper for the model catalog
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelCatalogEntry'
+
+    ProviderWebhookPayload:
+      type: object
+      description: >
+        Provider specific webhook body. The shape depends on the provider;
+        common fields are the provider job or request id and the lifecycle
+        status. Unknown fields are tolerated by the provider parsers.
+      additionalProperties: true
+      example:
+        id: job-matched
+        status: processing
+
+    WebhookOk:
+      type: object
+      description: Webhook acknowledgement, no data wrapper
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+
+    WorkspaceFile:
+      type: object
+      description: >
+        Workspace file or directory representation returned inside the
+        `{data: ...}` wrapper. The first six fields form the descriptor;
+        `content` is added for files and `entries` for directories by the
+        resource. Create and update responses return the descriptor only.
+      required:
+        - path
+        - name
+        - type
+        - size
+        - modified_at
+        - mime_type
+      properties:
+        path:
+          type: string
+          description: Workspace-relative path without the leading slash, for example `wiki/guide.md` or `wiki`
+          example: wiki/guide.md
+        name:
+          type: string
+          description: Base name of the file or directory
+          example: guide.md
+        type:
+          type: string
+          description: Entry kind
+          enum:
+            - file
+            - directory
+        size:
+          type: integer
+          format: int64
+          description: Size in bytes as reported by the file service
+          example: 2048
+        modified_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Last modification timestamp, null when not reported
+          example: '2026-08-17T14:01:00+00:00'
+        mime_type:
+          type:
+            - string
+            - 'null'
+          description: Mime type of a file, always null for directories
+          example: text/markdown
+        content:
+          type:
+            - string
+            - 'null'
+          description: File content, present only when the target is a file
+          example: '# Guide'
+        entries:
+          type:
+            - array
+            - 'null'
+          description: Child descriptors, present only when the target is a directory
+          items:
+            $ref: '#/components/schemas/WorkspaceFileEntry'
+
+    WorkspaceFileEntry:
+      type: object
+      description: Descriptor of a single child of a directory listing
+      required:
+        - path
+        - name
+        - type
+        - size
+        - modified_at
+        - mime_type
+      properties:
+        path:
+          type: string
+          description: Workspace-relative path without the leading slash, for example `wiki/alpha.md` or `wiki/sub`
+          example: wiki/alpha.md
+        name:
+          type: string
+          description: Base name of the entry
+          example: alpha.md
+        type:
+          type: string
+          description: Entry kind
+          enum:
+            - file
+            - directory
+        size:
+          type: integer
+          format: int64
+          description: Size in bytes as reported by the file service
+        modified_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: Last modification timestamp, null when not reported
+        mime_type:
+          type:
+            - string
+            - 'null'
+          description: Mime type of a file, always null for directories
+          example: text/markdown
+
+    WorkspaceFileResource:
+      type: object
+      description: Laravel JsonResource wrapper for a workspace file or directory
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/WorkspaceFile'
+
+    WorkspaceFileRequest:
+      type: object
+      description: >
+        Shared payload of create and update. `path` is an absolute
+        workspace-relative path, `content` is the file body. Content must be
+        non empty, valid UTF-8, at most 1048576 bytes and at most 1000 lines;
+        writing `/MEMORY.md` additionally caps the content at 12000
+        characters.
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+          description: >
+            Absolute workspace-relative path, for example `/wiki/guide.md` or
+            `/MEMORY.md`. Must start with a slash and must not contain `..`,
+            backslashes, control characters, duplicate or trailing slashes.
+          minLength: 1
+          maxLength: 1024
+          example: /wiki/guide.md
+        content:
+          type: string
+          description: File content, non empty, at most 1048576 bytes and 1000 lines
+          minLength: 1
+          example: '# Guide'
+
+    ConvertToPdfRequest:
+      type: object
+      description: >
+        Payload of `POST /files/convert-to-pdf`. The `path` must reference a
+        markdown or text file: the extension must be `.md`, `.markdown` or
+        `.txt`, otherwise the request is rejected with 422.
+      required:
+        - path
+      properties:
+        path:
+          type: string
+          description: Absolute workspace-relative path of a `.md`, `.markdown` or `.txt` file
+          minLength: 1
+          maxLength: 1024
+          example: /wiki/guide.md
+
+    ThrottleError:
+      type: object
+      description: Laravel throttle response using the standard error envelope
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - type
+            - message
+          properties:
+            type:
+              type: string
+              const: too_many_requests
+            message:
+              type: string
+              example: Too Many Attempts.
+
+  responses:
+    UnauthenticatedError:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: unauthenticated
+              message: You must be authenticated to access this resource.
+              details: null
+
+    InvalidRequestError:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: invalid_request
+              message: 'after must be a non negative integer.'
+              details: null
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: not_found
+              message: The requested chat was not found.
+              details: null
+
+    ConflictError:
+      description: >
+        The chat is not in a state that accepts the operation. The error
+        carries a `code` of `turn_in_progress` when a turn is already active
+        or `no_turn_in_progress` when the operation needs an active turn.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: conflict
+              code: turn_in_progress
+              message: A turn is already in progress for this chat.
+              details: null
+
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: validation_error
+              message: The given data was invalid.
+              details:
+                message:
+                  - The message field is required.
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: server_error
+              message: An unexpected error occurred.
+              details: null
+
+    GatewayDrainingError:
+      description: The gateway is draining and does not accept new turns
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: server_error
+              code: gateway_draining
+              message: The gateway is draining and does not accept new turns.
+              details: null
+
+    AccessDeniedError:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: access_denied
+              message: You do not have permission to access this resource.
+
+    FileNotFoundError:
+      description: The requested file or directory was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: file_not_found
+              message: The requested file or directory was not found.
+              details: null
+
+    FileConflictError:
+      description: The operation conflicts with the current state of the file or directory
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: file_conflict
+              message: The operation conflicts with the current state of the file or directory.
+              details: null
+
+    FileServiceUnavailableError:
+      description: The file service is temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: file_service_unavailable
+              message: The file service is temporarily unavailable.
+              details: null
+
+    ProviderAuthError:
+      description: Provider webhook authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: provider_error
+              message: Invalid Replicate webhook signature.
+              details: null
+
+    ProviderMethodNotAllowedError:
+      description: Provider does not support webhooks
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: provider_error
+              message: OpenAI provider does not support webhooks.
+              details: null
+
+    TooManyRequestsError:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds until the rate limit window resets
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ThrottleError'
