@@ -829,4 +829,3 @@ Prima di iniziare le implementazioni nei diversi linguaggi occorre stabilizzare 
 12. Documentare esempi equivalenti per creazione workspace, creazione chat, streaming turno e client tool.
 
 Il primo SDK è conforme quando un'applicazione può configurare le risorse, aprire una chat, consumare gli eventi ATP senza nascondere violazioni di protocollo, riprendere best-effort lo stream entro la retention della stessa runtime instance, rilevare i gap osservabili e invocare automaticamente al massimo una volta un handler client-tool per `(chat_id, call_id)`. Un crash tra side effect e registrazione durevole resta ambiguo: l'applicazione deve usare idempotency key, transazioni o riconciliazione esplicita. La conformità piena con resume durevole resta bloccata dalle limitazioni server elencate sopra.
-

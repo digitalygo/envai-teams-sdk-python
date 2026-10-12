@@ -165,7 +165,9 @@ handler execution, matching the server and JavaScript numeric domain. Overflow
 and non-finite values are rejected. Use strings when exact huge integers matter. JWKS caches have configurable TTL and one
 refresh on unknown kid/verification failure. Unsupported algorithms and invalid
 signatures fail closed. Locally registered argument schemas are cloned and cannot
-retrieve remote references. Unknown/invalid local tools produce controlled error
+retrieve remote references. An explicit `$schema` uses its supported JSON Schema
+draft; an omitted dialect defaults to Draft 2020-12, and unknown dialects are
+rejected. Literal `const`/`enum` values are preserved as data. Unknown/invalid local tools produce controlled error
 outputs. Structured results are JSON-serialized exactly once; outputs are capped
 at 128 KiB. Empty strings become a controlled error because the current gateway
 rejects them despite the OpenAPI schema lacking `minLength`.
@@ -177,6 +179,11 @@ use a stable, non-secret deployment/account scope, and preserve the database.
 `MemoryToolState()` is an explicit ephemeral option only. Stores retain hashes and
 status, never arguments/outputs/credentials. A conflicting payload for the same
 claim is rejected. Results observed before requests create resolved tombstones.
+Both built-in stores reject malformed existing records before reading or changing
+them; corruption is never treated as a missing claim or automatically repaired.
+This protects against pre-existing local state damage, not malicious access to a
+database that an attacker can rewrite or delete. Resolve corrupt state explicitly
+without discarding the deduplication history.
 
 Statuses are `running`, `ambiguous`, `submitted`, and `resolved`. The runner stores
 `ambiguous` **before POSTing output**, marks `submitted` only on HTTP success, and
@@ -217,8 +224,12 @@ turn; it does not infer permission to execute unrelated turns.
 ## Development and contract provenance
 
 Pinned source: `digitalygo/envai-teams`, alpha commit
-`55275860c9a950eaad8e39e9d2b728149084779c`. Exact input hashes and shared fixture
-provenance are in `tests/fixtures/provenance.json`.
+`55275860c9a950eaad8e39e9d2b728149084779c`. `tests/fixtures/provenance.json` separates
+three exact source snapshots (foundation document, OpenAPI, event schema) from
+five SDK-derived fixtures. Source guards verify SHA-256, Git blob SHA-1, byte
+length and repository path. The foundation snapshot preserves the original
+51,996 bytes with no added newline. Derived fixtures retain their own hashes
+and do not claim to be server files.
 
 ```sh
 python scripts/generate.py --check

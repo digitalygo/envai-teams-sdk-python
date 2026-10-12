@@ -3,14 +3,54 @@
   "commit": "55275860c9a950eaad8e39e9d2b728149084779c",
   "protocol_version": 2,
   "operations": 52,
-  "files": {
-    "envai-api-sdk-foundation.md": "55e1ea8059809339cc257d9bf9c4efe735ee50876dd59753a7e281fa5214946b",
-    "events-invalid.json": "ffd363a7ca563a58f57ccbbad3dc4651f2e467c8b49b65c748534b93889a45ce",
-    "events-valid.json": "74c13afa306ac1d8bb518097b7d09f9262c2f468cc2624b4942c8a99019d00e2",
-    "events.json": "f22869556e488f1e208addf258a25c502966746fcc8e2747c07856d30c28aee7",
-    "openapi.yaml": "a68b1eb9cae0500c95104d97118d0d287b887969b9bc2b9dde62bb1e08a400b1",
-    "operations.json": "19ff34aeff2381413ace8fdbafe557ce94378aa6247f163e2cf7dfb830832fcd",
-    "signatures.json": "eafc33bad34ba93fbee121f61080cc8901109ba567380b9b95d141d6c7bcfc83",
-    "sse-cases.json": "05bba69df6858f6b7ac4d4b45c87c1266cb017515b064891d4fd09488948ae23"
+  "sources": {
+    "envai-api-sdk-foundation.md": {
+      "repository_path": "docs/envai-api-sdk-foundation.md",
+      "snapshot_path": "tests/fixtures/envai-api-sdk-foundation.md",
+      "sha256": "090e58738a02578b04123ab2e45b6e30d839361c0c91ba9bc019c2f19781f3e2",
+      "git_blob_sha": "2cc97122cfc339c85e5a093572427f03f60c0264",
+      "bytes": 51996
+    },
+    "openapi.yaml": {
+      "repository_path": "packages/contracts/openapi.yaml",
+      "snapshot_path": "tests/fixtures/openapi.yaml",
+      "sha256": "a68b1eb9cae0500c95104d97118d0d287b887969b9bc2b9dde62bb1e08a400b1",
+      "git_blob_sha": "2d3fe7581229a6fb7a798c99ecccfe5f823fa6ed",
+      "bytes": 173824
+    },
+    "events.json": {
+      "repository_path": "packages/contracts/events.json",
+      "snapshot_path": "tests/fixtures/events.json",
+      "sha256": "f22869556e488f1e208addf258a25c502966746fcc8e2747c07856d30c28aee7",
+      "git_blob_sha": "5ac832ff2498d9c2721909a6f342dda62ec46f8b",
+      "bytes": 46476
+    }
+  },
+  "generated_fixtures": {
+    "events-invalid.json": {
+      "snapshot_path": "tests/fixtures/events-invalid.json",
+      "sha256": "ffd363a7ca563a58f57ccbbad3dc4651f2e467c8b49b65c748534b93889a45ce",
+      "origin": "SDK-derived test fixture; not a byte-for-byte server source snapshot."
+    },
+    "events-valid.json": {
+      "snapshot_path": "tests/fixtures/events-valid.json",
+      "sha256": "74c13afa306ac1d8bb518097b7d09f9262c2f468cc2624b4942c8a99019d00e2",
+      "origin": "SDK-derived test fixture; not a byte-for-byte server source snapshot."
+    },
+    "operations.json": {
+      "snapshot_path": "tests/fixtures/operations.json",
+      "sha256": "19ff34aeff2381413ace8fdbafe557ce94378aa6247f163e2cf7dfb830832fcd",
+      "origin": "SDK-derived test fixture; not a byte-for-byte server source snapshot."
+    },
+    "signatures.json": {
+      "snapshot_path": "tests/fixtures/signatures.json",
+      "sha256": "eafc33bad34ba93fbee121f61080cc8901109ba567380b9b95d141d6c7bcfc83",
+      "origin": "SDK-derived test fixture; not a byte-for-byte server source snapshot."
+    },
+    "sse-cases.json": {
+      "snapshot_path": "tests/fixtures/sse-cases.json",
+      "sha256": "05bba69df6858f6b7ac4d4b45c87c1266cb017515b064891d4fd09488948ae23",
+      "origin": "SDK-derived test fixture; not a byte-for-byte server source snapshot."
+    }
   }
 }
