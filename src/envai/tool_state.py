@@ -86,7 +86,9 @@ class MemoryToolState:
         with self._lock:
             key = (scope, chat_id, call_id)
             old = self._get(key)
-            if old is not None and old.status != "resolved":
+            if old is None:
+                raise ToolStateError("Missing tool claim during status transition")
+            if old.status != "resolved":
                 self._records[key] = ToolRecord(old.fingerprint, status, old.turn_id)
 
     def resolve(self, scope, chat_id, call_id, turn_id):
@@ -157,7 +159,9 @@ class SQLiteToolState:
         with self._lock, self._db:
             self._db.execute("BEGIN IMMEDIATE")
             old = self._get(scope, chat_id, call_id)
-            if old is not None and old.status != "resolved":
+            if old is None:
+                raise ToolStateError("Missing tool claim during status transition")
+            if old.status != "resolved":
                 self._db.execute(
                     "UPDATE tool_claims SET status=? WHERE scope=? AND chat_id=? AND call_id=?",
                     (status, scope, chat_id, call_id),

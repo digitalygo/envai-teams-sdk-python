@@ -147,7 +147,8 @@ def test_store_claim_atomic_persistent_and_conflict(tmp_path, factory):
     assert store.get("account", "chat", "call").status == "resolved"
     store.resolve("account", "chat", "late", "turn")
     assert not store.claim("account", "chat", "late", "hash", "turn")
-    store.transition("account", "chat", "absent", "ambiguous")
+    with pytest.raises(ToolStateError):
+        store.transition("account", "chat", "absent", "ambiguous")
     assert store.get("account", "chat", "absent") is None
     if factory == "sqlite":
         store.close()

@@ -181,6 +181,8 @@ status, never arguments/outputs/credentials. A conflicting payload for the same
 claim is rejected. Results observed before requests create resolved tombstones.
 Both built-in stores reject malformed existing records before reading or changing
 them; corruption is never treated as a missing claim or automatically repaired.
+A status transition also rejects a missing claim, preventing output delivery if
+local state disappears during handler execution.
 This protects against pre-existing local state damage, not malicious access to a
 database that an attacker can rewrite or delete. Resolve corrupt state explicitly
 without discarding the deduplication history.

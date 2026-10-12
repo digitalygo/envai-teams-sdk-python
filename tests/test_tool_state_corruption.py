@@ -176,14 +176,28 @@ async def test_corrupt_claim_blocks_signed_runner(tool_event, async_, factory):
 
 
 @pytest.mark.parametrize("async_", [False, True])
-async def test_corruption_before_output_prevents_submission(tool_event, async_):
+@pytest.mark.parametrize("factory", ["memory", "sqlite"])
+@pytest.mark.parametrize("damage", ["malformed", "missing"])
+async def test_corruption_before_output_prevents_submission(tool_event, async_, factory, damage):
     called = []
     state = None
     key = None
 
     def handler(args, ctx):
         called.append(1)
-        state._records[key] = None
+        if factory == "memory":
+            if damage == "missing":
+                del state._records[key]
+            else:
+                state._records[key] = None
+        else:
+            query = (
+                "DELETE FROM tool_claims"
+                if damage == "missing"
+                else "UPDATE tool_claims SET fingerprint=''"
+            )
+            state._db.execute(query)
+            state._db.commit()
         return "ok"
 
     async def async_handler(args, ctx):
@@ -193,6 +207,8 @@ async def test_corruption_before_output_prevents_submission(tool_event, async_):
         await setup_async(tool_event, async_handler) if async_ else setup_sync(tool_event, handler)
     )
     key = (runner.scope, runner.chat_id, tool_event.data.call_id)
+    if factory == "sqlite":
+        state = runner.store = SQLiteToolState(":memory:")
     try:
         if async_:
             await runner.consume(tool_event)
@@ -203,7 +219,11 @@ async def test_corruption_before_output_prevents_submission(tool_event, async_):
             with pytest.raises(ToolStateError):
                 runner.wait()
         assert called == [1] and not sent
-        assert state._records[key] is None
+        if damage == "missing":
+            assert state.get(*key) is None
+        else:
+            with pytest.raises(ToolStateError):
+                state.get(*key)
     finally:
         if async_:
             await runner.aclose()
@@ -211,3 +231,5 @@ async def test_corruption_before_output_prevents_submission(tool_event, async_):
         else:
             runner.close()
             client.close()
+        if factory == "sqlite":
+            state.close()
