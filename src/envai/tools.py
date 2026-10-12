@@ -15,12 +15,39 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from jsonschema import Draft202012Validator
-from referencing import Registry
+from jsonschema.validators import validator_for
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012, UnknownDialect, specification_with
 
 from .errors import ProtocolError
 from .events import Event, parse_event
 from .tool_state import ToolStateStore
 from .tool_verification import AsyncJwksVerifier, JwksVerifier, normalize_arguments
+
+
+def _schema_validator(schema):
+    # An explicit dialect must never silently fall back to another draft.
+    if "$schema" in schema:
+        try:
+            specification_with(schema["$schema"])
+        except (UnknownDialect, AttributeError) as exc:
+            raise ValueError("Unsupported JSON Schema dialect") from exc
+    return validator_for(schema, default=Draft202012Validator)
+
+
+def _local_refs(resource: Resource) -> None:
+    schema = resource.contents
+    if isinstance(schema, dict):
+        _schema_validator(schema)
+        for keyword in ("$ref", "$dynamicRef", "$recursiveRef"):
+            if keyword in schema and (
+                not isinstance(schema[keyword], str) or not schema[keyword].startswith("#")
+            ):
+                raise ValueError("External schema references are not permitted")
+    # Traverse only schema locations for the declared draft. Values of const,
+    # enum, default, and examples are literal data, even when they contain $ref.
+    for child in resource.subresources():
+        _local_refs(child)
 
 
 @dataclass(frozen=True)
@@ -61,21 +88,8 @@ class ClientToolRegistry:
             raise ValueError("Tools require an object schema and timeout in (0,600]")
         parameters_schema = copy.deepcopy(parameters_schema)
 
-        def local_refs(value):
-            if isinstance(value, dict):
-                if any(
-                    key in value and not value[key].startswith("#")
-                    for key in ("$ref", "$dynamicRef", "$recursiveRef")
-                ):
-                    raise ValueError("External schema references are not permitted")
-                for child in value.values():
-                    local_refs(child)
-            elif isinstance(value, list):
-                for child in value:
-                    local_refs(child)
-
-        local_refs(parameters_schema)
-        Draft202012Validator.check_schema(parameters_schema)
+        _schema_validator(parameters_schema).check_schema(parameters_schema)
+        _local_refs(Resource.from_contents(parameters_schema, DRAFT202012))
         if name in self._tools:
             raise ValueError("Tool already registered locally")
         self._tools[name] = LocalTool(handler, parameters_schema, timeout)
@@ -186,7 +200,7 @@ class RunnerState:
             return None, context, "tool_deadline_expired"
         if tool is None:
             return None, context, "tool_not_registered"
-        if not Draft202012Validator(tool.schema, registry=Registry()).is_valid(call.args):
+        if not _schema_validator(tool.schema)(tool.schema, registry=Registry()).is_valid(call.args):
             return None, context, "invalid_tool_arguments"
         return tool, context, None
 

@@ -1,0 +1,807 @@
+[
+  {
+    "name": "dependentRequired",
+    "schema": {
+      "type": "object",
+      "dependentRequired": {
+        "a": [
+          "b"
+        ]
+      }
+    },
+    "good": {
+      "a": 1,
+      "b": 2
+    },
+    "bad": {
+      "a": 1
+    }
+  },
+  {
+    "name": "draft7-dependencies-list",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "dependencies": {
+        "a": [
+          "b"
+        ]
+      }
+    },
+    "good": {
+      "a": 1,
+      "b": 2
+    },
+    "bad": {
+      "a": 1
+    }
+  },
+  {
+    "name": "draft7-dependencies-schema",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "dependencies": {
+        "a": {
+          "properties": {
+            "b": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "b"
+          ]
+        }
+      }
+    },
+    "good": {
+      "a": 1,
+      "b": 2
+    },
+    "bad": {
+      "a": 1,
+      "b": "wrong"
+    }
+  },
+  {
+    "name": "const-object",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": {
+            "mode": "safe",
+            "nested": {
+              "ok": true
+            }
+          }
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {
+        "mode": "safe",
+        "nested": {
+          "ok": true
+        }
+      }
+    },
+    "bad": {
+      "v": {
+        "mode": "safe",
+        "nested": {
+          "ok": false
+        }
+      }
+    }
+  },
+  {
+    "name": "enum-objects",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "enum": [
+            {
+              "mode": "read"
+            },
+            {
+              "mode": "write"
+            }
+          ]
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {
+        "mode": "write"
+      }
+    },
+    "bad": {
+      "v": {
+        "mode": "delete"
+      }
+    }
+  },
+  {
+    "name": "dependentSchemas-boolean",
+    "schema": {
+      "type": "object",
+      "dependentSchemas": {
+        "x": false
+      }
+    },
+    "good": {
+      "y": 1
+    },
+    "bad": {
+      "x": 1
+    }
+  },
+  {
+    "name": "dependentSchemas-nested",
+    "schema": {
+      "type": "object",
+      "dependentSchemas": {
+        "x": {
+          "required": [
+            "y"
+          ],
+          "properties": {
+            "y": {
+              "const": "yes"
+            }
+          }
+        }
+      }
+    },
+    "good": {
+      "x": 1,
+      "y": "yes"
+    },
+    "bad": {
+      "x": 1,
+      "y": "no"
+    }
+  },
+  {
+    "name": "boolean-properties",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "allow": true,
+        "deny": false
+      },
+      "additionalProperties": false
+    },
+    "good": {
+      "allow": {
+        "any": []
+      }
+    },
+    "bad": {
+      "deny": 0
+    }
+  },
+  {
+    "name": "empty-schema-properties",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "open": {}
+      },
+      "additionalProperties": false
+    },
+    "good": {
+      "open": []
+    },
+    "bad": {
+      "unlisted": []
+    }
+  },
+  {
+    "name": "empty-properties-map",
+    "schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "good": {},
+    "bad": {
+      "x": 1
+    }
+  },
+  {
+    "name": "numeric-properties",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "0": {
+          "type": "integer"
+        },
+        "1": true
+      },
+      "required": [
+        "0"
+      ],
+      "additionalProperties": false
+    },
+    "good": {
+      "0": 2,
+      "1": []
+    },
+    "bad": {
+      "0": "2"
+    }
+  },
+  {
+    "name": "patternProperties",
+    "schema": {
+      "type": "object",
+      "patternProperties": {
+        "^x-": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "good": {
+      "x-one": 1
+    },
+    "bad": {
+      "x-one": "1"
+    }
+  },
+  {
+    "name": "propertyNames",
+    "schema": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "allowed"
+        ]
+      }
+    },
+    "good": {
+      "allowed": {}
+    },
+    "bad": {
+      "no": {}
+    }
+  },
+  {
+    "name": "allOf-boolean",
+    "schema": {
+      "type": "object",
+      "allOf": [
+        true,
+        {
+          "required": [
+            "a"
+          ]
+        }
+      ]
+    },
+    "good": {
+      "a": 1
+    },
+    "bad": {}
+  },
+  {
+    "name": "anyOf-with-empty-schema",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "anyOf": [
+            false,
+            {
+              "type": "integer"
+            }
+          ]
+        }
+      },
+      "required": [
+        "a"
+      ]
+    },
+    "good": {
+      "a": 2
+    },
+    "bad": {
+      "a": "2"
+    }
+  },
+  {
+    "name": "if-then-else",
+    "schema": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "on"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "value"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "value"
+          ]
+        }
+      }
+    },
+    "good": {
+      "mode": "on",
+      "value": 1
+    },
+    "bad": {
+      "mode": "off",
+      "value": 1
+    }
+  },
+  {
+    "name": "prefixItems-boolean",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "prefixItems": [
+            true,
+            {
+              "type": "integer"
+            }
+          ],
+          "items": false
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "good": {
+      "values": [
+        {},
+        2
+      ]
+    },
+    "bad": {
+      "values": [
+        {},
+        "2"
+      ]
+    }
+  },
+  {
+    "name": "draft7-tuple-items",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": [
+            {
+              "type": "integer"
+            },
+            false
+          ],
+          "additionalItems": false
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "good": {
+      "values": [
+        2
+      ]
+    },
+    "bad": {
+      "values": [
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "name": "contains-object-const",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "contains": {
+            "const": {
+              "ok": true
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "good": {
+      "values": [
+        {
+          "ok": true
+        },
+        {}
+      ]
+    },
+    "bad": {
+      "values": [
+        {
+          "ok": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "local-defs-ref",
+    "schema": {
+      "type": "object",
+      "$defs": {
+        "entry": {
+          "type": "object",
+          "required": [
+            "x"
+          ],
+          "properties": {
+            "x": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/entry"
+        }
+      },
+      "required": [
+        "entry"
+      ]
+    },
+    "good": {
+      "entry": {
+        "x": "yes"
+      }
+    },
+    "bad": {
+      "entry": {
+        "x": 2
+      }
+    }
+  },
+  {
+    "name": "draft7-definitions-ref",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "definitions": {
+        "permit": true,
+        "deny": false
+      },
+      "properties": {
+        "v": {
+          "$ref": "#/definitions/permit"
+        },
+        "d": {
+          "$ref": "#/definitions/deny"
+        }
+      }
+    },
+    "good": {
+      "v": {}
+    },
+    "bad": {
+      "d": {}
+    }
+  },
+  {
+    "name": "unevaluated-properties",
+    "schema": {
+      "type": "object",
+      "allOf": [
+        {
+          "properties": {
+            "known": true
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "good": {
+      "known": 1
+    },
+    "bad": {
+      "other": 1
+    }
+  },
+  {
+    "name": "const-empty-object",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": {}
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {}
+    },
+    "bad": {
+      "v": []
+    }
+  },
+  {
+    "name": "const-empty-list",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": []
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": []
+    },
+    "bad": {
+      "v": {}
+    }
+  },
+  {
+    "name": "enum-empty-container-types",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "enum": [
+            {},
+            [
+              1
+            ],
+            null
+          ]
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {}
+    },
+    "bad": {
+      "v": []
+    }
+  },
+  {
+    "name": "const-numeric-key-object",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": {
+            "0": "zero",
+            "1": "one"
+          }
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {
+        "0": "zero",
+        "1": "one"
+      }
+    },
+    "bad": {
+      "v": [
+        "zero",
+        "one"
+      ]
+    }
+  },
+  {
+    "name": "enum-array-containing-object",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "enum": [
+            [
+              {
+                "x": 1
+              }
+            ],
+            false
+          ]
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": [
+        {
+          "x": 1
+        }
+      ]
+    },
+    "bad": {
+      "v": [
+        {
+          "x": 2
+        }
+      ]
+    }
+  },
+  {
+    "name": "literal-keyword-names",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "v": {
+          "const": {
+            "properties": [],
+            "items": {},
+            "dependentRequired": {
+              "x": [
+                "y"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {
+        "properties": [],
+        "items": {},
+        "dependentRequired": {
+          "x": [
+            "y"
+          ]
+        }
+      }
+    },
+    "bad": {
+      "v": {
+        "properties": {},
+        "items": {},
+        "dependentRequired": {
+          "x": [
+            "y"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "empty-dependency-maps",
+    "schema": {
+      "type": "object",
+      "dependentRequired": {},
+      "dependentSchemas": {},
+      "properties": {
+        "v": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": "yes"
+    },
+    "bad": {
+      "v": 2
+    }
+  },
+  {
+    "name": "draft7-empty-dependencies",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "dependencies": {},
+      "properties": {
+        "v": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": "yes"
+    },
+    "bad": {
+      "v": 2
+    }
+  },
+  {
+    "name": "draft6-object-enum",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-06/schema#",
+      "type": "object",
+      "properties": {
+        "v": {
+          "enum": [
+            {
+              "a": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "v"
+      ]
+    },
+    "good": {
+      "v": {
+        "a": 1
+      }
+    },
+    "bad": {
+      "v": {
+        "a": 2
+      }
+    }
+  },
+  {
+    "name": "2019-dependentRequired",
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2019-09/schema",
+      "type": "object",
+      "dependentRequired": {
+        "a": [
+          "b"
+        ]
+      }
+    },
+    "good": {
+      "a": {},
+      "b": []
+    },
+    "bad": {
+      "a": {}
+    }
+  }
+]
