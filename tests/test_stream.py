@@ -129,7 +129,7 @@ async def test_stream_stops(valid_events, async_, case):
         "version": ProtocolError,
         "chat": ProtocolError,
         "eof": TransportError,
-        "network": httpx.ReadError,
+        "network": TransportError,
         "cancel": CancelledError,
         "closed": StopAsyncIteration if async_ else StopIteration,
         "limit": TransportError,
@@ -232,3 +232,24 @@ async def test_async_task_cancel_releases_stream(valid_events):
     await ended.wait()
     await stream.aclose()
     await c.aclose()
+
+
+def test_remaining_stream_budget_bounds_connection_and_backoff(valid_events):
+    with EnvaiClient(
+        "x",
+        transport=httpx.MockTransport(lambda r: httpx.Response(200)),
+        retry=RetryPolicy(max_delay=10),
+    ) as client:
+        stream = client.chats.events(valid_events[1]["chat_id"], max_duration=0.5)
+        request = stream._request()
+        assert 0 < request["timeout"].read <= 0.5
+        assert 0 < request["timeout"].connect <= 0.5
+        response = httpx.Response(503, headers={"retry-after": "10"})
+        try:
+            stream._status(response)
+        except Exception as exc:
+            assert 0 <= stream._retry(exc) <= 0.5
+        stream.close()
+        for options in ({"max_duration": float("nan")}, {"after": 1.2}, {"max_reconnects": 1.2}):
+            with pytest.raises(ValueError):
+                client.chats.events(valid_events[1]["chat_id"], **options)

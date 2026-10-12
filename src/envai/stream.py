@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import threading
 import time
 from typing import Any, AsyncIterator, Iterator
@@ -35,7 +36,13 @@ class StreamState:
         cancel: threading.Event | None = None,
         max_frame_bytes: int = 2 * 1024 * 1024,
     ):
-        if after < 0 or max_reconnects < 0 or (max_duration is not None and max_duration <= 0):
+        if (
+            not isinstance(after, int)
+            or after < 0
+            or not isinstance(max_reconnects, int)
+            or max_reconnects < 0
+            or (max_duration is not None and (not math.isfinite(max_duration) or max_duration <= 0))
+        ):
             raise ValueError("Invalid stream bounds")
         if not chat_id or chat_id in (".", ".."):
             raise ValueError("chat_id must be a nonempty opaque identifier")
@@ -50,6 +57,7 @@ class StreamState:
         self._started = time.monotonic()
         self._response: httpx.Response | None = None
         self._gap_pending = False
+        self._retry_after: str | None = None
         self._lock = threading.Lock()
 
     def _check(self):
@@ -76,12 +84,21 @@ class StreamState:
 
     def _request(self):
         headers = {**self.client._headers, "Accept": "text/event-stream"}
+        timeout = self.client.stream_timeout
+        if self.max_duration is not None:
+            self._check()
+            remaining = max(0.001, self.max_duration - (time.monotonic() - self._started))
+            timeout = httpx.Timeout(
+                remaining,
+                connect=min(remaining, timeout.connect),
+                read=min(remaining, timeout.read),
+            )
         return dict(
             method="GET",
             url=self.client.base_url + "/chats/" + quote(self.chat_id, safe="") + "/events",
             params={"after": self.last_seq},
             headers=headers,
-            timeout=self.client.stream_timeout,
+            timeout=timeout,
             follow_redirects=False,
         )
 
@@ -94,17 +111,27 @@ class StreamState:
         elif isinstance(exc, EnvaiError) and exc.http_status not in (429, 502, 503, 504):
             raise exc
         if self.reconnects >= self.max_reconnects:
+            if isinstance(exc, httpx.TransportError):
+                raise TransportError(
+                    "SSE transport failed and reconnect limit was reached"
+                ) from exc
             if exc:
                 raise exc
             raise TransportError("SSE reconnect limit reached")
         self.reconnects += 1
         self.live = False
         self.client._observe("stream.reconnect", attempt=self.reconnects, after=self.last_seq)
-        return (
-            0 if isinstance(exc, ReplayGapError) else delay(self.client.retry, self.reconnects - 1)
+        wait = (
+            0
+            if isinstance(exc, ReplayGapError)
+            else delay(self.client.retry, self.reconnects - 1, self._retry_after)
         )
+        if self.max_duration is not None:
+            wait = min(wait, max(0, self.max_duration - (time.monotonic() - self._started)))
+        return wait
 
     def _status(self, response: httpx.Response):
+        self._retry_after = response.headers.get("retry-after")
         if response.status_code != 200:
             try:
                 payload = strict_json(response.content)
