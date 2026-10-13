@@ -13,12 +13,6 @@ F = Path(__file__).parent / "fixtures"
 # Independent pins prevent a fixture and its manifest being changed together
 # while still claiming to be the exact server source at this immutable commit.
 PINNED_SOURCES = {
-    "envai-api-sdk-foundation.md": (
-        "docs/envai-api-sdk-foundation.md",
-        51996,
-        "090e58738a02578b04123ab2e45b6e30d839361c0c91ba9bc019c2f19781f3e2",
-        "2cc97122cfc339c85e5a093572427f03f60c0264",
-    ),
     "openapi.yaml": (
         "packages/contracts/openapi.yaml",
         173824,

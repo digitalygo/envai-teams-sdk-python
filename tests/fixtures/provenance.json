@@ -4,13 +4,6 @@
   "protocol_version": 2,
   "operations": 52,
   "sources": {
-    "envai-api-sdk-foundation.md": {
-      "repository_path": "docs/envai-api-sdk-foundation.md",
-      "snapshot_path": "tests/fixtures/envai-api-sdk-foundation.md",
-      "sha256": "090e58738a02578b04123ab2e45b6e30d839361c0c91ba9bc019c2f19781f3e2",
-      "git_blob_sha": "2cc97122cfc339c85e5a093572427f03f60c0264",
-      "bytes": 51996
-    },
     "openapi.yaml": {
       "repository_path": "packages/contracts/openapi.yaml",
       "snapshot_path": "tests/fixtures/openapi.yaml",

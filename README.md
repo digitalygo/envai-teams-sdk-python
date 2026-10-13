@@ -4,15 +4,24 @@ Typed synchronous and asynchronous clients for the current Envai Teams API and
 Agent Team Protocol (ATP v2). Python 3.11+. This is an **alpha SDK**; no package
 release or production deployment is implied by this repository.
 
-## Install from a checkout
+- [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 52 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
+- [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
+
+## Install from public source
 
 ```sh
+git clone --branch alpha https://github.com/digitalygo/envai-teams-sdk-python.git
+cd envai-teams-sdk-python
+python -m venv .venv
+# Activate .venv using the command for your shell, then:
 python -m pip install .
 # Development and verification
 python -m pip install -e '.[dev]'
 ```
 
-The distribution is `envai-teams-sdk`; import `envai`. HTTP uses HTTPX, models use
+The distribution is `envai-teams-sdk`; import `envai`. The source-install commands above do not imply a PyPI release. For reproducible use, check out a reviewed commit before installing. HTTP uses HTTPX, models use
 Pydantic, schema validation uses the pinned JSON Schema, and client-tool signatures
 use `cryptography` Ed25519 plus the `rfc8785` implementation. No generated code or
 schema validator downloads remote references at runtime.
@@ -23,14 +32,18 @@ schema validator downloads remote references at runtime.
 import os
 from envai import EnvaiClient, models
 
-with EnvaiClient(os.environ['ENVAI_API_KEY'], base_url='https://your-edge.example/api/v1') as client:
+with EnvaiClient(os.environ['ENVAI_API_KEY'], base_url=os.environ['ENVAI_BASE_URL']) as client:
     workspace = client.workspaces.create(body=models.WorkspaceCreateRequest(name='Research'))
     # Choose a team already configured for this account.
-    chat = client.chats.create(workspace.id, body=models.ChatCreateRequest(team_id='team_YOUR_ULID'))
+    chat = client.chats.create(workspace.id, body=models.ChatCreateRequest(team_id=os.environ['ENVAI_TEAM_ID']))
     result = client.chats.send_and_wait(chat.id, 'Summarize the project', timeout=120)
     print(result.text)
-    print(result.turn_id, result.last_seq, result.usage, result.cost)
+    print(result.turn_id, result.last_seq, result.terminal_event.type)
+    if result.terminal_event.type != "turn.completed":
+        raise RuntimeError(f"Turn ended with {result.terminal_event.type}")
 ```
+
+The quickstart creates remote resources and starts a potentially billable turn. Set `ENVAI_BASE_URL`, `ENVAI_API_KEY`, and an existing `ENVAI_TEAM_ID`. See the complete [quickstart](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/examples/quickstart.py), [stream example](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/examples/stream_turn.py), and [tool example](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/examples/client_tools.py).
 
 No credentials are read implicitly or printed in client representations. Configure
 an API key explicitly. The example reads an environment variable only in application
@@ -45,15 +58,14 @@ from envai.event_models import AgentTextDeltaEvent
 async def run(api_key: str, chat_id: str):
     async with AsyncEnvaiClient(api_key, base_url='https://your-edge.example') as client:
         async for event in client.chats.send_and_stream(chat_id, 'Hello', timeout=120):
-            if isinstance(event, AgentTextDeltaEvent) and event.agent.role == 'orchestrator':
+            if isinstance(event, AgentTextDeltaEvent) and event.agent and event.agent.role == 'orchestrator':
                 print(event.data.delta, end='')
             if event.terminal:
                 print(event.type)
 ```
 
 `send_and_stream` opens SSE and waits for the first **ping before sending once**.
-The first HTTP 200 is insufficient on the current server: replay happens before
-live subscription registration. This workaround may wait one heartbeat interval.
+An HTTP 200 stream response alone does not establish live readiness. Waiting for a ping may take one heartbeat interval.
 Only matching `turn_id` events are returned; `agent.done` is not a turn terminal.
 `send_and_wait` aggregates only the orchestrator's text. Failed/cancelled terminal
 events remain explicit in `TurnResult.terminal_event`; they are not turned into
@@ -79,7 +91,7 @@ origin, never a response-supplied URL.
 The generated primitive layer retains all **52 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
-[the generated API inventory](docs/api-inventory.md). Health uses `/api/v1/up`;
+[the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
 JWKS is public and defaults to the **origin** `/.well-known/jwks.json`.
 `jwks_url` can be overridden. The provider-webhook and local image-test primitives
 are included for inventory completeness and are **experimental integration
@@ -104,7 +116,7 @@ no download is automatically written to disk. For a returned artifact URL use
 `images.download_signed_url(url)`: it preserves query bytes/order, allows only the
 configured origin and current `/api/v1/artifacts/download` path, and never sends
 Bearer authentication. The raw artifact primitive uses the current
-`artifact`, `expires`, `generation`, `signature` query fields in Laravel's canonical
+`artifact`, `expires`, `generation`, `signature` query fields in canonical alphabetical
 order. Legacy `path=` artifact URLs are intentionally unsupported.
 
 ## Transport policy and observability
@@ -136,7 +148,7 @@ default. Server registration (`client.tools.create`) and agent authorization
 (`external_tools_enabled=[{'name': 'your_tool'}]`) are separate from local handler
 registration. Both are required for a server-visible client tool.
 
-See [examples/client_tools.py](examples/client_tools.py) for a complete bounded
+See [examples/client_tools.py](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/examples/client_tools.py) for a complete bounded
 async runner. The runner requires explicit deployment/account `scope`, `chat_id`,
 `turn_id`, and a state store:
 
@@ -165,11 +177,9 @@ handler execution, matching the server and JavaScript numeric domain. Overflow
 and non-finite values are rejected. Use strings when exact huge integers matter. JWKS caches have configurable TTL and one
 refresh on unknown kid/verification failure. Unsupported algorithms and invalid
 signatures fail closed. Locally registered argument schemas are cloned and cannot
-retrieve remote references. An explicit `$schema` uses its supported JSON Schema
-draft; an omitted dialect defaults to Draft 2020-12, and unknown dialects are
-rejected. Literal `const`/`enum` values are preserved as data. Unknown/invalid local tools produce controlled error
+retrieve remote references. An explicit `$schema` supports Draft 3, 4, 6, 7, 2019-09, or 2020-12 through the installed `jsonschema` validator. An omitted dialect defaults to Draft 2020-12; unknown dialects are rejected. Prefer a modern declared dialect for shared tools; TypeScript supports Draft 6 and newer. Literal `const`/`enum` values are preserved as data. Unknown/invalid local tools produce controlled error
 outputs. Structured results are JSON-serialized exactly once; outputs are capped
-at 128 KiB. Empty strings become a controlled error because the current gateway
+at 128 KiB. Empty strings become a controlled error because the current API
 rejects them despite the OpenAPI schema lacking `minLength`.
 
 `ToolStateStore` is a pluggable protocol. Its atomic `claim` must commit before
@@ -194,7 +204,7 @@ reexecutes a duplicate call; a later 404/409 does not prove earlier success. Ins
 `.get(...)` and reconcile ambiguous states externally. A crash between side effect
 and durable completion cannot be made exactly-once by an SDK: handlers must use
 `context.call_id` as an idempotency key, transactions, or explicit reconciliation.
-A signature proves integrity/origin, not freshness.
+A signature authenticates the call ID, tool name, and canonical arguments. It does not sign the chat, turn, account, timestamp, or freshness. Only feed the runner trusted authenticated stream events for its configured turn.
 
 Concurrency is bounded with no unbounded handler queue. Saturation returns a
 controlled error. Handler deadlines use a conservative margin below the registered
@@ -209,15 +219,13 @@ turn; it does not infer permission to execute unrelated turns.
 ## Current alpha limitations
 
 - Replay is only best-effort while the same chat runtime stays resident. The
-  server keeps 10,000 in-memory events, drops overflowing live subscriber events,
-  resets sequence on restart/eviction, and supplies no epoch/cursor-expired signal.
+  sequence can reset after restart/eviction, live events can be lost, and the API supplies no epoch/cursor-expired signal.
   Upward gaps trigger one replay attempt, then `ReplayGapError`; the SDK cannot
   detect every reset or promise durable replay. Do not silently reuse a checkpoint
   after a known restart. Reconcile or explicitly start a new observation epoch.
 - Replay/subscribe is not atomic. The first-ping workaround reduces the known
   attach race; it is not a server-level durability guarantee.
-- `steer` currently records `turn.steered` without injecting instructions into the
-  LLM. Approval resolution is a 409 stub. Neither is automatically invoked.
+- A successful `steer` acknowledgement does not guarantee changed execution. Approval resolution currently returns HTTP 409 and is unavailable as a completed workflow. Neither operation is automatically invoked.
 - Context persistence/rehydration is best-effort and may lose history; the SDK
   cannot assert durable context restore from a successful acknowledgment.
 - A second tool output is 409 while the turn is active and may be 404 after cleanup.
@@ -225,13 +233,12 @@ turn; it does not infer permission to execute unrelated turns.
 
 ## Development and contract provenance
 
-Pinned source: `digitalygo/envai-teams`, alpha commit
-`55275860c9a950eaad8e39e9d2b728149084779c`. `tests/fixtures/provenance.json` separates
-three exact source snapshots (foundation document, OpenAPI, event schema) from
-five SDK-derived fixtures. Source guards verify SHA-256, Git blob SHA-1, byte
-length and repository path. The foundation snapshot preserves the original
-51,996 bytes with no added newline. Derived fixtures retain their own hashes
-and do not claim to be server files.
+The bundled HTTP and ATP contracts define API 2.0.0 and ATP v2.
+`tests/fixtures/provenance.json` records two byte-exact contract snapshots separately
+from five SDK-authored fixtures. Guards verify the source commit/path, byte count,
+SHA-256, and Git blob identity. Public guides are SDK documentation rather than
+copied contract files. Building or reading the SDK does not require access to a
+separate source repository.
 
 ```sh
 python scripts/generate.py --check
@@ -245,7 +252,7 @@ Regenerate only the typed models and REST primitives with
 `python scripts/generate.py`; SSE/tool behavior is handwritten. CI runs Python
 3.11–3.13, lint, type checks, contract drift checks, wheel build/import, all mocked
 HTTP operations, shared ATP/SSE/JCS/Ed25519 vectors and concurrency/replay/error
-regressions. Runtime branch coverage is gated at 90%; generated models/primitives
+regressions. Combined runtime line/branch coverage is gated at 90%; generated models/primitives
 are excluded from coverage but independently covered by the operation inventory
 and response-schema tests. Tests never call Envai production endpoints or require
 credentials. MIT, Copyright (c) 2026 DigItalyGo.
