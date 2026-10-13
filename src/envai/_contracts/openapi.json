@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Envai AaaS API \u2014 execution plane and control plane",
-    "description": "Contract for the Envai AaaS HTTP surface covering both the execution plane and the control plane. The execution plane serves the Agent Team Protocol (ATP) through the Go gateway: the caller sends messages to a chat, steers or cancels the active turn through small control endpoints, restores a chat from client held context, and reads every agent's activity from one multiplexed SSE stream which is the single source of truth. The chat is the only execution entity: one chat holds one history and hosts many turns, and no parallel run or session lifecycle exists beside it. All endpoints live under the canonical `/api/v1` prefix; legacy `/v1` paths are not aliases and receive no redirect. Event envelopes and per-type payloads are defined once in `events.json` and referenced by the events endpoint through external `$ref`.\nThe control plane surface served by Laravel is in scope here: workspaces, chats, completion metadata, agent definitions, teams, models, api keys, image operations, signed artifacts and provider webhooks. Control plane responses use the Laravel JsonResource `{data: ...}` wrapper for single resources and collections, except the provider webhook which answers a bare `{status: ok}` and the model catalogs which answer a top-level `{object, data, defaults}` object. Since 1.1.0 the image operations are reserved to authenticated api keys. Since 1.2.0 the workspace files api exposes the workspace fake filesystem (wiki, skills and `MEMORY.md` are plain files under it) through the control plane.\n",
-    "version": "2.0.0",
+    "description": "Contract for the Envai AaaS HTTP surface covering both the execution plane and the control plane. The execution plane serves the Agent Team Protocol (ATP) through the Go gateway: the caller sends messages to a chat, steers or cancels the active turn through small control endpoints, restores a chat from client held context, and reads every agent's activity from one multiplexed SSE stream which is the single source of truth. The chat is the only execution entity: one chat holds one history and hosts many turns, and no parallel run or session lifecycle exists beside it. All endpoints live under the canonical `/api/v1` prefix; legacy `/v1` paths are not aliases and receive no redirect. Event envelopes and per-type payloads are defined once in `events.json` and referenced by the events endpoint through external `$ref`.\nThe control plane surface served by Laravel is in scope here: workspaces, chats, completion metadata, agent definitions, teams, models, api keys, image operations, signed artifacts and provider webhooks. Control plane responses use the Laravel JsonResource `{data: ...}` wrapper for single resources and collections, except the provider webhook which answers a bare `{status: ok}` and the model catalogs which answer a top-level `{object, data, defaults}` object. Since 1.1.0 the image operations are reserved to authenticated api keys. Since 1.2.0 the workspace files api exposes the workspace fake filesystem (wiki, skills and `MEMORY.md` are plain files under it) through the control plane.\n Contract3 is selected with X-Envai-Contract-Version: 3. Canonical execution routes include /atp/v3 and never downgrade. Old execution mutation routes return 426. Legacy event reads are finite historical snapshots, not live subscriptions. Successful negotiated responses acknowledge the selected version; clients must validate before hydration.",
+    "version": "3.0.0",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -25,7 +25,7 @@
     }
   ],
   "paths": {
-    "/chats/{chat_id}/messages": {
+    "/atp/v3/chats/{chat_id}/messages": {
       "post": {
         "operationId": "sendChatMessage",
         "summary": "Send a message and start a turn",
@@ -36,6 +36,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -57,10 +60,24 @@
                   "$ref": "#/components/schemas/ChatMessageAccepted"
                 }
               }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
             }
           },
           "400": {
-            "$ref": "#/components/responses/InvalidRequestError"
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           },
           "401": {
             "$ref": "#/components/responses/UnauthenticatedError"
@@ -91,11 +108,14 @@
           },
           "503": {
             "$ref": "#/components/responses/GatewayDrainingError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
           }
         }
       }
     },
-    "/chats/{chat_id}/events": {
+    "/atp/v3/chats/{chat_id}/events": {
       "get": {
         "operationId": "streamChatEvents",
         "summary": "Stream chat events",
@@ -109,6 +129,9 @@
           },
           {
             "$ref": "#/components/parameters/AfterSeq"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "responses": {
@@ -121,6 +144,18 @@
                   "type": "string",
                   "example": "no-cache"
                 }
+              },
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
               }
             },
             "content": {
@@ -132,23 +167,26 @@
                 "x-event-schema": {
                   "$ref": "./events.json#/$defs/Event"
                 },
-                "example": "data: {\"v\":2,\"id\":\"evt_01j5abcdefghjkmnpqrstvwxyz\",\"seq\":42,\"ts\":\"2026-08-17T14:00:00Z\",\"chat_id\":\"cht_01j5abcdefghjkmnpqrstvwxyz\",\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"agent\":null,\"type\":\"turn.completed\",\"data\":{\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"usage\":{\"input_tokens\":120,\"output_tokens\":450,\"cost_usd\":0.42,\"duration_ms\":8123,\"sprite_ms\":0},\"cost\":0.42,\"chat_usage\":{\"input_tokens\":300,\"output_tokens\":900,\"cost_usd\":0.95,\"duration_ms\":16246,\"sprite_ms\":0},\"chat_cost\":0.95,\"finish_reason\":\"completed\"}}\n"
+                "example": "data: {\"v\":3,\"id\":\"evt_01j5abcdefghjkmnpqrstvwxyz\",\"seq\":42,\"ts\":\"2026-08-17T14:00:00Z\",\"chat_id\":\"cht_01j5abcdefghjkmnpqrstvwxyz\",\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"agent\":null,\"type\":\"turn.completed\",\"data\":{\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"usage\":{\"input_tokens\":120,\"output_tokens\":450,\"cost_usd\":0.42,\"duration_ms\":8123,\"sprite_ms\":0},\"cost\":0.42,\"chat_usage\":{\"input_tokens\":300,\"output_tokens\":900,\"cost_usd\":0.95,\"duration_ms\":16246,\"sprite_ms\":0},\"chat_cost\":0.95,\"finish_reason\":\"completed\"}}\n"
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/InvalidRequestError"
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           },
           "401": {
             "$ref": "#/components/responses/UnauthenticatedError"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
           }
         }
       }
     },
-    "/chats/{chat_id}/cancel": {
+    "/atp/v3/chats/{chat_id}/cancel": {
       "post": {
         "operationId": "cancelChatTurn",
         "summary": "Cancel the active turn",
@@ -159,6 +197,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "responses": {
@@ -168,6 +209,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TurnAccepted"
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
                 }
               }
             }
@@ -195,11 +250,17 @@
                 }
               }
             }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
     },
-    "/chats/{chat_id}/steer": {
+    "/atp/v3/chats/{chat_id}/steer": {
       "post": {
         "operationId": "steerChatTurn",
         "summary": "Record guidance for the active turn",
@@ -210,6 +271,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -231,6 +295,20 @@
                   "$ref": "#/components/schemas/TurnAccepted"
                 }
               }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
             }
           },
           "401": {
@@ -241,11 +319,17 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
     },
-    "/chats/{chat_id}/tool-output": {
+    "/atp/v3/chats/{chat_id}/tool-output": {
       "post": {
         "operationId": "resolveChatTool",
         "summary": "Resolve a client tool call",
@@ -256,6 +340,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -270,10 +357,24 @@
         },
         "responses": {
           "204": {
-            "description": "Tool call resolved"
+            "description": "Tool call resolved",
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
           },
           "400": {
-            "$ref": "#/components/responses/InvalidRequestError"
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           },
           "401": {
             "$ref": "#/components/responses/UnauthenticatedError"
@@ -301,11 +402,14 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
           }
         }
       }
     },
-    "/chats/{chat_id}/approval": {
+    "/atp/v3/chats/{chat_id}/approval": {
       "post": {
         "operationId": "resolveChatApproval",
         "summary": "Resolve an approval",
@@ -316,6 +420,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -354,11 +461,17 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
     },
-    "/chats/{chat_id}/fork": {
+    "/atp/v3/chats/{chat_id}/fork": {
       "post": {
         "operationId": "forkChat",
         "summary": "Branch a chat",
@@ -369,6 +482,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -388,6 +504,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatForked"
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
                 }
               }
             }
@@ -433,11 +563,17 @@
                 }
               }
             }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
     },
-    "/chats/{chat_id}/restore": {
+    "/atp/v3/chats/{chat_id}/restore": {
       "post": {
         "operationId": "restoreChat",
         "summary": "Restore a chat from client held context",
@@ -448,6 +584,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "requestBody": {
@@ -467,6 +606,20 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RestoreChatAccepted"
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
                 }
               }
             }
@@ -512,11 +665,17 @@
                 }
               }
             }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
     },
-    "/capabilities": {
+    "/atp/v3/capabilities": {
       "get": {
         "operationId": "getCapabilities",
         "summary": "Advertised protocol metadata",
@@ -533,12 +692,37 @@
                   "$ref": "#/components/schemas/Capabilities"
                 }
               }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
             }
           },
           "401": {
             "$ref": "#/components/responses/UnauthenticatedError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ]
       }
     },
     "/up": {
@@ -796,7 +980,7 @@
       "post": {
         "operationId": "createUserTool",
         "summary": "Register a client tool",
-        "description": "Registers a user-scoped client tool with id `twl_<ulid>`. The tool is shared across all the caller's workspaces and becomes visible to an agent only when its name is in `agent_definitions.external_tools_enabled` and it is registered by the same user on the platform. `name` must match `^[a-z][a-z0-9_]{0,254}$`, must be unique per user and must not be a reserved platform tool name (`read`, `list`, `stat`, `write`, `execute`, `wiki_read`, `wiki_ls`, `wiki_write`, `skill_read`, `skill_list`, `skill_write`, `exa_search`, `exa_contents`, `calculator`, `convert_units`, `delegate_task`). `parameters` must be a JSON Schema with root type `object`; `timeout_seconds` defaults to 120 and is capped at 600.\n",
+        "description": "Registers a user-scoped client tool with id `twl_<ulid>`. The tool is shared across all the caller's workspaces and becomes visible to an agent only when its name is in `agent_definitions.external_tools_enabled` and it is registered by the same user on the platform. `name` must match `^[a-z][a-z0-9_]{0,254}$`, must be unique per user and must not be a reserved platform tool name (`read`, `list`, `stat`, `write`, `execute`, `wiki_read`, `wiki_ls`, `wiki_write`, `skill_read`, `skill_list`, `skill_write`, `exa_search`, `exa_contents`, `calculator`, `convert_units`, `delegate_task`, `set_chat_title`). `set_chat_title` is a built-in `server` tool available only to the orchestrator, never a `client` tool. `parameters` must be a JSON Schema with root type `object`; `timeout_seconds` defaults to 120 and is capped at 600.\n",
         "tags": [
           "Tools"
         ],
@@ -1163,7 +1347,7 @@
       "get": {
         "operationId": "listCompletions",
         "summary": "List completion metadata of a chat",
-        "description": "Lists the metadata-only completion records of a chat, newest first. Results are paginated with `per_page` (default 15, maximum 100) and can be filtered by `status`, `model_orchestrator` and the `started_at` range (`from` and `to`, inclusive, ISO 8601). Records never include message content.\n",
+        "description": "Lists the metadata-only completion records of a chat, newest first. Results are paginated with `per_page` (default 15, maximum 100) and can be filtered by `status`, `model_orchestrator` and the `started_at` range (`from` and `to`, inclusive, ISO 8601). Records never include message content.\n Omitted or explicit2 selector reads the truthful numeric legacy representation; any unrepresentable item rejects the entire selected page with426. Contract3 exposes nullable current costs and immutable terminal metadata.",
         "tags": [
           "Completions"
         ],
@@ -1229,6 +1413,9 @@
               "maximum": 100,
               "default": 15
             }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "security": [
@@ -1248,6 +1435,20 @@
                   "$ref": "#/components/schemas/CompletionCollection"
                 }
               }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
             }
           },
           "401": {
@@ -1261,6 +1462,12 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
@@ -1269,7 +1476,7 @@
       "get": {
         "operationId": "getCompletion",
         "summary": "Get completion metadata",
-        "description": "Returns the metadata-only record of a single completion of the chat.",
+        "description": "Returns the metadata-only record of a single completion of the chat. Omitted or explicit2 selector reads the truthful numeric legacy representation; any unrepresentable item rejects the entire selected page with426. Contract3 exposes nullable current costs and immutable terminal metadata.",
         "tags": [
           "Completions"
         ],
@@ -1282,6 +1489,9 @@
           },
           {
             "$ref": "#/components/parameters/CompletionId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           }
         ],
         "security": [
@@ -1301,6 +1511,20 @@
                   "$ref": "#/components/schemas/CompletionResource"
                 }
               }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
             }
           },
           "401": {
@@ -1311,6 +1535,12 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
           }
         }
       }
@@ -2698,6 +2928,1027 @@
           }
         }
       }
+    },
+    "/workspaces/{workspace_id}/files/sources": {
+      "post": {
+        "operationId": "uploadWikiSource",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiSource"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_conflict; same key with a different payload"
+          },
+          "429": {
+            "description": "wiki_queue_full; no queue slot consumed",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 30
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Original exceeds 1,000,000,000 bytes"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Original up to 1,000,000,000 bytes inclusive; MD TXT CSV XLSX PDF DOCX MP3 MP4 only. MP4 audio only."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/files/sources/{file_id}": {
+      "get": {
+        "operationId": "getWikiSource",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiSource"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/files/sources/{file_id}/download": {
+      "get": {
+        "operationId": "downloadWikiSource",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/outbox/files": {
+      "post": {
+        "operationId": "withdrawWikiSource",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiSource"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file_id"
+                ],
+                "properties": {
+                  "file_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/inbox/runs": {
+      "post": {
+        "operationId": "createWikiInboxRun",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiOperation"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_conflict; same key with a different payload"
+          },
+          "429": {
+            "description": "wiki_queue_full; no queue slot consumed",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 30
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "webhook_url"
+                ],
+                "properties": {
+                  "webhook_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https://"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/outbox/runs": {
+      "post": {
+        "operationId": "createWikiOutboxRun",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiOperation"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_conflict; same key with a different payload"
+          },
+          "429": {
+            "description": "wiki_queue_full; no queue slot consumed",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 30
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "webhook_url"
+                ],
+                "properties": {
+                  "webhook_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https://"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/syncs": {
+      "post": {
+        "operationId": "createWikiSyncRun",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durably accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiOperation"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_conflict; same key with a different payload"
+          },
+          "429": {
+            "description": "wiki_queue_full; no queue slot consumed",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "const": 30
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "webhook_url"
+                ],
+                "properties": {
+                  "webhook_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^https://"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/operations/{operation_id}": {
+      "get": {
+        "operationId": "getWikiOperation",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WikiOperation"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/categories": {
+      "get": {
+        "operationId": "listWikiCategories",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Categories"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        }
+      }
+    },
+    "/workspaces/{workspace_id}/wiki/categories/{category_id}/index": {
+      "get": {
+        "operationId": "getWikiCategoryIndex",
+        "tags": [
+          "Wiki"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "raw",
+                "artifact"
+              ]
+            }
+          },
+          {
+            "name": "catalog_revision",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CategoryIndex"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "example": "X-Envai-Contract-Version"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "catalog_revision_changed; restart the read"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "description": "No AI. Select all=true or from/to inclusive starting at 1. type omitted includes raw and artifact. Send catalog_revision for subsequent reads; changed revision returns 409 catalog_revision_changed. Ordered by inserted_at then entry_id; current lifecycle gates every read."
+      }
+    },
+    "/.well-known/wiki-webhook-jwks.json": {
+      "servers": [
+        {
+          "url": "http://localhost:8111",
+          "description": "Control-plane origin, outside /api/v1"
+        }
+      ],
+      "get": {
+        "operationId": "getWikiWebhookJwks",
+        "summary": "Read existing public wiki webhook signing keys",
+        "description": "Uses existing active and retained signing keys. Read never generates credentials. Verify domain-separated envai-webhook-v1 signatures, not JWT or client-tool signatures.",
+        "tags": [
+          "Wiki"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public Ed25519 signing key set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JwksDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chats/{chat_id}/events": {
+      "get": {
+        "operationId": "streamChatEventsLegacy",
+        "summary": "Stream chat events",
+        "description": "Finite atomic historical v2 replay strictly after the requested sequence. Entire selected tail is validated before SSE200. Mixed-version or unknown-cost history returns426 without partial events. Never subscribes to live updates.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/AfterSeq"
+          },
+          {
+            "$ref": "#/components/parameters/LegacyContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event stream",
+            "headers": {
+              "Cache-Control": {
+                "description": "Streams must not be buffered by proxies",
+                "schema": {
+                  "type": "string",
+                  "example": "no-cache"
+                }
+              },
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "2"
+                }
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "SSE frames whose `data` field contains one ATP event envelope"
+                },
+                "x-event-schema": {
+                  "$ref": "./events-v2.json#/$defs/Event"
+                },
+                "example": "data: {\"v\":3,\"id\":\"evt_01j5abcdefghjkmnpqrstvwxyz\",\"seq\":42,\"ts\":\"2026-08-17T14:00:00Z\",\"chat_id\":\"cht_01j5abcdefghjkmnpqrstvwxyz\",\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"agent\":null,\"type\":\"turn.completed\",\"data\":{\"turn_id\":\"cmpl_01j5abcdefghjkmnpqrstvwxyz\",\"usage\":{\"input_tokens\":120,\"output_tokens\":450,\"cost_usd\":0.42,\"duration_ms\":8123,\"sprite_ms\":0},\"cost\":0.42,\"chat_usage\":{\"input_tokens\":300,\"output_tokens\":900,\"cost_usd\":0.95,\"duration_ms\":16246,\"sprite_ms\":0},\"chat_cost\":0.95,\"finish_reason\":\"completed\"}}\n"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthenticatedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "operationId": "getCapabilitiesLegacy",
+        "summary": "Advertised protocol metadata",
+        "description": "Returns protocol metadata and positively advertised names. The current alpha response is not exhaustive and a feature name may advertise an endpoint/event surface without proving the full intended semantics.\n",
+        "tags": [
+          "Capabilities"
+        ],
+        "responses": {
+          "200": {
+            "description": "Server capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesLegacy"
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "2"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthenticatedError"
+          },
+          "426": {
+            "$ref": "#/components/responses/ContractUpgradeRequired"
+          },
+          "400": {
+            "$ref": "#/components/responses/UnsupportedContractVersion"
+          }
+        },
+        "deprecated": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LegacyContractVersion"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2986,9 +4237,1077 @@
           "type": "boolean",
           "default": false
         }
+      },
+      "ContractVersion": {
+        "name": "X-Envai-Contract-Version",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "const": "3"
+        },
+        "description": "Select contract3; no fallback or implicit coercion is permitted."
+      },
+      "LegacyContractVersion": {
+        "name": "X-Envai-Contract-Version",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "2"
+          ]
+        },
+        "description": "Omission selects legacy2, restricted to truthful historical reads."
       }
     },
     "schemas": {
+      "CompletionTerminalSnapshotUsage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sprite_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sprite_ram_gb_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tool_calls": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cost_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          }
+        }
+      },
+      "CompletionTerminalSnapshot": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "occurred_at",
+          "event_type",
+          "data"
+        ],
+        "additionalProperties": false,
+        "description": "Immutable metadata-only terminal journal snapshot. Not a replayable ATP envelope and contains no response text. Missing/null for legacy turns. Late provider-cost reconciliation changes current completion usage_cost only.",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_type": {
+            "enum": [
+              "turn.completed",
+              "turn.failed",
+              "turn.cancelled"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "turn_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "usage": {
+                "$ref": "#/components/schemas/CompletionTerminalSnapshotUsage"
+              },
+              "cost": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "finish_reason": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string",
+                "description": "Sanitized constant diagnostic; never assistant response text."
+              },
+              "chat_usage": {
+                "$ref": "#/components/schemas/CompletionTerminalSnapshotChatUsage"
+              },
+              "chat_cost": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Frozen chat lifetime USD cost, mirroring chat_usage.cost_usd; null when incomplete or unknown."
+              }
+            }
+          },
+          "v": {
+            "type": "integer",
+            "enum": [
+              2,
+              3
+            ],
+            "description": "Original immutable terminal wire version; absent only on pre-version journal records."
+          },
+          "accepted_protocol_version": {
+            "type": "integer",
+            "enum": [
+              2,
+              3
+            ],
+            "description": "Version accepted before provider work. A recovered unknown-cost legacy turn can emit a v3 failure without rewriting its original acceptance."
+          }
+        }
+      },
+      "CompletionTerminalSnapshotChatUsage": {
+        "type": "object",
+        "description": "Chat lifetime usage frozen with this terminal snapshot; the ATP Usage fields and nullable legacy USD cost. Omitted by older recovery snapshots.",
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "duration_ms"
+        ],
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Input tokens consumed."
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Output tokens produced."
+          },
+          "cost_usd": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Legacy provider USD cost; null when unknown. Authoritative usage_cost preserves per-currency decimal totals and provenance; no billing."
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Wall clock duration of the work in milliseconds."
+          },
+          "sprite_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Time spent in the ephemeral Sprite sandbox, 0 when no code tool ran."
+          },
+          "sprite_ram_gb_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Sprite RAM billed in GB-milliseconds, 0 when no code tool ran."
+          },
+          "tool_calls": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Tool invocations counted in the usage window."
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingState": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "inactive"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "CurrencyAmount": {
+        "type": "object",
+        "required": [
+          "currency",
+          "amount"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+          }
+        },
+        "additionalProperties": true
+      },
+      "UsageCost": {
+        "type": "object",
+        "required": [
+          "status",
+          "basis",
+          "scope_status",
+          "revision",
+          "as_of",
+          "invocation_count",
+          "pending_invocation_count",
+          "totals",
+          "priced_subtotals"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "complete"
+            ]
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "reported",
+              "calculated",
+              "mixed",
+              "none"
+            ]
+          },
+          "scope_status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "as_of": {
+            "type": "string"
+          },
+          "invocation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pending_invocation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totals": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CurrencyAmount"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priced_subtotals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencyAmount"
+            }
+          }
+        },
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "complete"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "scope_status": {
+                  "const": "closed"
+                },
+                "pending_invocation_count": {
+                  "const": 0
+                },
+                "totals": {
+                  "type": "array"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "totals": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ConversionState": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Sanitized stable conversion failure code; never a raw provider response or secret. Null when no failure is recorded.",
+            "pattern": "^[a-z][a-z0-9_]{0,119}$",
+            "maxLength": 120
+          },
+          "recoverable": {
+            "type": "boolean",
+            "description": "True only when an automatic technical recovery is durably scheduled and eligible: attempts remain and the source has not completed or been withdrawn. False for initial queued work, healthy running, terminal failures and exhausted retries."
+          },
+          "next_retry_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Time of the scheduled automatic technical recovery when recoverable is true; otherwise null. Not an initial work schedule or an operator-repair promise."
+          }
+        },
+        "additionalProperties": true
+      },
+      "IndexingState": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_conversion",
+              "pending",
+              "processed",
+              "withdrawn",
+              "failed"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "WikiSource": {
+        "type": "object",
+        "required": [
+          "file_id",
+          "workspace_id",
+          "original_name",
+          "mime_type",
+          "byte_size",
+          "lifecycle",
+          "source_revision",
+          "conversion",
+          "indexing",
+          "canonical_raw_path",
+          "billing",
+          "usage_cost",
+          "status_url"
+        ],
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "original_name": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "uploaded",
+              "inbox",
+              "raw",
+              "outbox",
+              "deleting",
+              "deleted"
+            ]
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "conversion": {
+            "$ref": "#/components/schemas/ConversionState"
+          },
+          "indexing": {
+            "$ref": "#/components/schemas/IndexingState"
+          },
+          "canonical_raw_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          },
+          "status_url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "BatchSizes": {
+        "type": "object",
+        "required": [
+          "inbox",
+          "outbox"
+        ],
+        "properties": {
+          "inbox": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "outbox": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": true
+      },
+      "FileOutcome": {
+        "type": "object",
+        "required": [
+          "file_id",
+          "status",
+          "error_code"
+        ],
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "withdrawn",
+              "failed"
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "PhaseResult": {
+        "type": "object",
+        "required": [
+          "status",
+          "selected",
+          "succeeded",
+          "withdrawn",
+          "failed",
+          "files"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "skipped_empty"
+            ]
+          },
+          "selected": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "succeeded": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "withdrawn": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileOutcome"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "WikiOperation": {
+        "type": "object",
+        "required": [
+          "operation_id",
+          "workspace_id",
+          "kind",
+          "status",
+          "phase",
+          "phases",
+          "started_at",
+          "finished_at",
+          "batch_sizes",
+          "billing",
+          "usage_cost"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "inbox",
+              "outbox",
+              "sync"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phases": {
+            "type": "object",
+            "properties": {
+              "inbox": {
+                "$ref": "#/components/schemas/PhaseResult"
+              },
+              "outbox": {
+                "$ref": "#/components/schemas/PhaseResult"
+              }
+            },
+            "additionalProperties": false
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "batch_sizes": {
+            "$ref": "#/components/schemas/BatchSizes"
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Categories": {
+        "type": "object",
+        "required": [
+          "categories",
+          "catalog_revision"
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "catalog_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": true
+      },
+      "CatalogEntry": {
+        "type": "object",
+        "required": [
+          "entry_id",
+          "type",
+          "target_id",
+          "canonical_path",
+          "description",
+          "inserted_at"
+        ],
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "raw",
+              "artifact"
+            ]
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "canonical_path": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inserted_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "IndexRange": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "to": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": true
+      },
+      "CategoryIndex": {
+        "type": "object",
+        "required": [
+          "entries",
+          "total_count",
+          "returned_count",
+          "requested_range",
+          "actual_range",
+          "catalog_revision",
+          "is_complete"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogEntry"
+            }
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "returned_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "requested_range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actual_range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "catalog_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "is_complete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      },
+      "WikiFileProcessedEvent": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "event_id",
+          "event_type",
+          "operation_id",
+          "workspace_id",
+          "occurred_at",
+          "file_id",
+          "source_revision",
+          "canonical_raw_path",
+          "availability"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "1"
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_type": {
+            "const": "wiki.inbox.file.processed"
+          },
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "file_id": {
+            "type": "string"
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "canonical_raw_path": {
+            "type": "string"
+          },
+          "availability": {
+            "const": "raw"
+          }
+        },
+        "additionalProperties": true
+      },
+      "WikiFileDeletedEvent": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "event_id",
+          "event_type",
+          "operation_id",
+          "workspace_id",
+          "occurred_at",
+          "file_id",
+          "source_revision",
+          "previous_canonical_raw_path",
+          "lifecycle"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "1"
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_type": {
+            "const": "wiki.outbox.file.deleted"
+          },
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "file_id": {
+            "type": "string"
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "previous_canonical_raw_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lifecycle": {
+            "const": "deleted"
+          }
+        },
+        "additionalProperties": true
+      },
+      "WikiOperationEvent": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "event_id",
+          "event_type",
+          "operation_id",
+          "workspace_id",
+          "occurred_at",
+          "status",
+          "phases",
+          "finished_at",
+          "billing",
+          "usage_cost"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "1"
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_type": {
+            "enum": [
+              "wiki.inbox.completed",
+              "wiki.inbox.failed",
+              "wiki.outbox.completed",
+              "wiki.outbox.failed",
+              "wiki.sync.completed",
+              "wiki.sync.failed"
+            ]
+          },
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed"
+            ]
+          },
+          "phases": {
+            "type": "object",
+            "properties": {
+              "inbox": {
+                "$ref": "#/components/schemas/PhaseResult"
+              },
+              "outbox": {
+                "$ref": "#/components/schemas/PhaseResult"
+              }
+            },
+            "additionalProperties": false
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          }
+        },
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "enum": [
+                    "wiki.inbox.completed",
+                    "wiki.outbox.completed",
+                    "wiki.sync.completed"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "status": {
+                  "const": "completed"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "enum": [
+                    "wiki.inbox.failed",
+                    "wiki.outbox.failed",
+                    "wiki.sync.failed"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "WikiWebhookEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WikiFileProcessedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/WikiFileDeletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/WikiOperationEvent"
+          }
+        ]
+      },
       "Error": {
         "type": "object",
         "description": "Standard error envelope shared by both planes",
@@ -3308,13 +5627,15 @@
           "families",
           "event_types",
           "tool_kinds",
-          "features"
+          "features",
+          "contract_version",
+          "supported_contract_versions",
+          "legacy_v2_mode"
         ],
         "properties": {
           "protocol_version": {
             "type": "integer",
-            "description": "Protocol version implemented by the server, currently 2",
-            "example": 2
+            "const": 3
           },
           "families": {
             "type": "array",
@@ -3323,7 +5644,8 @@
               "type": "string",
               "enum": [
                 "turn",
-                "agent"
+                "agent",
+                "chat"
               ]
             }
           },
@@ -3336,6 +5658,7 @@
             "example": [
               "ping",
               "turn.started",
+              "chat.title.updated",
               "turn.completed",
               "turn.cancelled",
               "turn.failed",
@@ -3370,16 +5693,28 @@
             "type": "array",
             "description": "Optional protocol features implemented by the server",
             "items": {
-              "type": "string",
-              "enum": [
-                "replay",
-                "fork",
-                "restore",
-                "ping",
-                "background_delegation",
-                "client_tools"
-              ]
+              "type": "string"
             }
+          },
+          "contract_version": {
+            "type": "integer",
+            "const": 3
+          },
+          "supported_contract_versions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "enum": [
+                2,
+                3
+              ]
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "legacy_v2_mode": {
+            "type": "string",
+            "const": "historical_reads_replay_only"
           }
         }
       },
@@ -3627,7 +5962,7 @@
             "minLength": 1,
             "maxLength": 255,
             "pattern": "^[a-z][a-z0-9_]{0,254}$",
-            "description": "Tool name, unique per user. Reserved platform tool names are rejected.\n",
+            "description": "Tool name, unique per user. Reserved platform tool names, including `set_chat_title`, are rejected.\n",
             "example": "send_email"
           },
           "kind": {
@@ -3754,6 +6089,7 @@
           "workspace_id",
           "user_id",
           "team_id",
+          "title",
           "created_at",
           "updated_at"
         ],
@@ -3778,6 +6114,15 @@
             "maxLength": 31,
             "description": "Team id (conventionally `team_<ulid>`), up to 31 characters, selected at chat creation. It is a foreign key to `teams`; chat creation validates that the team exists and belongs to the chat owner, 422 otherwise.\n",
             "example": "team_01j5abcdefghjkmnpqrstvwxyz"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255,
+            "readOnly": true,
+            "description": "Server/runtime-managed chat title, null before it is generated"
           },
           "created_at": {
             "type": "string",
@@ -3931,10 +6276,30 @@
               }
             }
           },
+          "billing": {
+            "$ref": "#/components/schemas/BillingState"
+          },
+          "usage_cost": {
+            "$ref": "#/components/schemas/UsageCost"
+          },
+          "terminal_snapshot": {
+            "description": "Optional immutable metadata-only terminal outcome, not response-text replay. Null or absent for legacy turns; current costs can advance without changing this snapshot.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompletionTerminalSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cost_usd": {
-            "type": "number",
+            "type": [
+              "number",
+              "null"
+            ],
             "format": "double",
-            "description": "Aggregated turn cost in USD (LLM plus Fly.io Sprites), sub-cent precision"
+            "description": "For tracked scopes, complete USD-only provider total or zero for a closed empty scope; null while pending or when a multi-currency total cannot be represented. Historical no-scope values remain unchanged. usage_cost is authoritative and never a customer charge."
           },
           "status": {
             "type": "string",
@@ -5500,15 +7865,15 @@
             "type": "string",
             "description": "Output aspect ratio; extreme or malformed values rejected",
             "enum": [
-              61,
-              969,
-              556,
-              243,
-              184,
-              182,
-              123,
-              1269,
-              561,
+              "1:1",
+              "16:9",
+              "9:16",
+              "4:3",
+              "3:4",
+              "3:2",
+              "2:3",
+              "21:9",
+              "9:21",
               "as_input_image"
             ]
           },
@@ -5793,7 +8158,7 @@
                   "null"
                 ],
                 "description": "Output aspect ratio, present when reported by the provider",
-                "example": 969
+                "example": "16:9"
               },
               "format": {
                 "type": [
@@ -6434,6 +8799,91 @@
             }
           }
         }
+      },
+      "CapabilitiesLegacy": {
+        "type": "object",
+        "description": "Event families and optional features advertised by the server. `event_types` is a positive discovery list rather than a parser allowlist, `tool_kinds` lists the supported tool kinds and `features` positively advertised protocol surfaces. A feature name does not by itself prove that every intended semantic is implemented; for example the server advertises `replay` while retention is an in-memory window. `steer` is not advertised: the endpoint records `turn.steered` but does not inject the text into the running LLM loop. Clients remain forward compatible with valid ATP events absent from this response.\n",
+        "required": [
+          "protocol_version",
+          "families",
+          "event_types",
+          "tool_kinds",
+          "features"
+        ],
+        "properties": {
+          "protocol_version": {
+            "type": "integer",
+            "const": 2
+          },
+          "families": {
+            "type": "array",
+            "description": "Event families the server may emit",
+            "items": {
+              "type": "string",
+              "enum": [
+                "turn",
+                "agent",
+                "chat"
+              ]
+            }
+          },
+          "event_types": {
+            "type": "array",
+            "description": "Dotted event types the server actually emits; additive and not an exhaustive parser allowlist",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "ping",
+              "turn.started",
+              "chat.title.updated",
+              "turn.completed",
+              "turn.cancelled",
+              "turn.failed",
+              "turn.steered",
+              "agent.started",
+              "agent.text.delta",
+              "agent.text.done",
+              "agent.delegated",
+              "agent.tool.start",
+              "agent.tool.complete",
+              "agent.tool.request",
+              "agent.tool.result",
+              "agent.context.compacting",
+              "agent.context.compacted",
+              "agent.done"
+            ]
+          },
+          "tool_kinds": {
+            "type": "array",
+            "description": "Tool kinds supported by the server",
+            "items": {
+              "type": "string",
+              "enum": [
+                "server",
+                "client",
+                "knowledge",
+                "code"
+              ]
+            }
+          },
+          "features": {
+            "type": "array",
+            "description": "Optional protocol features implemented by the server",
+            "items": {
+              "type": "string",
+              "enum": [
+                "replay",
+                "fork",
+                "restore",
+                "ping",
+                "background_delegation",
+                "client_tools",
+                "chat_title"
+              ]
+            }
+          }
+        }
       }
     },
     "responses": {
@@ -6678,6 +9128,82 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ThrottleError"
+            }
+          }
+        }
+      },
+      "ContractUpgradeRequired": {
+        "description": "Legacy representation cannot truthfully encode this result or start new work. Upgrade to contract3. No selected rows/events or side effects are emitted.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "const": "contract_upgrade_required"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "headers": {
+          "X-Envai-Required-Contract-Version": {
+            "schema": {
+              "type": "string",
+              "const": "3"
+            }
+          }
+        }
+      },
+      "UnsupportedContractVersion": {
+        "description": "Unsupported, malformed or repeated selector. Rejected before side effects.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "const": "unsupported_contract_version"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         }

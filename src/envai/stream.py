@@ -15,6 +15,7 @@ from ._schema import strict_json
 from ._transport import delay
 from .errors import (
     CancelledError,
+    CompatibilityError,
     EnvaiError,
     ProtocolError,
     ReplayGapError,
@@ -35,6 +36,7 @@ class StreamState:
         max_duration: float | None = None,
         cancel: threading.Event | None = None,
         max_frame_bytes: int = 2 * 1024 * 1024,
+        max_snapshot_bytes: int = 64 * 1024 * 1024,
     ):
         if (
             not isinstance(after, int)
@@ -44,13 +46,17 @@ class StreamState:
             or (max_duration is not None and (not math.isfinite(max_duration) or max_duration <= 0))
         ):
             raise ValueError("Invalid stream bounds")
+        if type(max_snapshot_bytes) is not int or max_snapshot_bytes <= 0:
+            raise ValueError("max_snapshot_bytes must be positive")
         if not chat_id or chat_id in (".", ".."):
             raise ValueError("chat_id must be a nonempty opaque identifier")
         self.client, self.chat_id = client, chat_id
+        self.contract_version = client.contract_version
         self.last_seq = after
         self.max_reconnects, self.max_duration = max_reconnects, max_duration
         self.cancel = cancel or threading.Event()
         self.max_frame_bytes = max_frame_bytes
+        self.max_snapshot_bytes = max_snapshot_bytes
         self.closed = False
         self.live = False
         self.reconnects = 0
@@ -66,8 +72,8 @@ class StreamState:
         if self.max_duration is not None and time.monotonic() - self._started > self.max_duration:
             raise TransportError("Stream duration limit reached")
 
-    def _event(self, raw: str) -> Event | None:
-        event = parse_event(raw)
+    def _event(self, raw: str, *, snapshot: bool = False) -> Event | None:
+        event = parse_event(raw, contract_version=self.contract_version)
         if event.chat_id != self.chat_id:
             raise ProtocolError("SSE event belongs to a different chat", raw=event.raw)
         if event.type == "ping":
@@ -75,6 +81,10 @@ class StreamState:
             self.client._observe("stream.live", last_seq=self.last_seq)
             return event
         if event.seq <= self.last_seq:
+            if snapshot:
+                raise ProtocolError(
+                    "Legacy replay contains a duplicate or backwards sequence", raw=event.raw
+                )
             self.client._observe("stream.duplicate", seq=event.seq)
             return None
         if event.seq != self.last_seq + 1:
@@ -82,8 +92,32 @@ class StreamState:
         self._gap_pending = False
         return event
 
+    def _snapshot(self, body: bytes) -> list[Event]:
+        """Validate the entire finite legacy snapshot before exposing a prefix."""
+        decoder = SSEDecoder(self.max_frame_bytes)
+        frames = decoder.feed(body)
+        if decoder._data or decoder._line:
+            raise ProtocolError("Legacy replay snapshot ended in a partial frame")
+        decoder.finish()
+        before = self.last_seq
+        result = []
+        try:
+            for raw in frames:
+                event = self._event(raw, snapshot=True)
+                if event is not None:
+                    result.append(event)
+                    if event.type != "ping":
+                        self.last_seq = event.seq
+        finally:
+            self.last_seq = before
+        return result
+
     def _request(self):
-        headers = {**self.client._headers, "Accept": "text/event-stream"}
+        headers = {
+            **self.client._headers,
+            "Accept": "text/event-stream",
+            "X-Envai-Contract-Version": str(self.contract_version),
+        }
         timeout = self.client.stream_timeout
         if self.max_duration is not None:
             self._check()
@@ -95,7 +129,11 @@ class StreamState:
             )
         return dict(
             method="GET",
-            url=self.client.base_url + "/chats/" + quote(self.chat_id, safe="") + "/events",
+            url=self.client.base_url
+            + ("/atp/v3" if self.contract_version == 3 else "")
+            + "/chats/"
+            + quote(self.chat_id, safe="")
+            + "/events",
             params={"after": self.last_seq},
             headers=headers,
             timeout=timeout,
@@ -132,12 +170,15 @@ class StreamState:
 
     def _status(self, response: httpx.Response):
         self._retry_after = response.headers.get("retry-after")
+        if response.status_code in (404, 426):
+            raise CompatibilityError("Server cannot provide the selected ATP replay contract")
         if response.status_code != 200:
             try:
                 payload = strict_json(response.content)
             except (ValueError, UnicodeError):
                 payload = None
             raise from_response(response.status_code, payload, response.headers.get("x-request-id"))
+        self.client._acknowledge(response, self.contract_version)
         if (
             response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
             != "text/event-stream"
@@ -192,6 +233,18 @@ class EventStream(StreamState, Iterator[Event]):
                     if response.status_code != 200:
                         response.read()
                     self._status(response)
+                    if self.contract_version == 2:
+                        snapshot = bytearray()
+                        for chunk in response.iter_bytes():
+                            self._check()
+                            if self.closed:
+                                return
+                            snapshot.extend(chunk)
+                            if len(snapshot) > self.max_snapshot_bytes:
+                                raise ProtocolError("Legacy replay snapshot exceeded size limit")
+                        for historical in self._snapshot(bytes(snapshot)):
+                            yield historical
+                        return
                     decoder = SSEDecoder(self.max_frame_bytes)
                     for chunk in response.iter_bytes():
                         self._check()
@@ -259,6 +312,18 @@ class AsyncEventStream(StreamState, AsyncIterator[Event]):
                     if response.status_code != 200:
                         await response.aread()
                     self._status(response)
+                    if self.contract_version == 2:
+                        snapshot = bytearray()
+                        async for chunk in response.aiter_bytes():
+                            self._check()
+                            if self.closed:
+                                return
+                            snapshot.extend(chunk)
+                            if len(snapshot) > self.max_snapshot_bytes:
+                                raise ProtocolError("Legacy replay snapshot exceeded size limit")
+                        for historical in self._snapshot(bytes(snapshot)):
+                            yield historical
+                        return
                     decoder = SSEDecoder(self.max_frame_bytes)
                     async for chunk in response.aiter_bytes():
                         self._check()

@@ -1,0 +1,861 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Envai Wiki V1 public contracts",
+  "description": "Functional outcome, provider usage and inactive billing are independent. No private content or storage handles in these public metadata payloads.",
+  "$defs": {
+    "BillingState": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "inactive"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "CurrencyAmount": {
+      "type": "object",
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UsageCost": {
+      "type": "object",
+      "required": [
+        "status",
+        "basis",
+        "scope_status",
+        "revision",
+        "as_of",
+        "invocation_count",
+        "pending_invocation_count",
+        "totals",
+        "priced_subtotals"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "reported",
+            "calculated",
+            "mixed",
+            "none"
+          ]
+        },
+        "scope_status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totals": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CurrencyAmount"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "priced_subtotals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyAmount"
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "scope_status": {
+                "const": "closed"
+              },
+              "pending_invocation_count": {
+                "const": 0
+              },
+              "totals": {
+                "type": "array"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "totals": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ConversionState": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Sanitized stable conversion failure code; never a raw provider response or secret. Null when no failure is recorded.",
+          "pattern": "^[a-z][a-z0-9_]{0,119}$",
+          "maxLength": 120
+        },
+        "recoverable": {
+          "type": "boolean",
+          "description": "True only when an automatic technical recovery is durably scheduled and eligible: attempts remain and the source has not completed or been withdrawn. False for initial queued work, healthy running, terminal failures and exhausted retries."
+        },
+        "next_retry_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "Time of the scheduled automatic technical recovery when recoverable is true; otherwise null. Not an initial work schedule or an operator-repair promise."
+        }
+      },
+      "additionalProperties": true
+    },
+    "IndexingState": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending_conversion",
+            "pending",
+            "processed",
+            "withdrawn",
+            "failed"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "WikiSource": {
+      "type": "object",
+      "required": [
+        "file_id",
+        "workspace_id",
+        "original_name",
+        "mime_type",
+        "byte_size",
+        "lifecycle",
+        "source_revision",
+        "conversion",
+        "indexing",
+        "canonical_raw_path",
+        "billing",
+        "usage_cost",
+        "status_url"
+      ],
+      "properties": {
+        "file_id": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "original_name": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "uploaded",
+            "inbox",
+            "raw",
+            "outbox",
+            "deleting",
+            "deleted"
+          ]
+        },
+        "source_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conversion": {
+          "$ref": "#/$defs/ConversionState"
+        },
+        "indexing": {
+          "$ref": "#/$defs/IndexingState"
+        },
+        "canonical_raw_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
+        },
+        "status_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "BatchSizes": {
+      "type": "object",
+      "required": [
+        "inbox",
+        "outbox"
+      ],
+      "properties": {
+        "inbox": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "outbox": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "FileOutcome": {
+      "type": "object",
+      "required": [
+        "file_id",
+        "status",
+        "error_code"
+      ],
+      "properties": {
+        "file_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "withdrawn",
+            "failed"
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "PhaseResult": {
+      "type": "object",
+      "required": [
+        "status",
+        "selected",
+        "succeeded",
+        "withdrawn",
+        "failed",
+        "files"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed",
+            "skipped_empty"
+          ]
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "succeeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "withdrawn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileOutcome"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "WikiOperation": {
+      "type": "object",
+      "required": [
+        "operation_id",
+        "workspace_id",
+        "kind",
+        "status",
+        "phase",
+        "phases",
+        "started_at",
+        "finished_at",
+        "batch_sizes",
+        "billing",
+        "usage_cost"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "inbox",
+            "outbox",
+            "sync"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phases": {
+          "type": "object",
+          "properties": {
+            "inbox": {
+              "$ref": "#/$defs/PhaseResult"
+            },
+            "outbox": {
+              "$ref": "#/$defs/PhaseResult"
+            }
+          },
+          "additionalProperties": false
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "batch_sizes": {
+          "$ref": "#/$defs/BatchSizes"
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Category": {
+      "type": "object",
+      "required": [
+        "category_id",
+        "name",
+        "description"
+      ],
+      "properties": {
+        "category_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Categories": {
+      "type": "object",
+      "required": [
+        "categories",
+        "catalog_revision"
+      ],
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "catalog_revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "CatalogEntry": {
+      "type": "object",
+      "required": [
+        "entry_id",
+        "type",
+        "target_id",
+        "canonical_path",
+        "description",
+        "inserted_at"
+      ],
+      "properties": {
+        "entry_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "raw",
+            "artifact"
+          ]
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "canonical_path": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "inserted_at": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "IndexRange": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "CategoryIndex": {
+      "type": "object",
+      "required": [
+        "entries",
+        "total_count",
+        "returned_count",
+        "requested_range",
+        "actual_range",
+        "catalog_revision",
+        "is_complete"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CatalogEntry"
+          }
+        },
+        "total_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "returned_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requested_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actual_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "catalog_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "is_complete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "WikiFileProcessedEvent": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "operation_id",
+        "workspace_id",
+        "occurred_at",
+        "file_id",
+        "source_revision",
+        "canonical_raw_path",
+        "availability"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "const": "wiki.inbox.file.processed"
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "file_id": {
+          "type": "string"
+        },
+        "source_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "canonical_raw_path": {
+          "type": "string"
+        },
+        "availability": {
+          "const": "raw"
+        }
+      },
+      "additionalProperties": true
+    },
+    "WikiFileDeletedEvent": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "operation_id",
+        "workspace_id",
+        "occurred_at",
+        "file_id",
+        "source_revision",
+        "previous_canonical_raw_path",
+        "lifecycle"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "const": "wiki.outbox.file.deleted"
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "file_id": {
+          "type": "string"
+        },
+        "source_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "previous_canonical_raw_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lifecycle": {
+          "const": "deleted"
+        }
+      },
+      "additionalProperties": true
+    },
+    "WikiOperationEvent": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "operation_id",
+        "workspace_id",
+        "occurred_at",
+        "status",
+        "phases",
+        "finished_at",
+        "billing",
+        "usage_cost"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "enum": [
+            "wiki.inbox.completed",
+            "wiki.inbox.failed",
+            "wiki.outbox.completed",
+            "wiki.outbox.failed",
+            "wiki.sync.completed",
+            "wiki.sync.failed"
+          ]
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "phases": {
+          "type": "object",
+          "properties": {
+            "inbox": {
+              "$ref": "#/$defs/PhaseResult"
+            },
+            "outbox": {
+              "$ref": "#/$defs/PhaseResult"
+            }
+          },
+          "additionalProperties": false
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "wiki.inbox.completed",
+                  "wiki.outbox.completed",
+                  "wiki.sync.completed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "wiki.inbox.failed",
+                  "wiki.outbox.failed",
+                  "wiki.sync.failed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "WikiWebhookEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WikiFileProcessedEvent"
+        },
+        {
+          "$ref": "#/$defs/WikiFileDeletedEvent"
+        },
+        {
+          "$ref": "#/$defs/WikiOperationEvent"
+        }
+      ]
+    }
+  }
+}

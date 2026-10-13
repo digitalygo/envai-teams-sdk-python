@@ -1,0 +1,14 @@
+{
+  "schema": "UsageCost",
+  "data": {
+    "status": "complete",
+    "basis": "none",
+    "scope_status": "closed",
+    "revision": 1,
+    "as_of": "2026-10-13T16:00:00Z",
+    "invocation_count": 0,
+    "pending_invocation_count": 0,
+    "totals": [],
+    "priced_subtotals": []
+  }
+}

@@ -5,6 +5,7 @@ import threading
 
 import httpx
 import pytest
+from negotiated_transport import negotiated_transport
 
 from envai import AsyncEnvaiClient, EnvaiClient, RetryPolicy
 from envai.errors import (
@@ -33,7 +34,7 @@ async def test_stream_resume_duplicate_ping(valid_events, async_):
         )
 
     c = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "x", transport=httpx.MockTransport(handler), retry=RetryPolicy(base_delay=0)
+        "x", transport=negotiated_transport(handler), retry=RetryPolicy(base_delay=0)
     )
     stream = c.chats.events(events[0]["chat_id"])
     result = []
@@ -69,7 +70,7 @@ async def test_gap_recovery_and_failure(valid_events, async_):
             )
 
         c = (AsyncEnvaiClient if async_ else EnvaiClient)(
-            "x", transport=httpx.MockTransport(handler), retry=RetryPolicy(base_delay=0)
+            "x", transport=negotiated_transport(handler), retry=RetryPolicy(base_delay=0)
         )
         stream = c.chats.events(valid_events[1]["chat_id"])
         first = await anext(stream) if async_ else next(stream)
@@ -97,7 +98,7 @@ async def test_gap_recovery_and_failure(valid_events, async_):
 async def test_stream_stops(valid_events, async_, case):
     event = copy.deepcopy(valid_events[1])
     if case == "version":
-        event["v"] = 3
+        event["v"] = 4
     if case == "chat":
         event["chat_id"] = "cht_01ARZ3NDEKTSV4RRFFQ69G5FAA"
 
@@ -110,7 +111,7 @@ async def test_stream_stops(valid_events, async_, case):
             headers={"content-type": "text/plain" if case == "content" else "text/event-stream"},
         )
 
-    c = (AsyncEnvaiClient if async_ else EnvaiClient)("x", transport=httpx.MockTransport(handler))
+    c = (AsyncEnvaiClient if async_ else EnvaiClient)("x", transport=negotiated_transport(handler))
     cancel = threading.Event()
     stream = c.chats.events(valid_events[1]["chat_id"], max_reconnects=0, cancel=cancel)
     if case == "cancel":
@@ -164,7 +165,7 @@ async def test_matching_turn_helper_waits_ping(valid_events, async_):
             200, content=wire(events), headers={"content-type": "text/event-stream"}
         )
 
-    c = (AsyncEnvaiClient if async_ else EnvaiClient)("x", transport=httpx.MockTransport(handler))
+    c = (AsyncEnvaiClient if async_ else EnvaiClient)("x", transport=negotiated_transport(handler))
     result = (
         await c.chats.send_and_wait(valid_events[1]["chat_id"], "hi")
         if async_
@@ -182,7 +183,7 @@ async def test_matching_turn_helper_waits_ping(valid_events, async_):
 async def test_single_reader_and_context_cleanup(valid_events, async_):
     c = (AsyncEnvaiClient if async_ else EnvaiClient)(
         "x",
-        transport=httpx.MockTransport(
+        transport=negotiated_transport(
             lambda req: httpx.Response(
                 200, content=wire(valid_events[:2]), headers={"content-type": "text/event-stream"}
             )
@@ -217,7 +218,7 @@ async def test_async_task_cancel_releases_stream(valid_events):
 
     c = AsyncEnvaiClient(
         "x",
-        transport=httpx.MockTransport(
+        transport=negotiated_transport(
             lambda req: httpx.Response(
                 200, stream=Blocking(), headers={"content-type": "text/event-stream"}
             )
@@ -237,7 +238,7 @@ async def test_async_task_cancel_releases_stream(valid_events):
 def test_remaining_stream_budget_bounds_connection_and_backoff(valid_events):
     with EnvaiClient(
         "x",
-        transport=httpx.MockTransport(lambda r: httpx.Response(200)),
+        transport=negotiated_transport(lambda r: httpx.Response(200)),
         retry=RetryPolicy(max_delay=10),
     ) as client:
         stream = client.chats.events(valid_events[1]["chat_id"], max_duration=0.5)

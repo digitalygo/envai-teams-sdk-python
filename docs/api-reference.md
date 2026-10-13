@@ -1,6 +1,6 @@
 # Python API reference
 
-[README](../README.md) · [All 52 operations](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
+[README](../README.md) · [All 65 operations](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
 
 ## Services and primitives
 
@@ -24,8 +24,12 @@ Multipart inputs use HTTPX-style file tuples. Opening local files is an applicat
 
 ## Events and errors
 
-Typed event classes live in `envai.event_models`. Known events are checked against ATP v2 and their payload schemas; malformed known events raise `ProtocolError`. A valid additive type becomes `UnknownEvent` with original content preserved. Capabilities discovery is not a parser allowlist.
+Typed event classes live in `envai.event_models`. Known events are checked against their exact ATP2 numeric or ATP3 nullable payload schemas; malformed known events raise `ProtocolError`. A valid additive type becomes `UnknownEvent` with original content preserved. Capabilities discovery is not a parser allowlist.
 
 `EnvaiError` and subclasses expose `http_status`, `type`, `code`, `message`, `details`, and `request_id`. Branch on code/status. The exception string excludes potentially sensitive server details; explicit properties and `ProtocolError.raw` may still contain private content.
 
 [Transport configuration](getting-started.md#client-configuration) and [stream recovery](streaming.md) describe timeout and retry behavior. Mutation methods are sent once. Generated models and operation coverage do not imply every server feature is currently available; preserve 404/409/validation responses rather than treating them as success.
+
+## Wiki and contract selection
+
+See [Wiki V1](wiki.md) for typed upload-first sources, conversion diagnostics, runs, catalog GETs, exact-byte webhooks and durable application outbox. See [contract3 migration](migration-contract3.md) before upgrading. Both sync and async expose all65 documented operations, including explicit legacy read helpers.

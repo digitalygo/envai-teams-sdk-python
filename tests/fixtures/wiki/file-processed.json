@@ -1,0 +1,15 @@
+{
+  "schema": "WikiFileProcessedEvent",
+  "data": {
+    "schema_version": "1",
+    "event_id": "evt_01j5abcdefghjkmnpqrstvwxyz",
+    "event_type": "wiki.inbox.file.processed",
+    "operation_id": "wop_01j5abcdefghjkmnpqrstvwxyz",
+    "workspace_id": "wsp_01j5abcdefghjkmnpqrstvwxyz",
+    "occurred_at": "2026-10-13T16:00:00Z",
+    "file_id": "wsrc_01j5abcdefghjkmnpqrstvwxyz",
+    "source_revision": 3,
+    "canonical_raw_path": "raw/wsrc_01j5abcdefghjkmnpqrstvwxyz.md",
+    "availability": "raw"
+  }
+}

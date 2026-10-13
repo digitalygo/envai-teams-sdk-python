@@ -40,6 +40,8 @@ def snake(s):
 
 def field(s):
     result = re.sub(r"[^a-zA-Z0-9_]", "_", s).strip("_")
+    if "-" in s:
+        result = result.lower()
     return result + "_" if keyword.iskeyword(result) else result
 
 
@@ -53,7 +55,13 @@ def resolve(schema):
 def merge(schema):
     if "allOf" not in schema:
         return schema
-    merged = {"type": "object", "properties": {}, "required": []}
+    merged = {
+        **schema,
+        "type": "object",
+        "properties": dict(schema.get("properties", {})),
+        "required": list(schema.get("required", [])),
+    }
+    merged.pop("allOf", None)
     for part in schema["allOf"]:
         part = merge(resolve(part))
         merged["properties"].update(part.get("properties", {}))
@@ -69,6 +77,8 @@ def annotation(schema, name):
         return NAMES[("event:" if "/$defs/" in schema["$ref"] else "") + key]
     if "const" in schema:
         return f"Literal[{schema['const']!r}]"
+    if name == "CapabilitiesFeaturesItem":
+        return "str"
     if "enum" in schema:
         return "Literal[" + ", ".join(repr(x) for x in schema["enum"]) + "]"
     for union in ("anyOf", "oneOf"):
@@ -159,7 +169,8 @@ for path, entry in API["paths"].items():
         for p in op.get("parameters", []):
             if "$ref" in p:
                 p = API["components"]["parameters"][p["$ref"].rsplit("/", 1)[1]]
-            params.append(p)
+            if p["name"] != "X-Envai-Contract-Version":
+                params.append(p)
         request = op.get("requestBody", {})
         request_content = request.get("content", {})
         media = next(iter(request_content), None)
@@ -171,9 +182,11 @@ for path, entry in API["paths"].items():
         res = content.get(res_media, {}).get("schema")
         unwrapped = res
         unwrap = False
-        if res and "$ref" in res:
+        if res:
             resolved = resolve(res)
-            if set(resolved.get("properties", {})) == {"data"}:
+            if set(resolved.get("properties", {})) == {"data"} and "data" in resolved.get(
+                "required", []
+            ):
                 unwrapped = resolved["properties"]["data"]
                 unwrap = True
         response_type = (
@@ -230,6 +243,19 @@ GROUPS = {
         "restore": "restoreChat",
     },
     "completions": {"list": "listCompletions", "get": "getCompletion"},
+    "wiki": {
+        "upload": "uploadWikiSource",
+        "source": "getWikiSource",
+        "download": "downloadWikiSource",
+        "withdraw": "withdrawWikiSource",
+        "inbox": "createWikiInboxRun",
+        "outbox": "createWikiOutboxRun",
+        "sync": "createWikiSyncRun",
+        "operation": "getWikiOperation",
+        "categories": "listWikiCategories",
+        "category_index": "getWikiCategoryIndex",
+        "jwks": "getWikiWebhookJwks",
+    },
     "files": {
         "get": "indexWorkspaceFiles",
         "create": "createWorkspaceFile",
@@ -353,7 +379,7 @@ from .events import Event
 """
 event_names = {}
 for key in EVENTS["$defs"]:
-    if key in ("Envelope", "Event", "Agent", "Usage", "ToolKind"):
+    if key != "ping" and "." not in key:
         continue
     name = "".join(x.title() for x in key.split(".")) + "Event"
     event_names[key] = name
@@ -364,6 +390,11 @@ event_models += (
     + "".join(f"    {key!r}: {name},\n" for key, name in event_names.items())
     + "}\n"
 )
+
+# Request-inline models are discovered while generating methods above.
+models = header + "\n\n" + "\n\n\n".join(MODELS.values()) + "\n\n"
+models += "\n".join(k + " = " + v for k, v in ALIASES.items()) + "\n\n"
+models += "\n".join(k + ".model_rebuild()" for k in MODELS) + "\n"
 
 outputs = {
     "event_models.py": event_models,

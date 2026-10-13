@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Completion terminal metadata snapshot",
+  "$ref": "#/$defs/CompletionTerminalSnapshot",
+  "$defs": {
+    "BillingState": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "inactive"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "CurrencyAmount": {
+      "type": "object",
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UsageCost": {
+      "type": "object",
+      "required": [
+        "status",
+        "basis",
+        "scope_status",
+        "revision",
+        "as_of",
+        "invocation_count",
+        "pending_invocation_count",
+        "totals",
+        "priced_subtotals"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "reported",
+            "calculated",
+            "mixed",
+            "none"
+          ]
+        },
+        "scope_status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totals": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CurrencyAmount"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "priced_subtotals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyAmount"
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "scope_status": {
+                "const": "closed"
+              },
+              "pending_invocation_count": {
+                "const": 0
+              },
+              "totals": {
+                "type": "array"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "totals": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CompletionTerminalSnapshotUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sprite_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sprite_ram_gb_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
+        }
+      }
+    },
+    "CompletionTerminalSnapshot": {
+      "type": "object",
+      "required": [
+        "event_id",
+        "occurred_at",
+        "event_type",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Immutable metadata-only terminal journal snapshot. Not a replayable ATP envelope and contains no response text. Missing/null for legacy turns. Late provider-cost reconciliation changes current completion usage_cost only.",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "event_type": {
+          "enum": [
+            "turn.completed",
+            "turn.failed",
+            "turn.cancelled"
+          ]
+        },
+        "data": {
+          "type": "object",
+          "required": [
+            "turn_id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "turn_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "usage": {
+              "$ref": "#/$defs/CompletionTerminalSnapshotUsage"
+            },
+            "cost": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "finish_reason": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string",
+              "description": "Sanitized constant diagnostic; never assistant response text."
+            },
+            "chat_usage": {
+              "$ref": "#/$defs/CompletionTerminalSnapshotChatUsage"
+            },
+            "chat_cost": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "Frozen chat lifetime USD cost, mirroring chat_usage.cost_usd; null when incomplete or unknown."
+            }
+          }
+        },
+        "v": {
+          "type": "integer",
+          "enum": [
+            2,
+            3
+          ],
+          "description": "Original immutable terminal wire version; absent only on pre-version journal records."
+        },
+        "accepted_protocol_version": {
+          "type": "integer",
+          "enum": [
+            2,
+            3
+          ],
+          "description": "Version accepted before provider work. A recovered unknown-cost legacy turn can emit a v3 failure without rewriting its original acceptance."
+        }
+      }
+    },
+    "CompletionTerminalSnapshotChatUsage": {
+      "type": "object",
+      "description": "Chat lifetime usage frozen with this terminal snapshot; the ATP Usage fields and nullable legacy USD cost. Omitted by older recovery snapshots.",
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "cost_usd",
+        "duration_ms"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Input tokens consumed."
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Output tokens produced."
+        },
+        "cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Legacy provider USD cost; null when unknown. Authoritative usage_cost preserves per-currency decimal totals and provenance; no billing."
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Wall clock duration of the work in milliseconds."
+        },
+        "sprite_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Time spent in the ephemeral Sprite sandbox, 0 when no code tool ran."
+        },
+        "sprite_ram_gb_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sprite RAM billed in GB-milliseconds, 0 when no code tool ran."
+        },
+        "tool_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tool invocations counted in the usage window."
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 import rfc8785
+from negotiated_transport import negotiated_transport
 
 from envai import (
     AsyncClientToolRunner,
@@ -161,7 +162,7 @@ def setup_sync(tool_event, handler=None, transport=None, schema=None, timeout=12
         sent.append(req)
         return httpx.Response(204)
 
-    client = EnvaiClient("x", transport=httpx.MockTransport(transport or http))
+    client = EnvaiClient("x", transport=negotiated_transport(transport or http))
     registry = ClientToolRegistry()
     if handler:
         registry.register(
@@ -293,7 +294,7 @@ async def setup_async(tool_event, handler=None, schema=None, timeout=120, fetch=
     async def jwks():
         return copy.deepcopy(V["jwks"])
 
-    c = AsyncEnvaiClient("x", transport=httpx.MockTransport(http or request))
+    c = AsyncEnvaiClient("x", transport=negotiated_transport(http or request))
     registry = ClientToolRegistry()
     if handler:
         registry.register(
@@ -617,7 +618,7 @@ async def test_default_verifier_fetches_public_origin_jwks(tool_event, async_):
         )
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "secret", base_url="https://example.test", transport=httpx.MockTransport(http)
+        "secret", base_url="https://example.test", transport=negotiated_transport(http)
     )
     registry = ClientToolRegistry()
     if async_:

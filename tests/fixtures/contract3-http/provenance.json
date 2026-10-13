@@ -1,0 +1,11 @@
+{
+  "backend_commit": "c27963d0848540679bccf30d2aeab354097b1a38",
+  "origin": "Synthetic authenticated control-plane HTTP-kernel integration test; not production data or provider traffic",
+  "sha256": {
+    "completion-pending.json": "14af6996d0e26dea3d64cff3d5d9971c4244a5d63a20189cef9423765a133dfa",
+    "source.json": "178b27191630e9435d534bcf6a372db3cea055a3ff605d504a12003d1b5ff6ea",
+    "legacy-completion.json": "9969ddac44f2963a145024705270cd6c6eda2c05255d49c91676db725c3ee052",
+    "source-headers.json": "4b37ab5e72bcfe553982e8f8329c721052c5d3f5de45cbe95fe0682628b04eb9",
+    "completion-headers.json": "4b37ab5e72bcfe553982e8f8329c721052c5d3f5de45cbe95fe0682628b04eb9"
+  }
+}

@@ -1,0 +1,111 @@
+"""Upload-first Wiki V1 services; GET catalog reads are exhaustive and deterministic.
+
+QUERY/artifact writes are internal actor capabilities, not public HTTP endpoints.
+"""
+
+from __future__ import annotations
+
+import mimetypes
+from pathlib import Path
+from typing import Any
+
+from . import _generated as generated
+from ._transport import RequestOptions
+from .models import WikiSource
+
+MAX_SOURCE_BYTES = 1_000_000_000
+
+
+def _validate_upload(files: Any) -> None:
+    values = dict(files)
+    if set(values) != {"file"}:
+        raise ValueError("Wiki upload requires exactly one file")
+    value = values["file"]
+    content = value[1] if isinstance(value, tuple) else value
+    if isinstance(content, (bytes, str)):
+        size = len(content.encode() if isinstance(content, str) else content)
+    else:
+        try:
+            position = content.tell()
+            content.seek(0, 2)
+            size = content.tell()
+            content.seek(position)
+        except (AttributeError, OSError) as exc:
+            raise ValueError("Upload needs bytes or a seekable binary file") from exc
+    if size > MAX_SOURCE_BYTES:
+        raise ValueError("Wiki original exceeds 1,000,000,000 bytes")
+
+
+def _upload(path: str | Path):
+    file = Path(path).open("rb")
+    import os
+
+    if os.fstat(file.fileno()).st_size > MAX_SOURCE_BYTES:
+        file.close()
+        raise ValueError("Wiki original exceeds 1,000,000,000 bytes")
+    return file
+
+
+def _index_options(options: dict[str, Any]) -> None:
+    start, stop, all_ = options.get("from_"), options.get("to"), options.get("all")
+    if all_ is True:
+        if start is not None or stop is not None:
+            raise ValueError("Choose all=True or an inclusive range")
+    elif type(start) is not int or type(stop) is not int or not 1 <= start <= stop:
+        raise ValueError("Provide all=True or 1 <= from_ <= to")
+
+
+class WikiService(generated.WikiService):
+    def upload_file(
+        self,
+        workspace_id: str,
+        path: str | Path,
+        *,
+        idempotency_key: str,
+        request_options: RequestOptions | None = None,
+    ) -> WikiSource:
+        with _upload(path) as file:
+            return self.upload(
+                workspace_id,
+                files={
+                    "file": (
+                        Path(path).name,
+                        file,
+                        mimetypes.guess_type(str(path))[0] or "application/octet-stream",
+                    )
+                },
+                idempotency_key=idempotency_key,
+                request_options=request_options,
+            )
+
+    def category_index(self, workspace_id: str, category_id: str, **options: Any):
+        _index_options(options)
+        return super().category_index(workspace_id, category_id, **options)
+
+
+class AsyncWikiService(generated.AsyncWikiService):
+    async def upload_file(
+        self,
+        workspace_id: str,
+        path: str | Path,
+        *,
+        idempotency_key: str,
+        request_options: RequestOptions | None = None,
+    ) -> WikiSource:
+        with _upload(path) as file:
+            return await self.upload(
+                workspace_id,
+                files={
+                    "file": (
+                        Path(path).name,
+                        file,
+                        mimetypes.guess_type(str(path))[0] or "application/octet-stream",
+                    )
+                },
+                idempotency_key=idempotency_key,
+                request_options=request_options,
+            )
+
+    async def category_index(self, workspace_id: str, category_id: str, **options: Any):
+        _index_options(options)
+        return await super().category_index(workspace_id, category_id, **options)

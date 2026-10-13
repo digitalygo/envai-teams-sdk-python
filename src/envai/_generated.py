@@ -7,6 +7,9 @@ from ._transport import RequestOptions
 RESPONSE_TYPES = {
     'Agent': models.Agent,
     'Capabilities': models.Capabilities,
+    'CapabilitiesLegacy': models.CapabilitiesLegacy,
+    'Categories': models.Categories,
+    'CategoryIndex': models.CategoryIndex,
     'Chat': models.Chat,
     'ChatForked': models.ChatForked,
     'ChatMessageAccepted': models.ChatMessageAccepted,
@@ -26,6 +29,8 @@ RESPONSE_TYPES = {
     'TurnAccepted': models.TurnAccepted,
     'UserTool': models.UserTool,
     'WebhookOk': models.WebhookOk,
+    'WikiOperation': models.WikiOperation,
+    'WikiSource': models.WikiSource,
     'Workspace': models.Workspace,
     'WorkspaceFile': models.WorkspaceFile,
     'bytes': bytes,
@@ -41,35 +46,35 @@ RESPONSE_TYPES = {
 class Operations:
     _request: Any
     def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
-        """sendChatMessage: POST /chats/{chat_id}/messages."""
+        """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def cancel_chat_turn(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """cancelChatTurn: POST /chats/{chat_id}/cancel."""
+        """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
         return self._request('cancelChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     def steer_chat_turn(self, chat_id: str, *, body: models.SteerRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """steerChatTurn: POST /chats/{chat_id}/steer."""
+        """steerChatTurn: POST /atp/v3/chats/{chat_id}/steer."""
         return self._request('steerChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def resolve_chat_tool(self, chat_id: str, *, body: models.ToolOutputRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatTool: POST /chats/{chat_id}/tool-output."""
+        """resolveChatTool: POST /atp/v3/chats/{chat_id}/tool-output."""
         return self._request('resolveChatTool', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def resolve_chat_approval(self, chat_id: str, *, body: models.ApprovalRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatApproval: POST /chats/{chat_id}/approval."""
+        """resolveChatApproval: POST /atp/v3/chats/{chat_id}/approval."""
         return self._request('resolveChatApproval', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def fork_chat(self, chat_id: str, *, body: models.ForkChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatForked:
-        """forkChat: POST /chats/{chat_id}/fork."""
+        """forkChat: POST /atp/v3/chats/{chat_id}/fork."""
         return self._request('forkChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def restore_chat(self, chat_id: str, *, body: models.RestoreChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.RestoreChatAccepted:
-        """restoreChat: POST /chats/{chat_id}/restore."""
+        """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return self._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def get_capabilities(self, *, request_options: RequestOptions | None = None) -> models.Capabilities:
-        """getCapabilities: GET /capabilities."""
+        """getCapabilities: GET /atp/v3/capabilities."""
         return self._request('getCapabilities', path_params={}, query={}, headers={}, request_options=request_options)
 
     def health_check(self, *, request_options: RequestOptions | None = None) -> models.HealthCheckResponse:
@@ -240,9 +245,57 @@ class Operations:
         """downloadArtifact: GET /artifacts/download."""
         return self._request('downloadArtifact', path_params={}, query={'generation': generation, 'artifact': artifact, 'expires': expires, 'signature': signature}, headers={}, request_options=request_options)
 
-    def handle_provider_webhook(self, provider: str, *, body: models.ProviderWebhookPayload | dict[str, Any] | None = None, callback_token: str | None = None, webhook_id: str | None = None, webhook_timestamp: str | None = None, webhook_signature: str | None = None, X_Fal_Webhook_Request_Id: str | None = None, X_Fal_Webhook_User_Id: str | None = None, X_Fal_Webhook_Timestamp: str | None = None, X_Fal_Webhook_Signature: str | None = None, X_BFL_Signature: str | None = None, request_options: RequestOptions | None = None) -> models.WebhookOk:
+    def handle_provider_webhook(self, provider: str, *, body: models.ProviderWebhookPayload | dict[str, Any] | None = None, callback_token: str | None = None, webhook_id: str | None = None, webhook_timestamp: str | None = None, webhook_signature: str | None = None, x_fal_webhook_request_id: str | None = None, x_fal_webhook_user_id: str | None = None, x_fal_webhook_timestamp: str | None = None, x_fal_webhook_signature: str | None = None, x_bfl_signature: str | None = None, request_options: RequestOptions | None = None) -> models.WebhookOk:
         """handleProviderWebhook: POST /webhooks/providers/{provider}."""
-        return self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': X_Fal_Webhook_Request_Id, 'X-Fal-Webhook-User-Id': X_Fal_Webhook_User_Id, 'X-Fal-Webhook-Timestamp': X_Fal_Webhook_Timestamp, 'X-Fal-Webhook-Signature': X_Fal_Webhook_Signature, 'X-BFL-Signature': X_BFL_Signature}, request_options=request_options, body=body)
+        return self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': x_fal_webhook_request_id, 'X-Fal-Webhook-User-Id': x_fal_webhook_user_id, 'X-Fal-Webhook-Timestamp': x_fal_webhook_timestamp, 'X-Fal-Webhook-Signature': x_fal_webhook_signature, 'X-BFL-Signature': x_bfl_signature}, request_options=request_options, body=body)
+
+    def upload_wiki_source(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
+        return self._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    def get_wiki_source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """getWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}."""
+        return self._request('getWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    def download_wiki_source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> bytes:
+        """downloadWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}/download."""
+        return self._request('downloadWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    def withdraw_wiki_source(self, workspace_id: str, *, body: models.WithdrawWikiSourceBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.WikiSource:
+        """withdrawWikiSource: POST /workspaces/{workspace_id}/wiki/outbox/files."""
+        return self._request('withdrawWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def create_wiki_inbox_run(self, workspace_id: str, *, body: models.CreateWikiInboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiInboxRun: POST /workspaces/{workspace_id}/wiki/inbox/runs."""
+        return self._request('createWikiInboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def create_wiki_outbox_run(self, workspace_id: str, *, body: models.CreateWikiOutboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiOutboxRun: POST /workspaces/{workspace_id}/wiki/outbox/runs."""
+        return self._request('createWikiOutboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def create_wiki_sync_run(self, workspace_id: str, *, body: models.CreateWikiSyncRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiSyncRun: POST /workspaces/{workspace_id}/wiki/syncs."""
+        return self._request('createWikiSyncRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def get_wiki_operation(self, workspace_id: str, operation_id: str, *, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """getWikiOperation: GET /workspaces/{workspace_id}/wiki/operations/{operation_id}."""
+        return self._request('getWikiOperation', path_params={'workspace_id': workspace_id, 'operation_id': operation_id}, query={}, headers={}, request_options=request_options)
+
+    def list_wiki_categories(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Categories:
+        """listWikiCategories: GET /workspaces/{workspace_id}/wiki/categories."""
+        return self._request('listWikiCategories', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
+    def get_wiki_category_index(self, workspace_id: str, category_id: str, *, from_: int | None = None, to: int | None = None, all: bool | None = None, type: Literal['raw', 'artifact'] | None = None, catalog_revision: int | None = None, request_options: RequestOptions | None = None) -> models.CategoryIndex:
+        """getWikiCategoryIndex: GET /workspaces/{workspace_id}/wiki/categories/{category_id}/index."""
+        return self._request('getWikiCategoryIndex', path_params={'workspace_id': workspace_id, 'category_id': category_id}, query={'from': from_, 'to': to, 'all': all, 'type': type, 'catalog_revision': catalog_revision}, headers={}, request_options=request_options)
+
+    def get_wiki_webhook_jwks(self, *, request_options: RequestOptions | None = None) -> models.JwksDocument:
+        """getWikiWebhookJwks: GET /.well-known/wiki-webhook-jwks.json."""
+        return self._request('getWikiWebhookJwks', path_params={}, query={}, headers={}, request_options=request_options)
+
+    def get_capabilities_legacy(self, *, request_options: RequestOptions | None = None) -> models.CapabilitiesLegacy:
+        """getCapabilitiesLegacy: GET /capabilities."""
+        return self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
 
 
 class WorkspacesService:
@@ -308,31 +361,31 @@ class ChatsService:
         return self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
-        """sendChatMessage: POST /chats/{chat_id}/messages."""
+        """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def cancel(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """cancelChatTurn: POST /chats/{chat_id}/cancel."""
+        """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
         return self._client._request('cancelChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     def steer(self, chat_id: str, *, body: models.SteerRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """steerChatTurn: POST /chats/{chat_id}/steer."""
+        """steerChatTurn: POST /atp/v3/chats/{chat_id}/steer."""
         return self._client._request('steerChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def submit_tool_output(self, chat_id: str, *, body: models.ToolOutputRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatTool: POST /chats/{chat_id}/tool-output."""
+        """resolveChatTool: POST /atp/v3/chats/{chat_id}/tool-output."""
         return self._client._request('resolveChatTool', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def submit_approval(self, chat_id: str, *, body: models.ApprovalRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatApproval: POST /chats/{chat_id}/approval."""
+        """resolveChatApproval: POST /atp/v3/chats/{chat_id}/approval."""
         return self._client._request('resolveChatApproval', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def fork(self, chat_id: str, *, body: models.ForkChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatForked:
-        """forkChat: POST /chats/{chat_id}/fork."""
+        """forkChat: POST /atp/v3/chats/{chat_id}/fork."""
         return self._client._request('forkChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def restore(self, chat_id: str, *, body: models.RestoreChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.RestoreChatAccepted:
-        """restoreChat: POST /chats/{chat_id}/restore."""
+        """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
 
@@ -347,6 +400,55 @@ class CompletionsService:
     def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return self._client._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
+
+
+class WikiService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    def upload(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
+        return self._client._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    def source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """getWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}."""
+        return self._client._request('getWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    def download(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> bytes:
+        """downloadWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}/download."""
+        return self._client._request('downloadWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    def withdraw(self, workspace_id: str, *, body: models.WithdrawWikiSourceBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.WikiSource:
+        """withdrawWikiSource: POST /workspaces/{workspace_id}/wiki/outbox/files."""
+        return self._client._request('withdrawWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def inbox(self, workspace_id: str, *, body: models.CreateWikiInboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiInboxRun: POST /workspaces/{workspace_id}/wiki/inbox/runs."""
+        return self._client._request('createWikiInboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def outbox(self, workspace_id: str, *, body: models.CreateWikiOutboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiOutboxRun: POST /workspaces/{workspace_id}/wiki/outbox/runs."""
+        return self._client._request('createWikiOutboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def sync(self, workspace_id: str, *, body: models.CreateWikiSyncRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiSyncRun: POST /workspaces/{workspace_id}/wiki/syncs."""
+        return self._client._request('createWikiSyncRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    def operation(self, workspace_id: str, operation_id: str, *, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """getWikiOperation: GET /workspaces/{workspace_id}/wiki/operations/{operation_id}."""
+        return self._client._request('getWikiOperation', path_params={'workspace_id': workspace_id, 'operation_id': operation_id}, query={}, headers={}, request_options=request_options)
+
+    def categories(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Categories:
+        """listWikiCategories: GET /workspaces/{workspace_id}/wiki/categories."""
+        return self._client._request('listWikiCategories', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
+    def category_index(self, workspace_id: str, category_id: str, *, from_: int | None = None, to: int | None = None, all: bool | None = None, type: Literal['raw', 'artifact'] | None = None, catalog_revision: int | None = None, request_options: RequestOptions | None = None) -> models.CategoryIndex:
+        """getWikiCategoryIndex: GET /workspaces/{workspace_id}/wiki/categories/{category_id}/index."""
+        return self._client._request('getWikiCategoryIndex', path_params={'workspace_id': workspace_id, 'category_id': category_id}, query={'from': from_, 'to': to, 'all': all, 'type': type, 'catalog_revision': catalog_revision}, headers={}, request_options=request_options)
+
+    def jwks(self, *, request_options: RequestOptions | None = None) -> models.JwksDocument:
+        """getWikiWebhookJwks: GET /.well-known/wiki-webhook-jwks.json."""
+        return self._client._request('getWikiWebhookJwks', path_params={}, query={}, headers={}, request_options=request_options)
 
 
 class FilesService:
@@ -484,42 +586,42 @@ class CapabilitiesService:
         self._client = client
 
     def get(self, *, request_options: RequestOptions | None = None) -> models.Capabilities:
-        """getCapabilities: GET /capabilities."""
+        """getCapabilities: GET /atp/v3/capabilities."""
         return self._client._request('getCapabilities', path_params={}, query={}, headers={}, request_options=request_options)
 
 
 class AsyncOperations:
     _request: Any
     async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
-        """sendChatMessage: POST /chats/{chat_id}/messages."""
+        """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return await self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def cancel_chat_turn(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """cancelChatTurn: POST /chats/{chat_id}/cancel."""
+        """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
         return await self._request('cancelChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     async def steer_chat_turn(self, chat_id: str, *, body: models.SteerRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """steerChatTurn: POST /chats/{chat_id}/steer."""
+        """steerChatTurn: POST /atp/v3/chats/{chat_id}/steer."""
         return await self._request('steerChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def resolve_chat_tool(self, chat_id: str, *, body: models.ToolOutputRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatTool: POST /chats/{chat_id}/tool-output."""
+        """resolveChatTool: POST /atp/v3/chats/{chat_id}/tool-output."""
         return await self._request('resolveChatTool', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def resolve_chat_approval(self, chat_id: str, *, body: models.ApprovalRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatApproval: POST /chats/{chat_id}/approval."""
+        """resolveChatApproval: POST /atp/v3/chats/{chat_id}/approval."""
         return await self._request('resolveChatApproval', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def fork_chat(self, chat_id: str, *, body: models.ForkChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatForked:
-        """forkChat: POST /chats/{chat_id}/fork."""
+        """forkChat: POST /atp/v3/chats/{chat_id}/fork."""
         return await self._request('forkChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def restore_chat(self, chat_id: str, *, body: models.RestoreChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.RestoreChatAccepted:
-        """restoreChat: POST /chats/{chat_id}/restore."""
+        """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return await self._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def get_capabilities(self, *, request_options: RequestOptions | None = None) -> models.Capabilities:
-        """getCapabilities: GET /capabilities."""
+        """getCapabilities: GET /atp/v3/capabilities."""
         return await self._request('getCapabilities', path_params={}, query={}, headers={}, request_options=request_options)
 
     async def health_check(self, *, request_options: RequestOptions | None = None) -> models.HealthCheckResponse:
@@ -690,9 +792,57 @@ class AsyncOperations:
         """downloadArtifact: GET /artifacts/download."""
         return await self._request('downloadArtifact', path_params={}, query={'generation': generation, 'artifact': artifact, 'expires': expires, 'signature': signature}, headers={}, request_options=request_options)
 
-    async def handle_provider_webhook(self, provider: str, *, body: models.ProviderWebhookPayload | dict[str, Any] | None = None, callback_token: str | None = None, webhook_id: str | None = None, webhook_timestamp: str | None = None, webhook_signature: str | None = None, X_Fal_Webhook_Request_Id: str | None = None, X_Fal_Webhook_User_Id: str | None = None, X_Fal_Webhook_Timestamp: str | None = None, X_Fal_Webhook_Signature: str | None = None, X_BFL_Signature: str | None = None, request_options: RequestOptions | None = None) -> models.WebhookOk:
+    async def handle_provider_webhook(self, provider: str, *, body: models.ProviderWebhookPayload | dict[str, Any] | None = None, callback_token: str | None = None, webhook_id: str | None = None, webhook_timestamp: str | None = None, webhook_signature: str | None = None, x_fal_webhook_request_id: str | None = None, x_fal_webhook_user_id: str | None = None, x_fal_webhook_timestamp: str | None = None, x_fal_webhook_signature: str | None = None, x_bfl_signature: str | None = None, request_options: RequestOptions | None = None) -> models.WebhookOk:
         """handleProviderWebhook: POST /webhooks/providers/{provider}."""
-        return await self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': X_Fal_Webhook_Request_Id, 'X-Fal-Webhook-User-Id': X_Fal_Webhook_User_Id, 'X-Fal-Webhook-Timestamp': X_Fal_Webhook_Timestamp, 'X-Fal-Webhook-Signature': X_Fal_Webhook_Signature, 'X-BFL-Signature': X_BFL_Signature}, request_options=request_options, body=body)
+        return await self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': x_fal_webhook_request_id, 'X-Fal-Webhook-User-Id': x_fal_webhook_user_id, 'X-Fal-Webhook-Timestamp': x_fal_webhook_timestamp, 'X-Fal-Webhook-Signature': x_fal_webhook_signature, 'X-BFL-Signature': x_bfl_signature}, request_options=request_options, body=body)
+
+    async def upload_wiki_source(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
+        return await self._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    async def get_wiki_source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """getWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}."""
+        return await self._request('getWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    async def download_wiki_source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> bytes:
+        """downloadWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}/download."""
+        return await self._request('downloadWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    async def withdraw_wiki_source(self, workspace_id: str, *, body: models.WithdrawWikiSourceBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.WikiSource:
+        """withdrawWikiSource: POST /workspaces/{workspace_id}/wiki/outbox/files."""
+        return await self._request('withdrawWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def create_wiki_inbox_run(self, workspace_id: str, *, body: models.CreateWikiInboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiInboxRun: POST /workspaces/{workspace_id}/wiki/inbox/runs."""
+        return await self._request('createWikiInboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def create_wiki_outbox_run(self, workspace_id: str, *, body: models.CreateWikiOutboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiOutboxRun: POST /workspaces/{workspace_id}/wiki/outbox/runs."""
+        return await self._request('createWikiOutboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def create_wiki_sync_run(self, workspace_id: str, *, body: models.CreateWikiSyncRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiSyncRun: POST /workspaces/{workspace_id}/wiki/syncs."""
+        return await self._request('createWikiSyncRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def get_wiki_operation(self, workspace_id: str, operation_id: str, *, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """getWikiOperation: GET /workspaces/{workspace_id}/wiki/operations/{operation_id}."""
+        return await self._request('getWikiOperation', path_params={'workspace_id': workspace_id, 'operation_id': operation_id}, query={}, headers={}, request_options=request_options)
+
+    async def list_wiki_categories(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Categories:
+        """listWikiCategories: GET /workspaces/{workspace_id}/wiki/categories."""
+        return await self._request('listWikiCategories', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
+    async def get_wiki_category_index(self, workspace_id: str, category_id: str, *, from_: int | None = None, to: int | None = None, all: bool | None = None, type: Literal['raw', 'artifact'] | None = None, catalog_revision: int | None = None, request_options: RequestOptions | None = None) -> models.CategoryIndex:
+        """getWikiCategoryIndex: GET /workspaces/{workspace_id}/wiki/categories/{category_id}/index."""
+        return await self._request('getWikiCategoryIndex', path_params={'workspace_id': workspace_id, 'category_id': category_id}, query={'from': from_, 'to': to, 'all': all, 'type': type, 'catalog_revision': catalog_revision}, headers={}, request_options=request_options)
+
+    async def get_wiki_webhook_jwks(self, *, request_options: RequestOptions | None = None) -> models.JwksDocument:
+        """getWikiWebhookJwks: GET /.well-known/wiki-webhook-jwks.json."""
+        return await self._request('getWikiWebhookJwks', path_params={}, query={}, headers={}, request_options=request_options)
+
+    async def get_capabilities_legacy(self, *, request_options: RequestOptions | None = None) -> models.CapabilitiesLegacy:
+        """getCapabilitiesLegacy: GET /capabilities."""
+        return await self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
 
 
 class AsyncWorkspacesService:
@@ -758,31 +908,31 @@ class AsyncChatsService:
         return await self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     async def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
-        """sendChatMessage: POST /chats/{chat_id}/messages."""
+        """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return await self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def cancel(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """cancelChatTurn: POST /chats/{chat_id}/cancel."""
+        """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
         return await self._client._request('cancelChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     async def steer(self, chat_id: str, *, body: models.SteerRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TurnAccepted:
-        """steerChatTurn: POST /chats/{chat_id}/steer."""
+        """steerChatTurn: POST /atp/v3/chats/{chat_id}/steer."""
         return await self._client._request('steerChatTurn', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def submit_tool_output(self, chat_id: str, *, body: models.ToolOutputRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatTool: POST /chats/{chat_id}/tool-output."""
+        """resolveChatTool: POST /atp/v3/chats/{chat_id}/tool-output."""
         return await self._client._request('resolveChatTool', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def submit_approval(self, chat_id: str, *, body: models.ApprovalRequest | dict[str, Any], request_options: RequestOptions | None = None) -> None:
-        """resolveChatApproval: POST /chats/{chat_id}/approval."""
+        """resolveChatApproval: POST /atp/v3/chats/{chat_id}/approval."""
         return await self._client._request('resolveChatApproval', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def fork(self, chat_id: str, *, body: models.ForkChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatForked:
-        """forkChat: POST /chats/{chat_id}/fork."""
+        """forkChat: POST /atp/v3/chats/{chat_id}/fork."""
         return await self._client._request('forkChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def restore(self, chat_id: str, *, body: models.RestoreChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.RestoreChatAccepted:
-        """restoreChat: POST /chats/{chat_id}/restore."""
+        """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return await self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
 
@@ -797,6 +947,55 @@ class AsyncCompletionsService:
     async def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return await self._client._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
+
+
+class AsyncWikiService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def upload(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
+        return await self._client._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    async def source(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> models.WikiSource:
+        """getWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}."""
+        return await self._client._request('getWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    async def download(self, workspace_id: str, file_id: str, *, request_options: RequestOptions | None = None) -> bytes:
+        """downloadWikiSource: GET /workspaces/{workspace_id}/files/sources/{file_id}/download."""
+        return await self._client._request('downloadWikiSource', path_params={'workspace_id': workspace_id, 'file_id': file_id}, query={}, headers={}, request_options=request_options)
+
+    async def withdraw(self, workspace_id: str, *, body: models.WithdrawWikiSourceBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.WikiSource:
+        """withdrawWikiSource: POST /workspaces/{workspace_id}/wiki/outbox/files."""
+        return await self._client._request('withdrawWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def inbox(self, workspace_id: str, *, body: models.CreateWikiInboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiInboxRun: POST /workspaces/{workspace_id}/wiki/inbox/runs."""
+        return await self._client._request('createWikiInboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def outbox(self, workspace_id: str, *, body: models.CreateWikiOutboxRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiOutboxRun: POST /workspaces/{workspace_id}/wiki/outbox/runs."""
+        return await self._client._request('createWikiOutboxRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def sync(self, workspace_id: str, *, body: models.CreateWikiSyncRunBody | dict[str, Any], idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """createWikiSyncRun: POST /workspaces/{workspace_id}/wiki/syncs."""
+        return await self._client._request('createWikiSyncRun', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
+
+    async def operation(self, workspace_id: str, operation_id: str, *, request_options: RequestOptions | None = None) -> models.WikiOperation:
+        """getWikiOperation: GET /workspaces/{workspace_id}/wiki/operations/{operation_id}."""
+        return await self._client._request('getWikiOperation', path_params={'workspace_id': workspace_id, 'operation_id': operation_id}, query={}, headers={}, request_options=request_options)
+
+    async def categories(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Categories:
+        """listWikiCategories: GET /workspaces/{workspace_id}/wiki/categories."""
+        return await self._client._request('listWikiCategories', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
+    async def category_index(self, workspace_id: str, category_id: str, *, from_: int | None = None, to: int | None = None, all: bool | None = None, type: Literal['raw', 'artifact'] | None = None, catalog_revision: int | None = None, request_options: RequestOptions | None = None) -> models.CategoryIndex:
+        """getWikiCategoryIndex: GET /workspaces/{workspace_id}/wiki/categories/{category_id}/index."""
+        return await self._client._request('getWikiCategoryIndex', path_params={'workspace_id': workspace_id, 'category_id': category_id}, query={'from': from_, 'to': to, 'all': all, 'type': type, 'catalog_revision': catalog_revision}, headers={}, request_options=request_options)
+
+    async def jwks(self, *, request_options: RequestOptions | None = None) -> models.JwksDocument:
+        """getWikiWebhookJwks: GET /.well-known/wiki-webhook-jwks.json."""
+        return await self._client._request('getWikiWebhookJwks', path_params={}, query={}, headers={}, request_options=request_options)
 
 
 class AsyncFilesService:
@@ -934,6 +1133,6 @@ class AsyncCapabilitiesService:
         self._client = client
 
     async def get(self, *, request_options: RequestOptions | None = None) -> models.Capabilities:
-        """getCapabilities: GET /capabilities."""
+        """getCapabilities: GET /atp/v3/capabilities."""
         return await self._client._request('getCapabilities', path_params={}, query={}, headers={}, request_options=request_options)
 

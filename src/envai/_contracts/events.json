@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Envai AaaS Agent Team Protocol events",
-  "description": "JSON Schema for the Agent Team Protocol (ATP) event stream. Source of truth for the event envelope and every event family, mirroring docs/agent-team-protocol.md sections 4, 7, 8, 9 and 10. The envelope is additive and forward compatible: an unknown or future `type` still validates, so clients ignore what they do not know, and breaking changes bump `v`. Known `type` payloads validate strictly against the current spec snapshot; a new optional field on a known type arrives with this schema, while an entirely unknown `type` validates as-is so older clients keep reading the stream.",
+  "title": "Envai AaaS Agent Team Protocol v3 events",
+  "description": "JSON Schema for the Agent Team Protocol (ATP) event stream. Source of truth for the event envelope and every event family, mirroring docs/agent-team-protocol.md sections 4, 7, 8, 9 and 10. The envelope is additive and forward compatible: an unknown or future `type` still validates, so clients ignore what they do not know, and breaking changes bump `v`. Known `type` payloads validate strictly against the current spec snapshot; a new optional field on a known type arrives with this schema, while an entirely unknown `type` validates as-is so older clients keep reading the stream. Contract3 permits unknown provider totals as null. Valid immutable historical v2 events are separately described in events-v2.json; clients select validation by the original envelope version.",
   "$defs": {
     "Envelope": {
       "type": "object",
-      "description": "Envelope wrapping every event on the stream. Positive `seq` values order replayable events while the chat runtime remains resident; wire-only `ping` uses `seq: 0`. `id` is the unique event id within the resident chat runtime, and `type` discriminates `data`. `turn_id` is the orchestrator completion id of the turn the event belongs to, null for `ping`. `agent` is null for `turn.*`, `ping`, and `approval.response` (which echoes the user, not an agent).",
+      "description": "Envelope wrapping every event on the stream. Positive `seq` values order replayable events while the chat runtime remains resident; wire-only `ping` uses `seq: 0`. `id` is the unique event id within the resident chat runtime, and `type` discriminates `data`. `turn_id` is the orchestrator completion id of the turn the event belongs to, null for `ping`. `agent` is null for `turn.*`, `ping`, and `approval.response` (which echoes the user, not an agent), and for the chat-level `chat.title.updated` event.",
       "required": [
         "v",
         "id",
@@ -20,7 +20,7 @@
       "properties": {
         "v": {
           "type": "integer",
-          "const": 2,
+          "const": 3,
           "description": "Protocol version. Clients must check it against the version they implement; a mismatch means a breaking protocol change."
         },
         "id": {
@@ -64,7 +64,7 @@
               "type": "null"
             }
           ],
-          "description": "The agent that produced the event. Null for `turn.*`, `ping`, and `approval.response`."
+          "description": "The agent that produced the event. Null for `turn.*`, `ping`, `approval.response`, and the chat-level `chat.title.updated` event."
         },
         "type": {
           "type": "string",
@@ -136,9 +136,12 @@
           "description": "Output tokens produced."
         },
         "cost_usd": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
-          "description": "Aggregated cost in USD: LLM cost reported by OpenRouter usage.cost plus Sprite (duration times tariffs) plus tool calls."
+          "description": "Legacy provider USD cost; null when unknown. Authoritative usage_cost preserves per-currency decimal totals and provenance; no billing."
         },
         "duration_ms": {
           "type": "integer",
@@ -160,6 +163,12 @@
           "type": "integer",
           "minimum": 0,
           "description": "Tool invocations counted in the usage window."
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
         }
       }
     },
@@ -177,6 +186,23 @@
       "type": "object",
       "additionalProperties": false,
       "description": "No payload. Emitted periodically to keep proxies and load balancers from closing idle streams."
+    },
+    "chat.title.updated": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Persisted chat title update produced by the orchestrator during the turn, before the first assistant response.",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^\\r\\n\u000b\f\u0085\u2028\u2029]*[^\\s\u0085\u2028\u2029][^\\r\\n\u000b\f\u0085\u2028\u2029]*$",
+          "description": "Server-normalized, nonblank, single-line chat title of at most 255 Unicode code points."
+        }
+      }
     },
     "turn.started": {
       "type": "object",
@@ -219,7 +245,10 @@
           "description": "Turn totals."
         },
         "cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Turn total cost in USD, mirrors `usage.cost_usd`."
         },
@@ -228,13 +257,22 @@
           "description": "Chat lifetime totals accumulated over every turn of the chat, inclusive of this turn."
         },
         "chat_cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only: no cumulative budget exists, a chat is never throttled or refused for its accumulated turns."
         },
         "finish_reason": {
           "type": "string",
           "description": "Why the turn ended, for example `completed`."
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
         }
       }
     },
@@ -264,7 +302,10 @@
           "description": "Turn totals up to the cancellation."
         },
         "cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Turn total cost in USD up to the cancellation."
         },
@@ -273,9 +314,18 @@
           "description": "Chat lifetime totals accumulated over every turn of the chat."
         },
         "chat_cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only."
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
         }
       }
     },
@@ -310,7 +360,10 @@
           "description": "Turn totals up to the failure."
         },
         "cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Turn total cost in USD up to the failure."
         },
@@ -319,9 +372,18 @@
           "description": "Chat lifetime totals accumulated over every turn of the chat."
         },
         "chat_cost": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0,
           "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only."
+        },
+        "billing": {
+          "$ref": "#/$defs/BillingState"
+        },
+        "usage_cost": {
+          "$ref": "#/$defs/UsageCost"
         }
       }
     },
@@ -974,6 +1036,7 @@
                   "turn.cancelled",
                   "turn.failed",
                   "turn.steered",
+                  "chat.title.updated",
                   "agent.started",
                   "agent.plan",
                   "agent.text.delta",
@@ -1033,7 +1096,28 @@
               }
             }
           ]
-        },        {
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "chat.title.updated"
+                },
+                "data": {
+                  "$ref": "#/$defs/chat.title.updated"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
           "allOf": [
             {
               "$ref": "#/$defs/Envelope"
@@ -1133,7 +1217,6 @@
             }
           ]
         },
-
         {
           "allOf": [
             {
@@ -1590,6 +1673,7 @@
                       "turn.cancelled",
                       "turn.failed",
                       "turn.steered",
+                      "chat.title.updated",
                       "agent.started",
                       "agent.plan",
                       "agent.text.delta",
@@ -1622,6 +1706,144 @@
             }
           ],
           "description": "Unknown or future event type. Accepted verbatim: clients ignore what they do not know (additive compatibility within `v`)."
+        }
+      ]
+    },
+    "BillingState": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "inactive"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "CurrencyAmount": {
+      "type": "object",
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UsageCost": {
+      "type": "object",
+      "required": [
+        "status",
+        "basis",
+        "scope_status",
+        "revision",
+        "as_of",
+        "invocation_count",
+        "pending_invocation_count",
+        "totals",
+        "priced_subtotals"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "complete"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "reported",
+            "calculated",
+            "mixed",
+            "none"
+          ]
+        },
+        "scope_status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_invocation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totals": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CurrencyAmount"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "priced_subtotals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyAmount"
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "scope_status": {
+                "const": "closed"
+              },
+              "pending_invocation_count": {
+                "const": 0
+              },
+              "totals": {
+                "type": "array"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "totals": {
+                "type": "null"
+              }
+            }
+          }
         }
       ]
     }

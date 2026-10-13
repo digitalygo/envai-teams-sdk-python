@@ -80,6 +80,18 @@ class ProtocolError(EnvaiError):
         super().__init__(message, type="protocol_error")
 
 
+class CompatibilityError(ProtocolError):
+    """The server did not establish the selected wire contract; never downgrade."""
+
+
+class WebhookVerificationError(EnvaiError):
+    pass
+
+
+class WebhookStoreError(EnvaiError):
+    pass
+
+
 class ReplayGapError(ProtocolError):
     def __init__(self, expected: int, received: int):
         self.expected, self.received = expected, received

@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
-from envai._schema import EVENTS, OPENAPI, OPERATIONS
+from envai._schema import EVENTS, LEGACY_OPENAPI, OPENAPI, OPERATIONS
 
 F = Path(__file__).parent / "fixtures"
 
@@ -65,9 +65,8 @@ def test_exact_source_provenance_and_schema_validity():
             == (fixture["sha256"])
         )
     package = root / "src/envai/_contracts"
-    for name in ("openapi.yaml", "events.json"):
-        assert (package / name).read_bytes() == (F / name).read_bytes()
-    assert json.loads((package / "openapi.json").read_text()) == yaml.safe_load(
+    assert (package / "openapi-v2.yaml").read_bytes() == (F / "openapi.yaml").read_bytes()
+    assert json.loads((package / "openapi-v2.json").read_text()) == yaml.safe_load(
         (F / "openapi.yaml").read_text()
     )
     Draft202012Validator.check_schema(EVENTS)
@@ -84,13 +83,14 @@ def test_derived_operation_inventory_matches_pinned_source():
             "path": path,
             "authenticated": bool(operation.get("security", OPENAPI.get("security"))),
         }
-        for path, item in OPENAPI["paths"].items()
+        for path, item in LEGACY_OPENAPI["paths"].items()
         for method, operation in item.items()
         if method in {"get", "post", "put", "patch", "delete", "head", "options", "trace"}
     ]
     assert len(operations) == 52
     assert operations == expected
-    assert operations == [
+    assert {x["id"] for x in operations} <= set(OPERATIONS)
+    current = [
         {
             "id": name,
             "method": operation["method"],
@@ -98,6 +98,18 @@ def test_derived_operation_inventory_matches_pinned_source():
             "authenticated": operation["auth"],
         }
         for name, operation in OPERATIONS.items()
+    ]
+    assert len(current) == 65
+    assert current == [
+        {
+            "id": op["operationId"],
+            "method": method.upper(),
+            "path": path,
+            "authenticated": bool(op.get("security", OPENAPI.get("security"))),
+        }
+        for path, methods in OPENAPI["paths"].items()
+        for method, op in methods.items()
+        if method in {"get", "post", "put", "patch", "delete"}
     ]
 
 
@@ -107,7 +119,9 @@ def test_all_contract_refs_resolve_locally():
             if "$ref" in value:
                 ref = value["$ref"]
                 target = (
-                    EVENTS
+                    __import__("envai._schema", fromlist=["LEGACY_EVENTS"]).LEGACY_EVENTS
+                    if "events-v2.json" in ref
+                    else EVENTS
                     if ref.startswith("./events.json") or ref.startswith("events.json")
                     else root
                 )

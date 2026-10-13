@@ -2,6 +2,7 @@ import copy
 
 import httpx
 import pytest
+from negotiated_transport import negotiated_transport
 from test_http import sample
 from test_stream import wire
 
@@ -30,7 +31,7 @@ async def test_image_poll_success_and_download(async_):
         return httpx.Response(200, json=payload)
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "x", base_url="https://example.test", transport=httpx.MockTransport(handler)
+        "x", base_url="https://example.test", transport=negotiated_transport(handler)
     )
     body = sample(OPENAPI["components"]["schemas"]["ImageGenerationRequest"])
     result = (
@@ -63,7 +64,7 @@ async def test_image_timeout_and_invalid_poll_bounds(async_):
         return httpx.Response(200, json=sample(OPENAPI["components"]["schemas"][name]))
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "x", transport=httpx.MockTransport(handler)
+        "x", transport=negotiated_transport(handler)
     )
     body = sample(OPENAPI["components"]["schemas"]["ImageGenerationRequest"])
     for timeout in (0, -1):
@@ -99,7 +100,7 @@ async def test_completion_numeric_paging_never_follows_foreign_links(async_, bad
         return httpx.Response(200, json=payload)
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "secret", transport=httpx.MockTransport(handler)
+        "secret", transport=negotiated_transport(handler)
     )
 
     async def run():
@@ -130,7 +131,7 @@ async def test_get_network_retry_and_status_exhaustion(async_):
         return httpx.Response(200, json={"data": []})
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "x", transport=httpx.MockTransport(handler), retry=RetryPolicy(base_delay=0)
+        "x", transport=negotiated_transport(handler), retry=RetryPolicy(base_delay=0)
     )
     assert (await client.list_workspaces() if async_ else client.list_workspaces()) == []
     assert len(seen) == 3
@@ -158,7 +159,7 @@ async def test_only_matching_turn_terminal(valid_events, async_):
         )
 
     client = (AsyncEnvaiClient if async_ else EnvaiClient)(
-        "x", transport=httpx.MockTransport(handler)
+        "x", transport=negotiated_transport(handler)
     )
     result = (
         await client.chats.send_and_wait(terminal["chat_id"], "hi")

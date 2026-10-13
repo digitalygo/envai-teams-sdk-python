@@ -1,0 +1,1669 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Envai AaaS Agent Team Protocol events",
+  "description": "JSON Schema for the Agent Team Protocol (ATP) event stream. Source of truth for the event envelope and every event family, mirroring docs/agent-team-protocol.md sections 4, 7, 8, 9 and 10. The envelope is additive and forward compatible: an unknown or future `type` still validates, so clients ignore what they do not know, and breaking changes bump `v`. Known `type` payloads validate strictly against the current spec snapshot; a new optional field on a known type arrives with this schema, while an entirely unknown `type` validates as-is so older clients keep reading the stream.",
+  "$defs": {
+    "Envelope": {
+      "type": "object",
+      "description": "Envelope wrapping every event on the stream. Positive `seq` values order replayable events while the chat runtime remains resident; wire-only `ping` uses `seq: 0`. `id` is the unique event id within the resident chat runtime, and `type` discriminates `data`. `turn_id` is the orchestrator completion id of the turn the event belongs to, null for `ping`. `agent` is null for `turn.*`, `ping`, and `approval.response` (which echoes the user, not an agent), and for the chat-level `chat.title.updated` event.",
+      "required": [
+        "v",
+        "id",
+        "seq",
+        "ts",
+        "chat_id",
+        "turn_id",
+        "agent",
+        "type",
+        "data"
+      ],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "const": 2,
+          "description": "Protocol version. Clients must check it against the version they implement; a mismatch means a breaking protocol change."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^evt_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Unique event id `evt_<ulid>` within the chat."
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Positive monotonic integer for replayable events, unique and continuous across turns while the chat runtime remains resident. Wire-only `ping` uses zero and does not participate in replay ordering; the current implementation resets sequence after eviction or restart."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC 3339 timestamp."
+        },
+        "chat_id": {
+          "type": "string",
+          "pattern": "^cht_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Chat id `cht_<ulid>` this event belongs to. One chat holds one history and hosts many turns."
+        },
+        "turn_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Turn id `cmpl_<ulid>`, the orchestrator completion id of the turn this event belongs to. Null for `ping`."
+        },
+        "agent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Agent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The agent that produced the event. Null for `turn.*`, `ping`, `approval.response`, and the chat-level `chat.title.updated` event."
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*([.][a-z][a-z0-9]*)*$",
+          "description": "Dotted event type namespace. Known types are the `$defs` entries of this document; an unknown or future type is valid and ignored by clients (additive compatibility within `v`)."
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Payload specific to the `type`. See the per-type `$defs` entries for the strict payload shapes."
+        }
+      }
+    },
+    "Agent": {
+      "type": "object",
+      "description": "A running agent instance, not a definition. A team may run two instances of the same role in parallel, so `instance_id` is unique per running agent, `name` identifies the role and `parent_id` links the tree. The root orchestrator has `parent_id: null`.",
+      "required": [
+        "instance_id",
+        "name",
+        "role",
+        "parent_id"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string",
+          "pattern": "^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Running agent instance id `ag_<ulid>`, unique per turn."
+        },
+        "name": {
+          "type": "string",
+          "description": "Role name of the agent, for example `researcher`."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role in the team: `orchestrator` for the root, `member` for subagents."
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "`instance_id` of the delegating parent, null for the root orchestrator."
+        },
+        "model": {
+          "type": "string",
+          "description": "Resolved model id, present on `agent.started`."
+        }
+      }
+    },
+    "Usage": {
+      "type": "object",
+      "description": "Usage and cost summary carried by `agent.done`, `agent.tool.complete` and the terminal turn events (`turn.completed`, `turn.cancelled`, `turn.failed`). The terminal turn events also carry the chat lifetime totals (`chat_usage`, `chat_cost`).",
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "cost_usd",
+        "duration_ms"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Input tokens consumed."
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Output tokens produced."
+        },
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Aggregated cost in USD: LLM cost reported by OpenRouter usage.cost plus Sprite (duration times tariffs) plus tool calls."
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Wall clock duration of the work in milliseconds."
+        },
+        "sprite_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Time spent in the ephemeral Sprite sandbox, 0 when no code tool ran."
+        },
+        "sprite_ram_gb_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sprite RAM billed in GB-milliseconds, 0 when no code tool ran."
+        },
+        "tool_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tool invocations counted in the usage window."
+        }
+      }
+    },
+    "ToolKind": {
+      "type": "string",
+      "enum": [
+        "server",
+        "client",
+        "knowledge",
+        "code"
+      ],
+      "description": "Tool kind discriminator of the `agent.tool.*` family: `server` is executed by the platform, `client` by the client, `knowledge` reads and writes wiki, skills and memory, `code` runs in the ephemeral Sprite sandbox."
+    },
+    "ping": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "No payload. Emitted periodically to keep proxies and load balancers from closing idle streams."
+    },
+    "chat.title.updated": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Persisted chat title update produced by the orchestrator during the turn, before the first assistant response.",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[^\\r\\n\u000b\u000c\u0085\u2028\u2029]*[^\\s\u0085\u2028\u2029][^\\r\\n\u000b\u000c\u0085\u2028\u2029]*$",
+          "description": "Server-normalized, nonblank, single-line chat title of at most 255 Unicode code points."
+        }
+      }
+    },
+    "turn.started": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "input"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>`, the orchestrator completion id, unique within the chat."
+        },
+        "input": {
+          "type": "string",
+          "description": "The user message that triggered the turn. There is no separate input event."
+        }
+      }
+    },
+    "turn.completed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "usage",
+        "cost",
+        "chat_usage",
+        "chat_cost",
+        "finish_reason"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>`."
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Turn totals."
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Turn total cost in USD, mirrors `usage.cost_usd`."
+        },
+        "chat_usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Chat lifetime totals accumulated over every turn of the chat, inclusive of this turn."
+        },
+        "chat_cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only: no cumulative budget exists, a chat is never throttled or refused for its accumulated turns."
+        },
+        "finish_reason": {
+          "type": "string",
+          "description": "Why the turn ended, for example `completed`."
+        }
+      }
+    },
+    "turn.cancelled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "reason",
+        "usage",
+        "cost",
+        "chat_usage",
+        "chat_cost"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>`."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the turn was cancelled, for example `user_cancelled`."
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Turn totals up to the cancellation."
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Turn total cost in USD up to the cancellation."
+        },
+        "chat_usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Chat lifetime totals accumulated over every turn of the chat."
+        },
+        "chat_cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only."
+        }
+      }
+    },
+    "turn.failed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "code",
+        "message",
+        "usage",
+        "cost",
+        "chat_usage",
+        "chat_cost"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>`."
+        },
+        "code": {
+          "type": "string",
+          "description": "Machine-readable failure code."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable failure message."
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Turn totals up to the failure."
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Turn total cost in USD up to the failure."
+        },
+        "chat_usage": {
+          "$ref": "#/$defs/Usage",
+          "description": "Chat lifetime totals accumulated over every turn of the chat."
+        },
+        "chat_cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Chat lifetime cost in USD, mirrors `chat_usage.cost_usd`. Informational only."
+        }
+      }
+    },
+    "turn.steered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "text"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>`."
+        },
+        "text": {
+          "type": "string",
+          "description": "Guidance injected mid turn."
+        },
+        "target_agent_id": {
+          "type": "string",
+          "pattern": "^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Target agent instance id, absent when the guidance targets the orchestrator."
+        }
+      }
+    },
+    "agent.started": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "role",
+        "model",
+        "parent_id"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Role name of the agent."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role in the team: `orchestrator` or `member`."
+        },
+        "model": {
+          "type": "string",
+          "description": "Resolved model id."
+        },
+        "parent_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "`instance_id` of the delegating parent, null for the root orchestrator."
+        }
+      }
+    },
+    "agent.plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan"
+      ],
+      "properties": {
+        "plan": {
+          "type": "string",
+          "description": "The agent's plan for the current task."
+        }
+      }
+    },
+    "agent.text.delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delta"
+      ],
+      "properties": {
+        "delta": {
+          "type": "string",
+          "description": "Incremental text fragment."
+        }
+      }
+    },
+    "agent.text.done": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Full final text of the agent."
+        }
+      }
+    },
+    "agent.reasoning.delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delta"
+      ],
+      "properties": {
+        "delta": {
+          "type": "string",
+          "description": "Incremental reasoning fragment."
+        }
+      }
+    },
+    "agent.reasoning.done": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Full final reasoning of the agent."
+        }
+      }
+    },
+    "agent.delegated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "child_instance_id",
+        "child_name",
+        "mode",
+        "title",
+        "task"
+      ],
+      "properties": {
+        "child_instance_id": {
+          "type": "string",
+          "pattern": "^ag_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "`instance_id` of the spawned child, linked to its `agent.started` by `parent_id`."
+        },
+        "child_name": {
+          "type": "string",
+          "description": "Role name of the child agent."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "foreground",
+            "background"
+          ],
+          "description": "`foreground` blocks the parent until the child completes, `background` interleaves parent and child events."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short 3-5 word task title, from delegate_task description."
+        },
+        "task": {
+          "type": "string",
+          "description": "Full prompt sent to the child, from delegate_task prompt."
+        }
+      }
+    },
+    "agent.tool.start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "tool_name",
+        "kind",
+        "args"
+      ],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "description": "Tool call id, unique per agent instance within a turn."
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Tool name, for example `read_wiki`."
+        },
+        "kind": {
+          "$ref": "#/$defs/ToolKind"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Tool arguments as a JSON object."
+        }
+      }
+    },
+    "agent.tool.delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "delta"
+      ],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "description": "Tool call id of the running tool."
+        },
+        "delta": {
+          "type": "string",
+          "description": "Incremental tool output fragment (streaming)."
+        }
+      }
+    },
+    "agent.tool.complete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "result",
+        "is_error",
+        "usage"
+      ],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "description": "Tool call id of the completed tool."
+        },
+        "result": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "array"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Tool result. Usually a string; structured tools may return an object or array."
+        },
+        "is_error": {
+          "type": "boolean",
+          "description": "Whether the tool call failed."
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      }
+    },
+    "agent.tool.request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "tool_name",
+        "kind",
+        "args",
+        "signature"
+      ],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "pattern": "^tc_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "maxLength": 64,
+          "description": "Tool call id `tc_<ulid>` (29 characters), resolved later through `agent.tool.result`."
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Tool name of the client tool, matching a workspace tool registration."
+        },
+        "kind": {
+          "type": "string",
+          "const": "client",
+          "description": "Always `client` for these requests: the tool is executed by the client, which returns the result."
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Tool arguments as a JSON object."
+        },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "alg",
+            "kid",
+            "sig"
+          ],
+          "properties": {
+            "alg": {
+              "type": "string",
+              "const": "EdDSA",
+              "description": "Signature algorithm, always EdDSA (Ed25519)."
+            },
+            "kid": {
+              "type": "string",
+              "description": "Key id matching a public key in `/.well-known/jwks.json`."
+            },
+            "sig": {
+              "type": "string",
+              "description": "Unpadded base64url Ed25519 signature over the canonical payload `call_id + \"\\n\" + tool_name + \"\\n\" + canonical_json(args)` per RFC 8785."
+            }
+          },
+          "description": "EdDSA signature covering the canonical request payload, so the client can verify the request originated from the execution plane before executing."
+        }
+      }
+    },
+    "agent.tool.result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "output",
+        "is_error"
+      ],
+      "properties": {
+        "call_id": {
+          "type": "string",
+          "pattern": "^tc_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Tool call id `tc_<ulid>` of the resolved client call."
+        },
+        "output": {
+          "type": "string",
+          "description": "Client output delivered to the resumed branch. Echoed from the tool-output endpoint. 128 KiB limit enforced by the gateway.",
+          "maxLength": 131072
+        },
+        "is_error": {
+          "type": "boolean",
+          "description": "Whether the client failed to execute the tool. True also for auto-resolved timeouts, whose output is the error object `{\"code\":\"tool_timeout\",\"message\":...}`."
+        }
+      }
+    },
+    "agent.escalate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "escalation_id",
+        "agent_id",
+        "reason",
+        "tool_name",
+        "args"
+      ],
+      "properties": {
+        "escalation_id": {
+          "type": "string",
+          "description": "Escalation id, echoed by `agent.escalation.result`."
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "`instance_id` of the escalating subagent."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the subagent needs a decision."
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Tool the subagent wants to run."
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Tool arguments as a JSON object."
+        }
+      }
+    },
+    "agent.escalation.result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "escalation_id",
+        "approve",
+        "reason"
+      ],
+      "properties": {
+        "escalation_id": {
+          "type": "string",
+          "description": "Escalation id being resolved."
+        },
+        "approve": {
+          "type": "boolean",
+          "description": "Whether the escalation is approved; the subagent resumes or fails closed."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Decision note relayed to the subagent."
+        }
+      }
+    },
+    "agent.artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "name",
+        "media_type",
+        "size"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "description": "Artifact id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Artifact file name."
+        },
+        "media_type": {
+          "type": "string",
+          "description": "MIME type of the artifact, for example `text/markdown`."
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Artifact size in bytes."
+        }
+      }
+    },
+    "agent.context.compacting": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Context compaction begins. All fields are optional telemetry carried by the current implementation; a client must not require any of them.",
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>` the compaction belongs to."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why compaction triggered, for example `tokens`."
+        },
+        "context_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pre-compaction estimate of the context tokens."
+        },
+        "threshold_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Token count that triggered compaction: `window_tokens` times `threshold`."
+        },
+        "window_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Model context window in tokens."
+        },
+        "threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "description": "Fraction of the context window that triggers compaction, in (0, 1]."
+        }
+      }
+    },
+    "agent.context.compacted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "new_context"
+      ],
+      "properties": {
+        "new_context": {
+          "type": "string",
+          "description": "The summarized context that replaces the pruned history."
+        },
+        "turn_id": {
+          "type": "string",
+          "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "description": "Turn id `cmpl_<ulid>` the compaction belongs to."
+        },
+        "context_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pre-compaction estimate of the context tokens that were summarized."
+        }
+      }
+    },
+    "agent.done": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "summary",
+        "usage",
+        "duration_ms"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Outcome of the agent's work, for example `completed`."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short summary of what the agent did."
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Wall clock duration of the agent's work in milliseconds."
+        }
+      }
+    },
+    "agent.failed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable failure code."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable failure message."
+        }
+      }
+    },
+    "approval.request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_id",
+        "origin_agent_id",
+        "tool_name",
+        "args",
+        "reason",
+        "deadline"
+      ],
+      "properties": {
+        "approval_id": {
+          "type": "string",
+          "description": "Approval id, resolved later through the approval endpoint."
+        },
+        "origin_agent_id": {
+          "type": "string",
+          "description": "`instance_id` of the agent that asked. The orchestrator itself for self initiated approvals, the escalating subagent when the orchestrator escalates on its behalf."
+        },
+        "tool_name": {
+          "type": "string",
+          "description": "Tool the agent wants to run."
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Tool arguments as a JSON object."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the approval is required."
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC 3339 deadline; an approval that reaches it emits `approval.expire` and the branch fails closed."
+        }
+      }
+    },
+    "approval.response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_id",
+        "approve",
+        "reason"
+      ],
+      "properties": {
+        "approval_id": {
+          "type": "string",
+          "description": "Approval id being resolved."
+        },
+        "approve": {
+          "type": "boolean",
+          "description": "Whether the action is approved."
+        },
+        "reason": {
+          "type": "string",
+          "description": "User note attached to the decision. Echoed from the approval endpoint."
+        }
+      }
+    },
+    "approval.expire": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_id"
+      ],
+      "properties": {
+        "approval_id": {
+          "type": "string",
+          "description": "Approval id that reached its deadline; the branch fails closed."
+        }
+      }
+    },
+    "Event": {
+      "type": "object",
+      "description": "One event envelope discriminated by `type`. The union is additive: for each known `type` the matching payload validates strictly, while an unknown or future `type` validates as a plain envelope (see the last member) so the stream stays forward compatible.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ping"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "seq": {
+                "const": 0
+              },
+              "turn_id": {
+                "type": "null"
+              },
+              "agent": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "seq": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "turn.started",
+                  "turn.completed",
+                  "turn.cancelled",
+                  "turn.failed",
+                  "turn.steered",
+                  "chat.title.updated",
+                  "agent.started",
+                  "agent.plan",
+                  "agent.text.delta",
+                  "agent.text.done",
+                  "agent.reasoning.delta",
+                  "agent.reasoning.done",
+                  "agent.delegated",
+                  "agent.tool.start",
+                  "agent.tool.delta",
+                  "agent.tool.complete",
+                  "agent.tool.request",
+                  "agent.tool.result",
+                  "agent.escalate",
+                  "agent.escalation.result",
+                  "agent.artifact",
+                  "agent.context.compacting",
+                  "agent.context.compacted",
+                  "agent.done",
+                  "agent.failed",
+                  "approval.request",
+                  "approval.response",
+                  "approval.expire"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "pattern": "^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$"
+              }
+            }
+          }
+        }
+      ],
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "ping"
+                },
+                "data": {
+                  "$ref": "#/$defs/ping"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "chat.title.updated"
+                },
+                "data": {
+                  "$ref": "#/$defs/chat.title.updated"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "turn.started"
+                },
+                "data": {
+                  "$ref": "#/$defs/turn.started"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "turn.completed"
+                },
+                "data": {
+                  "$ref": "#/$defs/turn.completed"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "turn.cancelled"
+                },
+                "data": {
+                  "$ref": "#/$defs/turn.cancelled"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "turn.failed"
+                },
+                "data": {
+                  "$ref": "#/$defs/turn.failed"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "turn.steered"
+                },
+                "data": {
+                  "$ref": "#/$defs/turn.steered"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.started"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.started"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.plan"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.plan"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.text.delta"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.text.delta"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.text.done"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.text.done"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.reasoning.delta"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.reasoning.delta"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.reasoning.done"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.reasoning.done"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.delegated"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.delegated"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.tool.start"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.tool.start"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.tool.delta"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.tool.delta"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.tool.complete"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.tool.complete"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.tool.request"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.tool.request"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.tool.result"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.tool.result"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.escalate"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.escalate"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.escalation.result"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.escalation.result"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.artifact"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.artifact"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.context.compacting"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.context.compacting"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.context.compacted"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.context.compacted"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.done"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.done"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "agent.failed"
+                },
+                "data": {
+                  "$ref": "#/$defs/agent.failed"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "approval.request"
+                },
+                "data": {
+                  "$ref": "#/$defs/approval.request"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "approval.response"
+                },
+                "data": {
+                  "$ref": "#/$defs/approval.response"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "approval.expire"
+                },
+                "data": {
+                  "$ref": "#/$defs/approval.expire"
+                },
+                "agent": {
+                  "$ref": "#/$defs/Agent"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "not": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "ping",
+                      "turn.started",
+                      "turn.completed",
+                      "turn.cancelled",
+                      "turn.failed",
+                      "turn.steered",
+                      "chat.title.updated",
+                      "agent.started",
+                      "agent.plan",
+                      "agent.text.delta",
+                      "agent.text.done",
+                      "agent.reasoning.delta",
+                      "agent.reasoning.done",
+                      "agent.delegated",
+                      "agent.tool.start",
+                      "agent.tool.delta",
+                      "agent.tool.complete",
+                      "agent.tool.request",
+                      "agent.tool.result",
+                      "agent.escalate",
+                      "agent.escalation.result",
+                      "agent.artifact",
+                      "agent.context.compacting",
+                      "agent.context.compacted",
+                      "agent.done",
+                      "agent.failed",
+                      "approval.request",
+                      "approval.response",
+                      "approval.expire"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            }
+          ],
+          "description": "Unknown or future event type. Accepted verbatim: clients ignore what they do not know (additive compatibility within `v`)."
+        }
+      ]
+    }
+  }
+}

@@ -11,9 +11,10 @@ import httpx
 
 from . import _generated as generated
 from ._transport import AsyncTransport, RetryPolicy, SyncTransport
-from .errors import ProtocolError, TransportError
+from .errors import CompatibilityError, ProtocolError, TransportError
 from .events import Event, TurnAccumulator, TurnResult
 from .stream import AsyncEventStream, EventStream
+from .wiki import AsyncWikiService, WikiService
 
 
 class ChatsService(generated.ChatsService):
@@ -213,6 +214,7 @@ class EnvaiClient(SyncTransport, generated.Operations):
         *,
         base_url: str = "http://localhost:8111/api/v1",
         jwks_url: str | None = None,
+        contract_version: int = 3,
         timeout: float = 30,
         connect_timeout: float = 10,
         stream_read_timeout: float = 45,
@@ -229,6 +231,7 @@ class EnvaiClient(SyncTransport, generated.Operations):
             stream_read_timeout,
             retry,
             observer,
+            contract_version,
         )
         self._http = httpx.Client(transport=transport, follow_redirects=False, trust_env=False)
         self.workspaces = generated.WorkspacesService(self)
@@ -242,8 +245,14 @@ class EnvaiClient(SyncTransport, generated.Operations):
         self.images = ImagesService(self)
         self.models = generated.ModelsService(self)
         self.capabilities = generated.CapabilitiesService(self)
+        self.wiki = WikiService(self)
 
     def stream_chat_events(self, chat_id: str, **options: Any) -> EventStream:
+        return self.chats.events(chat_id, **options)
+
+    def stream_chat_events_legacy(self, chat_id: str, **options: Any) -> EventStream:
+        if self.contract_version != 2:
+            raise CompatibilityError("Legacy replay requires explicit contract_version=2")
         return self.chats.events(chat_id, **options)
 
     def close(self):
@@ -263,6 +272,7 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         *,
         base_url: str = "http://localhost:8111/api/v1",
         jwks_url: str | None = None,
+        contract_version: int = 3,
         timeout: float = 30,
         connect_timeout: float = 10,
         stream_read_timeout: float = 45,
@@ -279,6 +289,7 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
             stream_read_timeout,
             retry,
             observer,
+            contract_version,
         )
         self._http = httpx.AsyncClient(transport=transport, follow_redirects=False, trust_env=False)
         self.workspaces = generated.AsyncWorkspacesService(self)
@@ -292,8 +303,14 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         self.images = AsyncImagesService(self)
         self.models = generated.AsyncModelsService(self)
         self.capabilities = generated.AsyncCapabilitiesService(self)
+        self.wiki = AsyncWikiService(self)
 
     def stream_chat_events(self, chat_id: str, **options: Any) -> AsyncEventStream:
+        return self.chats.events(chat_id, **options)
+
+    def stream_chat_events_legacy(self, chat_id: str, **options: Any) -> AsyncEventStream:
+        if self.contract_version != 2:
+            raise CompatibilityError("Legacy replay requires explicit contract_version=2")
         return self.chats.events(chat_id, **options)
 
     async def aclose(self):

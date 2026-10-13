@@ -1,7 +1,7 @@
 {
   "sendChatMessage": {
     "method": "POST",
-    "path": "/chats/{chat_id}/messages",
+    "path": "/atp/v3/chats/{chat_id}/messages",
     "params": [
       {
         "name": "chat_id",
@@ -31,7 +31,7 @@
   },
   "streamChatEvents": {
     "method": "GET",
-    "path": "/chats/{chat_id}/events",
+    "path": "/atp/v3/chats/{chat_id}/events",
     "params": [
       {
         "name": "chat_id",
@@ -71,7 +71,7 @@
   },
   "cancelChatTurn": {
     "method": "POST",
-    "path": "/chats/{chat_id}/cancel",
+    "path": "/atp/v3/chats/{chat_id}/cancel",
     "params": [
       {
         "name": "chat_id",
@@ -99,7 +99,7 @@
   },
   "steerChatTurn": {
     "method": "POST",
-    "path": "/chats/{chat_id}/steer",
+    "path": "/atp/v3/chats/{chat_id}/steer",
     "params": [
       {
         "name": "chat_id",
@@ -129,7 +129,7 @@
   },
   "resolveChatTool": {
     "method": "POST",
-    "path": "/chats/{chat_id}/tool-output",
+    "path": "/atp/v3/chats/{chat_id}/tool-output",
     "params": [
       {
         "name": "chat_id",
@@ -157,7 +157,7 @@
   },
   "resolveChatApproval": {
     "method": "POST",
-    "path": "/chats/{chat_id}/approval",
+    "path": "/atp/v3/chats/{chat_id}/approval",
     "params": [
       {
         "name": "chat_id",
@@ -185,7 +185,7 @@
   },
   "forkChat": {
     "method": "POST",
-    "path": "/chats/{chat_id}/fork",
+    "path": "/atp/v3/chats/{chat_id}/fork",
     "params": [
       {
         "name": "chat_id",
@@ -215,7 +215,7 @@
   },
   "restoreChat": {
     "method": "POST",
-    "path": "/chats/{chat_id}/restore",
+    "path": "/atp/v3/chats/{chat_id}/restore",
     "params": [
       {
         "name": "chat_id",
@@ -245,7 +245,7 @@
   },
   "getCapabilities": {
     "method": "GET",
-    "path": "/capabilities",
+    "path": "/atp/v3/capabilities",
     "params": [],
     "request": null,
     "media": null,
@@ -1579,5 +1579,575 @@
     "auth": false,
     "stream": false,
     "public": false
+  },
+  "uploadWikiSource": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/files/sources",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "required": [
+        "file"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "format": "binary",
+          "description": "Original up to 1,000,000,000 bytes inclusive; MD TXT CSV XLSX PDF DOCX MP3 MP4 only. MP4 audio only."
+        }
+      }
+    },
+    "media": "multipart/form-data",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiSource"
+        }
+      }
+    },
+    "response_type": "WikiSource",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getWikiSource": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files/sources/{file_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "file_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiSource"
+        }
+      }
+    },
+    "response_type": "WikiSource",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "downloadWikiSource": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/files/sources/{file_id}/download",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "file_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "format": "binary"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "withdrawWikiSource": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/wiki/outbox/files",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "required": [
+        "file_id"
+      ],
+      "properties": {
+        "file_id": {
+          "type": "string"
+        }
+      }
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiSource"
+        }
+      }
+    },
+    "response_type": "WikiSource",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createWikiInboxRun": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/wiki/inbox/runs",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "required": [
+        "webhook_url"
+      ],
+      "properties": {
+        "webhook_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiOperation"
+        }
+      }
+    },
+    "response_type": "WikiOperation",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createWikiOutboxRun": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/wiki/outbox/runs",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "required": [
+        "webhook_url"
+      ],
+      "properties": {
+        "webhook_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiOperation"
+        }
+      }
+    },
+    "response_type": "WikiOperation",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createWikiSyncRun": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/wiki/syncs",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "required": [
+        "webhook_url"
+      ],
+      "properties": {
+        "webhook_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiOperation"
+        }
+      }
+    },
+    "response_type": "WikiOperation",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getWikiOperation": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/wiki/operations/{operation_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "operation_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/WikiOperation"
+        }
+      }
+    },
+    "response_type": "WikiOperation",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listWikiCategories": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/wiki/categories",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/Categories"
+        }
+      }
+    },
+    "response_type": "Categories",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getWikiCategoryIndex": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/wiki/categories/{category_id}/index",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "category_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "from",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      {
+        "name": "to",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      {
+        "name": "all",
+        "in": "query",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "type",
+        "in": "query",
+        "schema": {
+          "enum": [
+            "raw",
+            "artifact"
+          ]
+        }
+      },
+      {
+        "name": "catalog_revision",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/components/schemas/CategoryIndex"
+        }
+      }
+    },
+    "response_type": "CategoryIndex",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getWikiWebhookJwks": {
+    "method": "GET",
+    "path": "/.well-known/wiki-webhook-jwks.json",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/JwksDocument"
+    },
+    "response_type": "JwksDocument",
+    "unwrap": false,
+    "auth": false,
+    "stream": false,
+    "public": true
+  },
+  "streamChatEventsLegacy": {
+    "method": "GET",
+    "path": "/chats/{chat_id}/events",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "after",
+        "in": "query",
+        "required": false,
+        "description": "Replay every retained event strictly after this sequence number. The cursor is meaningful only inside the resident runtime's bounded in-memory replay window; eviction or restart resets the sequence without an epoch or cursor-expired signal.\n",
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "example": 42
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "description": "SSE frames whose `data` field contains one ATP event envelope"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": true,
+    "public": true
+  },
+  "getCapabilitiesLegacy": {
+    "method": "GET",
+    "path": "/capabilities",
+    "params": [],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/CapabilitiesLegacy"
+    },
+    "response_type": "CapabilitiesLegacy",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
   }
 }

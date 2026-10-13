@@ -4,6 +4,8 @@
 
 ## Install from PyPI
 
+This branch adds breaking [contract3/Wiki V1 support](migration-contract3.md). The historical published1.0.0a2 pin below predates that change. Use the normal release built from this branch for the new APIs, or a reviewed source commit while evaluating.
+
 Requires Python 3.11 or newer. Use an isolated virtual environment and a supported, patched Python release.
 
 ```sh
@@ -43,6 +45,7 @@ Both `EnvaiClient` and `AsyncEnvaiClient` accept:
 
 | Option | Default / behavior |
 | --- | --- |
+| `contract_version` | `3` by default; explicit `2` is read-only. Selection and acknowledgment are mandatory for negotiated APIs. |
 | `api_key` | Required, explicit positional credential. No environment lookup inside the SDK. |
 | `base_url` | Local development URL `http://localhost:8111/api/v1`; explicitly override in production. Missing `/api/v1` is appended to the supplied path. |
 | `jwks_url` | Origin-level `/.well-known/jwks.json`; override only with a trusted signing-key URL. No bearer token is sent there. |

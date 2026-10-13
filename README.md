@@ -1,12 +1,12 @@
 # Envai Teams Python SDK
 
 Typed synchronous and asynchronous clients for the current Envai Teams API and
-Agent Team Protocol (ATP v2). Python 3.11+. The published **alpha prerelease** is
+Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The published **alpha prerelease** is
 [`1.0.0a2` on PyPI](https://pypi.org/project/envai-teams-sdk/1.0.0a2/).
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 52 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 65 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -17,6 +17,8 @@ python -m venv .venv
 # Activate .venv using the command for your shell, then:
 python -m pip install "envai-teams-sdk==1.0.0a2"
 ```
+
+**Compatibility note:** this branch adds a breaking contract3 migration. The published `1.0.0a2` baseline below predates it; use the normal release produced from this branch for Wiki V1/contract3, or the documented source install while reviewing.
 
 The explicit version selects the alpha prerelease; no `--pre` flag is needed with this exact pin. The distribution is `envai-teams-sdk`; import `envai`. GitHub release `v1.0.0-alpha.2` uses Python package version `1.0.0a2`. For source installation and development, see [getting started](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md).
 
@@ -87,7 +89,7 @@ are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains all **52 operation IDs** in
+The generated primitive layer retains all **65 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -106,7 +108,7 @@ accepted independently of the capabilities discovery list.
 
 Optional request fields preserve omission. In particular, `ApiKeyCreate(name='x')`
 omits `expires_at`; only explicit `expires_at='never'` means no expiration.
-Never log the plaintext token returned by key creation. Cost numbers retain
+Never log the plaintext token returned by key creation. Nullable legacy USD cost numbers retain
 floating-point precision from the wire without rounding to cents or estimating
 billing from local price tables.
 
@@ -232,8 +234,8 @@ turn; it does not infer permission to execute unrelated turns.
 
 ## Development and contract provenance
 
-The bundled HTTP and ATP contracts define API 2.0.0 and ATP v2.
-`tests/fixtures/provenance.json` records two byte-exact contract snapshots separately
+The bundled contract3 HTTP and ATP contracts include strict immutable numeric ATP2 replay schemas. Default clients select contract3 and fail closed against older servers. See [migration](docs/migration-contract3.md) and [Wiki V1](docs/wiki.md).
+`tests/fixtures/contract3-provenance.json` records the five current shared contract snapshots. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
 from five SDK-authored fixtures. Guards verify the source commit/path, byte count,
 SHA-256, and Git blob identity. Public guides are SDK documentation rather than
 copied contract files. Building or reading the SDK does not require access to a
@@ -256,3 +258,5 @@ are excluded from coverage but independently covered by the operation inventory
 and response-schema tests. Tests never call Envai production endpoints or require
 credentials. MIT, Copyright (c) 2026 DigItalyGo.
 
+
+Wiki V1 and contract3 validation results, database crash/concurrency scope and release limits: [validation report](docs/wiki-validation.md).

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from negotiated_transport import negotiated_transport
 
 from envai import AsyncEnvaiClient, EnvaiClient, RequestOptions, RetryPolicy, models
 from envai._schema import OPENAPI, OPERATIONS
@@ -28,6 +29,10 @@ from envai.errors import (
 def sample(schema):
     if "$ref" in schema:
         return sample(OPENAPI["components"]["schemas"][schema["$ref"].rsplit("/", 1)[1]])
+    if "is_complete" in schema.get("properties", {}):
+        return json.loads(
+            (Path(__file__).parent / "fixtures/wiki/category-index.json").read_text()
+        )["data"]
     if "example" in schema and schema["example"] is not None:
         # Old illustrative IDs are not always valid ULIDs.
         example = schema["example"]
@@ -35,10 +40,18 @@ def sample(schema):
             return example
     if "const" in schema:
         return schema["const"]
+    if (
+        "$ref" not in schema
+        and schema.get("type") == "object"
+        and "scope_status" in schema.get("properties", {})
+    ):
+        return json.loads((Path(__file__).parent / "fixtures/wiki/usage-pending.json").read_text())[
+            "data"
+        ]
     if "enum" in schema:
         return schema["enum"][0]
     if "allOf" in schema:
-        result = {}
+        result = sample({k: v for k, v in schema.items() if k != "allOf"})
         for part in schema["allOf"]:
             result.update(sample(part))
         return result
@@ -72,6 +85,10 @@ def sample(schema):
     if "pattern" in schema:
         pattern = re.sub(r"\[([a-z])[A-Z]\]", r"\1", schema["pattern"])
         prefix = re.search(r"\^([a-z]+_)", pattern)
+        if schema["pattern"] == "^[!-~]+$":
+            return "test-idempotency"
+        if schema["pattern"] == "^https://":
+            return "https://receiver.example.test/wiki"
         if prefix:
             return prefix[1] + "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     return "x" * max(1, schema.get("minLength", 0))
@@ -85,6 +102,8 @@ def arguments(op):
     args = {}
     for p in op["params"]:
         key = re.sub(r"[^a-zA-Z0-9_]", "_", p["name"]).strip("_")
+        if "-" in p["name"]:
+            key = key.lower()
         if p["in"] == "path" or p.get("required"):
             args[key] = sample(p.get("schema", {"type": "string"}))
     if op["request"]:
@@ -92,6 +111,8 @@ def arguments(op):
             args["files"] = {"file": ("x.png", b"png", "image/png")}
         else:
             args["body"] = sample(op["request"])
+    if op["path"].endswith("/index"):
+        args["all"] = True
     return args
 
 
@@ -104,18 +125,26 @@ def test_full_surface_sync(name, op):
 
     def handler(request):
         seen.append(request)
+        if request.url.path.endswith("/atp/v3/capabilities"):
+            from negotiated_transport import CAPABILITIES
+
+            return httpx.Response(200, json=CAPABILITIES, headers={"X-Envai-Contract-Version": "3"})
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
             )
+        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3")}
         if not op["response"]:
-            return httpx.Response(204)
+            return httpx.Response(204, headers=ack)
         if op["response_type"] == "bytes":
-            return httpx.Response(200, content=b"binary")
-        return httpx.Response(200, json=sample(op["response"]))
+            return httpx.Response(200, content=b"binary", headers=ack)
+        return httpx.Response(200, json=sample(op["response"]), headers=ack)
 
     with EnvaiClient(
-        "secret", base_url="https://example.test/", transport=httpx.MockTransport(handler)
+        "secret",
+        base_url="https://example.test/",
+        transport=httpx.MockTransport(handler),
+        contract_version=2 if name.endswith("Legacy") else 3,
     ) as client:
         method = getattr(client, snake(name))
         if name == "resolveChatApproval":
@@ -123,12 +152,15 @@ def test_full_surface_sync(name, op):
                 method(**arguments(op))
         else:
             method(**arguments(op))
-    assert len(seen) == 1
-    req = seen[0]
+    expected = 2 if op["method"] != "GET" and EnvaiClient._negotiated(name) else 1
+    assert len(seen) == expected
+    req = seen[-1]
     assert req.method == op["method"]
     assert bool(req.headers.get("authorization")) == op["auth"]
-    if name == "getJwks":
-        assert req.url.path == "/.well-known/jwks.json"
+    if name in ("getJwks", "getWikiWebhookJwks"):
+        assert req.url.path == (
+            "/.well-known/jwks.json" if name == "getJwks" else "/.well-known/wiki-webhook-jwks.json"
+        )
     else:
         assert req.url.path.startswith("/api/v1/")
 
@@ -136,17 +168,26 @@ def test_full_surface_sync(name, op):
 @pytest.mark.parametrize("name,op", OPS, ids=[x[0] for x in OPS])
 async def test_full_surface_async(name, op):
     async def handler(request):
+        if request.url.path.endswith("/atp/v3/capabilities"):
+            from negotiated_transport import CAPABILITIES
+
+            return httpx.Response(200, json=CAPABILITIES, headers={"X-Envai-Contract-Version": "3"})
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
             )
+        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3")}
         if not op["response"]:
-            return httpx.Response(204)
+            return httpx.Response(204, headers=ack)
         if op["response_type"] == "bytes":
-            return httpx.Response(200, content=b"binary")
-        return httpx.Response(200, json=sample(op["response"]))
+            return httpx.Response(200, content=b"binary", headers=ack)
+        return httpx.Response(200, json=sample(op["response"]), headers=ack)
 
-    async with AsyncEnvaiClient("secret", transport=httpx.MockTransport(handler)) as client:
+    async with AsyncEnvaiClient(
+        "secret",
+        transport=httpx.MockTransport(handler),
+        contract_version=2 if name.endswith("Legacy") else 3,
+    ) as client:
         if name == "resolveChatApproval":
             with pytest.raises(ConflictError):
                 await getattr(client, snake(name))(**arguments(op))
@@ -156,10 +197,14 @@ async def test_full_surface_async(name, op):
 
 def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
-    assert len(OPERATIONS) == 52
+    assert len(OPERATIONS) == 65
     for op in shared:
         assert OPERATIONS[op["id"]]["method"] == op["method"]
-        assert OPERATIONS[op["id"]]["path"] == op["path"]
+        assert OPERATIONS[op["id"]]["path"] == (
+            "/atp/v3" + op["path"]
+            if op["path"].startswith("/chats/") or op["id"] == "getCapabilities"
+            else op["path"]
+        )
         assert OPERATIONS[op["id"]]["auth"] == op["authenticated"]
         assert hasattr(EnvaiClient, snake(op["id"]))
         assert hasattr(AsyncEnvaiClient, snake(op["id"]))
@@ -188,7 +233,7 @@ def test_errors_preserved_redacted(status, cls):
     }
     with EnvaiClient(
         "secret",
-        transport=httpx.MockTransport(
+        transport=negotiated_transport(
             lambda req: httpx.Response(status, json=response, headers={"x-request-id": "id"})
         ),
         retry=RetryPolicy(0),
@@ -208,7 +253,7 @@ def test_mutations_never_retry(method):
         seen.append(req)
         raise httpx.ReadError("ambiguous")
 
-    with EnvaiClient("x", transport=httpx.MockTransport(handler)) as c:
+    with EnvaiClient("x", transport=negotiated_transport(handler)) as c:
         with pytest.raises(TransportError):
             if method == "send_chat_message":
                 c.send_chat_message("chat", body={"message": "hello"})
@@ -232,7 +277,7 @@ async def test_get_retry(async_):
     cls = AsyncEnvaiClient if async_ else EnvaiClient
     c = cls(
         "x",
-        transport=httpx.MockTransport(handler),
+        transport=negotiated_transport(handler),
         retry=RetryPolicy(base_delay=0, max_delay=0),
         observer=lambda *a: (_ for _ in ()).throw(RuntimeError()),
     )
@@ -252,7 +297,7 @@ def test_model_omission_and_explicit_never():
         seen.append(json.loads(req.content))
         return httpx.Response(422, json={"error": {"type": "validation_error", "message": "test"}})
 
-    with EnvaiClient("x", transport=httpx.MockTransport(handler)) as c:
+    with EnvaiClient("x", transport=negotiated_transport(handler)) as c:
         for body in (
             models.ApiKeyCreate(name="test"),
             models.ApiKeyCreate(name="test", expires_at="never"),
@@ -275,7 +320,7 @@ def test_config_encoding_cancel_and_validation():
     assert delay(RetryPolicy(), 0, "2") == 2
     seen = []
     with EnvaiClient(
-        "x", transport=httpx.MockTransport(lambda r: seen.append(r) or httpx.Response(404))
+        "x", transport=negotiated_transport(lambda r: seen.append(r) or httpx.Response(404))
     ) as c:
         with pytest.raises(NotFoundError):
             c.get_user_tool("slash/name ?")
@@ -295,7 +340,7 @@ def test_config_encoding_cancel_and_validation():
 @pytest.mark.parametrize("content", [b"bad", b'{"data":"not a list"}', b'{"data":NaN}'])
 def test_bad_response(content):
     with EnvaiClient(
-        "x", transport=httpx.MockTransport(lambda r: httpx.Response(200, content=content))
+        "x", transport=negotiated_transport(lambda r: httpx.Response(200, content=content))
     ) as c:
         with pytest.raises(ProtocolError):
             c.list_workspaces()
@@ -307,7 +352,7 @@ def test_signed_url_exact_and_cross_origin_blocked():
     with EnvaiClient(
         "secret",
         base_url="https://example.test",
-        transport=httpx.MockTransport(
+        transport=negotiated_transport(
             lambda r: seen.append(r) or httpx.Response(200, content=b"png")
         ),
     ) as c:

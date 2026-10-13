@@ -1,18 +1,18 @@
 # API inventory
 
-All 52 current operation IDs, including experimental integration primitives.
+All65 current operation IDs. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
 
 | Operation ID | Method | Path |
-|---|---|---|
-| `sendChatMessage` | POST | `/chats/{chat_id}/messages` |
-| `streamChatEvents` | GET | `/chats/{chat_id}/events` |
-| `cancelChatTurn` | POST | `/chats/{chat_id}/cancel` |
-| `steerChatTurn` | POST | `/chats/{chat_id}/steer` |
-| `resolveChatTool` | POST | `/chats/{chat_id}/tool-output` |
-| `resolveChatApproval` | POST | `/chats/{chat_id}/approval` |
-| `forkChat` | POST | `/chats/{chat_id}/fork` |
-| `restoreChat` | POST | `/chats/{chat_id}/restore` |
-| `getCapabilities` | GET | `/capabilities` |
+| --- | --- | --- |
+| `sendChatMessage` | POST | `/atp/v3/chats/{chat_id}/messages` |
+| `streamChatEvents` | GET | `/atp/v3/chats/{chat_id}/events` |
+| `cancelChatTurn` | POST | `/atp/v3/chats/{chat_id}/cancel` |
+| `steerChatTurn` | POST | `/atp/v3/chats/{chat_id}/steer` |
+| `resolveChatTool` | POST | `/atp/v3/chats/{chat_id}/tool-output` |
+| `resolveChatApproval` | POST | `/atp/v3/chats/{chat_id}/approval` |
+| `forkChat` | POST | `/atp/v3/chats/{chat_id}/fork` |
+| `restoreChat` | POST | `/atp/v3/chats/{chat_id}/restore` |
+| `getCapabilities` | GET | `/atp/v3/capabilities` |
 | `healthCheck` | GET | `/up` |
 | `getJwks` | GET | `/.well-known/jwks.json` |
 | `createWorkspace` | POST | `/workspaces` |
@@ -56,3 +56,16 @@ All 52 current operation IDs, including experimental integration primitives.
 | `listImageModels` | GET | `/images/models` |
 | `downloadArtifact` | GET | `/artifacts/download` |
 | `handleProviderWebhook` | POST | `/webhooks/providers/{provider}` |
+| `uploadWikiSource` | POST | `/workspaces/{workspace_id}/files/sources` |
+| `getWikiSource` | GET | `/workspaces/{workspace_id}/files/sources/{file_id}` |
+| `downloadWikiSource` | GET | `/workspaces/{workspace_id}/files/sources/{file_id}/download` |
+| `withdrawWikiSource` | POST | `/workspaces/{workspace_id}/wiki/outbox/files` |
+| `createWikiInboxRun` | POST | `/workspaces/{workspace_id}/wiki/inbox/runs` |
+| `createWikiOutboxRun` | POST | `/workspaces/{workspace_id}/wiki/outbox/runs` |
+| `createWikiSyncRun` | POST | `/workspaces/{workspace_id}/wiki/syncs` |
+| `getWikiOperation` | GET | `/workspaces/{workspace_id}/wiki/operations/{operation_id}` |
+| `listWikiCategories` | GET | `/workspaces/{workspace_id}/wiki/categories` |
+| `getWikiCategoryIndex` | GET | `/workspaces/{workspace_id}/wiki/categories/{category_id}/index` |
+| `getWikiWebhookJwks` | GET | `/.well-known/wiki-webhook-jwks.json` |
+| `streamChatEventsLegacy` | GET | `/chats/{chat_id}/events` |
+| `getCapabilitiesLegacy` | GET | `/capabilities` |

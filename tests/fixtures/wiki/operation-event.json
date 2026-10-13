@@ -1,0 +1,48 @@
+{
+  "schema": "WikiOperationEvent",
+  "data": {
+    "schema_version": "1",
+    "event_id": "evt_01j5abcdefghjkmnpqrstvwxyx",
+    "event_type": "wiki.inbox.completed",
+    "operation_id": "wop_01j5abcdefghjkmnpqrstvwxyz",
+    "workspace_id": "wsp_01j5abcdefghjkmnpqrstvwxyz",
+    "occurred_at": "2026-10-13T16:00:00Z",
+    "status": "completed",
+    "phases": {
+      "inbox": {
+        "status": "completed",
+        "selected": 1,
+        "succeeded": 1,
+        "withdrawn": 0,
+        "failed": 0,
+        "files": [
+          {
+            "file_id": "wsrc_01j5abcdefghjkmnpqrstvwxyz",
+            "status": "succeeded",
+            "error_code": null
+          }
+        ]
+      }
+    },
+    "finished_at": "2026-10-13T16:00:00Z",
+    "billing": {
+      "status": "inactive"
+    },
+    "usage_cost": {
+      "status": "pending",
+      "basis": "mixed",
+      "scope_status": "closed",
+      "revision": 3,
+      "as_of": "2026-10-13T16:00:00Z",
+      "invocation_count": 7,
+      "pending_invocation_count": 1,
+      "totals": null,
+      "priced_subtotals": [
+        {
+          "currency": "USD",
+          "amount": "0.01234000"
+        }
+      ]
+    }
+  }
+}

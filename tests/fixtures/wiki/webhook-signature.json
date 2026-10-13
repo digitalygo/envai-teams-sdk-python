@@ -1,0 +1,24 @@
+{
+  "description": "Synthetic fixture using public RFC 8032 test vector seed; never production credentials. Signing input has no trailing newline.",
+  "raw_body": "{\"schema_version\":\"1\",\"event_id\":\"evt_01j5abcdefghjkmnpqrstvwxyz\",\"event_type\":\"wiki.inbox.file.processed\",\"operation_id\":\"wop_01j5abcdefghjkmnpqrstvwxyz\",\"workspace_id\":\"wsp_01j5abcdefghjkmnpqrstvwxyz\",\"occurred_at\":\"2026-10-13T16:00:00Z\",\"file_id\":\"wsrc_01j5abcdefghjkmnpqrstvwxyz\",\"source_revision\":3,\"canonical_raw_path\":\"raw/wsrc_01j5abcdefghjkmnpqrstvwxyz.md\",\"availability\":\"raw\"}",
+  "signing_input": "envai-webhook-v1\nwiki-test-rfc8032\nevt_01j5abcdefghjkmnpqrstvwxyz\n1791907200\na6e3fccf404a558c419fe2510458bf4fe6b00a2f84efb4d31f26c17898701d45",
+  "headers": {
+    "Envai-Webhook-Id": "evt_01j5abcdefghjkmnpqrstvwxyz",
+    "Envai-Webhook-Timestamp": "1791907200",
+    "Envai-Webhook-Key-Id": "wiki-test-rfc8032",
+    "Envai-Webhook-Signature": "yBxoM71lvo74wI6Nf75s42lYMHjLkjK3sCcJ8pBa4atEc3Brn1B89RQNANNZyUpEbTrhNROex1JdsyKxXDosDA"
+  },
+  "jwks": {
+    "keys": [
+      {
+        "kid": "wiki-test-rfc8032",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "alg": "EdDSA",
+        "use": "sig",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    ]
+  },
+  "now": 1791907200
+}

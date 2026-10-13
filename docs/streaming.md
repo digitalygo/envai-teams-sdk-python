@@ -35,3 +35,7 @@ Replay and live subscription are not atomic; ping-before-send reduces the new-tu
 Normal GET requests retry transient transport failures and 429/502/503/504 under `RetryPolicy`; streams use a separate reconnect budget. An output-delivery timeout, 404, or 409 does not prove which output was accepted. Observe the matching result and check authoritative downstream state.
 
 Approval resolution currently returns 409. A steer acknowledgement does not guarantee changed execution. Restore does not start a turn and its acknowledgement does not guarantee durable history. Fork requires an empty destination chat with matching owner/workspace and both chats idle. These API limitations are not resolved by client retries.
+
+## Contract selection
+
+Default streams use ATP3 routes and require matching acknowledgment before decoding. Exact historical numeric ATP2 events may coexist with current nullable ATP3 events. Reconnects retain the selected contract. Legacy read-only streams are finite, atomically validated snapshots, bounded by `max_snapshot_bytes=67108864`. See [migration](migration-contract3.md).

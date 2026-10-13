@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from negotiated_transport import negotiated_transport
 from test_http import sample
 from test_stream import wire
 
@@ -42,17 +43,26 @@ def test_public_examples_offline(example, valid_events, monkeypatch, tmp_path, c
 
     original_sync, original_async = envai.EnvaiClient, envai.AsyncEnvaiClient
     monkeypatch.setattr(
-        envai, "EnvaiClient",
-        lambda *args, **kwargs: original_sync(*args, **kwargs, transport=httpx.MockTransport(handler)),
+        envai,
+        "EnvaiClient",
+        lambda *args, **kwargs: original_sync(
+            *args, **kwargs, transport=negotiated_transport(handler)
+        ),
     )
     monkeypatch.setattr(
-        envai, "AsyncEnvaiClient",
-        lambda *args, **kwargs: original_async(*args, **kwargs, transport=httpx.MockTransport(handler)),
+        envai,
+        "AsyncEnvaiClient",
+        lambda *args, **kwargs: original_async(
+            *args, **kwargs, transport=negotiated_transport(handler)
+        ),
     )
     for key, value in {
-        "ENVAI_API_KEY": "example-fixture", "ENVAI_BASE_URL": "https://example.test",
-        "ENVAI_TEAM_ID": "team-example", "ENVAI_CHAT_ID": chat_id,
-        "ENVAI_ACCOUNT_SCOPE": "example/account", "ENVAI_TOOL_STATE_PATH": str(tmp_path / "state.db"),
+        "ENVAI_API_KEY": "example-fixture",
+        "ENVAI_BASE_URL": "https://example.test",
+        "ENVAI_TEAM_ID": "team-example",
+        "ENVAI_CHAT_ID": chat_id,
+        "ENVAI_ACCOUNT_SCOPE": "example/account",
+        "ENVAI_TOOL_STATE_PATH": str(tmp_path / "state.db"),
     }.items():
         monkeypatch.setenv(key, value)
     runpy.run_path(str(Path(__file__).parents[1] / "examples" / example), run_name="__main__")

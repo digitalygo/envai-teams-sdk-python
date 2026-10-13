@@ -11,14 +11,20 @@ from typing import Any
 from pydantic import TypeAdapter
 
 from . import models
-from ._schema import EVENT_VALIDATOR, EVENTS, strict_json
+from ._schema import (
+    EVENT_VALIDATOR,
+    EVENTS,
+    LEGACY_EVENT_VALIDATOR,
+    finite_json_numbers,
+    strict_json,
+)
 from .errors import ProtocolError
 
 TERMINAL_TYPES = frozenset(("turn.completed", "turn.cancelled", "turn.failed"))
 PAYLOAD_TYPES = {
     key: getattr(models, "ATP" + "".join(x.title() for x in key.split(".")))
     for key in EVENTS["$defs"]
-    if key not in ("Envelope", "Event", "Agent", "Usage", "ToolKind")
+    if key == "ping" or "." in key
 }
 
 
@@ -45,13 +51,21 @@ class UnknownEvent(Event):
     """Valid future envelope with the original unknown data unchanged."""
 
 
-def parse_event(raw: str | bytes | dict[str, Any]) -> Event:
+def parse_event(raw: str | bytes | dict[str, Any], *, contract_version: int = 3) -> Event:
     original = raw
     try:
         value = strict_json(raw) if isinstance(raw, (str, bytes)) else raw
-        if not isinstance(value, dict) or value.get("v") != 2:
+        finite_json_numbers(value)
+        if (
+            type(contract_version) is not int
+            or contract_version not in (2, 3)
+            or not isinstance(value, dict)
+            or type(value.get("v")) is not int
+            or value["v"] not in ((2, 3) if contract_version == 3 else (2,))
+        ):
             raise ProtocolError("Unsupported or missing ATP protocol version", raw=original)
-        error = next(EVENT_VALIDATOR.iter_errors(value), None)
+        validator = LEGACY_EVENT_VALIDATOR if value["v"] == 2 else EVENT_VALIDATOR
+        error = next(validator.iter_errors(value), None)
         if error:
             raise ProtocolError("Invalid ATP envelope or known payload", raw=original)
         timestamp = value["ts"]

@@ -1,0 +1,106 @@
+{
+  "covered": 845,
+  "executable": 869,
+  "percent": 97.23820483314154,
+  "scope": "Changed executable lines including generated models/methods and generator; schemas/docs validated independently.",
+  "files": {
+    "scripts/generate.py": {
+      "covered": 14,
+      "executable": 14,
+      "missing": []
+    },
+    "src/envai/__init__.py": {
+      "covered": 4,
+      "executable": 4,
+      "missing": []
+    },
+    "src/envai/_generated.py": {
+      "covered": 89,
+      "executable": 102,
+      "missing": [
+        419,
+        423,
+        431,
+        435,
+        439,
+        443,
+        966,
+        970,
+        974,
+        978,
+        982,
+        986,
+        990
+      ]
+    },
+    "src/envai/_schema.py": {
+      "covered": 30,
+      "executable": 30,
+      "missing": []
+    },
+    "src/envai/_transport.py": {
+      "covered": 95,
+      "executable": 100,
+      "missing": [
+        194,
+        312,
+        338,
+        367,
+        368
+      ]
+    },
+    "src/envai/client.py": {
+      "covered": 12,
+      "executable": 12,
+      "missing": []
+    },
+    "src/envai/errors.py": {
+      "covered": 5,
+      "executable": 5,
+      "missing": []
+    },
+    "src/envai/event_models.py": {
+      "covered": 5,
+      "executable": 5,
+      "missing": []
+    },
+    "src/envai/events.py": {
+      "covered": 6,
+      "executable": 6,
+      "missing": []
+    },
+    "src/envai/models.py": {
+      "covered": 256,
+      "executable": 256,
+      "missing": []
+    },
+    "src/envai/stream.py": {
+      "covered": 50,
+      "executable": 53,
+      "missing": [
+        174,
+        241,
+        320
+      ]
+    },
+    "src/envai/wiki.py": {
+      "covered": 53,
+      "executable": 53,
+      "missing": []
+    },
+    "src/envai/wiki_inbox.py": {
+      "covered": 95,
+      "executable": 98,
+      "missing": [
+        46,
+        87,
+        99
+      ]
+    },
+    "src/envai/wiki_webhooks.py": {
+      "covered": 131,
+      "executable": 131,
+      "missing": []
+    }
+  }
+}

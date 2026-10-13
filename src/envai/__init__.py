@@ -3,8 +3,16 @@
 from . import errors, models
 from ._transport import RequestOptions, RetryPolicy
 from .client import AsyncEnvaiClient, EnvaiClient
+from .errors import CompatibilityError, WebhookStoreError, WebhookVerificationError
 from .events import Event, TurnResult, UnknownEvent, parse_event
 from .stream import AsyncEventStream, EventStream
+from .wiki_inbox import (
+    PostgresWikiWebhookInbox,
+    ReceiptOutcome,
+    SqliteWikiWebhookInbox,
+    WikiOutboxJob,
+)
+from .wiki_webhooks import AsyncWikiWebhookVerifier, WikiWebhookVerifier
 
 __version__ = "1.0.0a2"
 __all__ = [
@@ -35,4 +43,16 @@ __all__ += [
     "ToolStateStore",
     "JwksVerifier",
     "AsyncJwksVerifier",
+]
+
+__all__ += [
+    "CompatibilityError",
+    "WebhookStoreError",
+    "WebhookVerificationError",
+    "WikiWebhookVerifier",
+    "AsyncWikiWebhookVerifier",
+    "SqliteWikiWebhookInbox",
+    "PostgresWikiWebhookInbox",
+    "ReceiptOutcome",
+    "WikiOutboxJob",
 ]

@@ -3,6 +3,7 @@
 import copy
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 
 import pytest
 from test_tools import setup_async, setup_sync
@@ -51,7 +52,7 @@ def test_memory_corruption_is_not_absence_and_is_never_repaired(operation, bad):
 def test_sqlite_corruption_is_never_repaired(tmp_path, operation, bad):
     path = str(tmp_path / "damaged.sqlite3")
     # Model a damaged/imported database that lacks the SDK's NOT NULL guards.
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute(
             "CREATE TABLE tool_claims (scope TEXT, chat_id TEXT, call_id TEXT, "
             "fingerprint TEXT, status TEXT, turn_id TEXT, PRIMARY KEY(scope,chat_id,call_id))"
@@ -60,6 +61,8 @@ def test_sqlite_corruption_is_never_repaired(tmp_path, operation, bad):
             "INSERT INTO tool_claims VALUES (?,?,?,?,?,?)",
             (*KEY, bad.fingerprint, bad.status, bad.turn_id),
         )
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        db.execute("SELECT 1")
     original = (tmp_path / "damaged.sqlite3").read_bytes()
     with SQLiteToolState(path) as store:
         before = store._db.execute("SELECT * FROM tool_claims").fetchall()
@@ -72,7 +75,7 @@ def test_sqlite_corruption_is_never_repaired(tmp_path, operation, bad):
 @pytest.mark.parametrize("operation", OPERATIONS)
 def test_duplicate_sqlite_rows_fail_closed(tmp_path, operation):
     path = str(tmp_path / "duplicates.sqlite3")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute(
             "CREATE TABLE tool_claims (scope, chat_id, call_id, fingerprint, status, turn_id)"
         )
@@ -80,6 +83,8 @@ def test_duplicate_sqlite_rows_fail_closed(tmp_path, operation):
             db.execute(
                 "INSERT INTO tool_claims VALUES (?,?,?,?,?,?)", (*KEY, "hash", "running", "turn")
             )
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        db.execute("SELECT 1")
     with SQLiteToolState(path) as store:
         with pytest.raises(ToolStateError):
             invoke(store, operation)

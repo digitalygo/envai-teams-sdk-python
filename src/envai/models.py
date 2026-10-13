@@ -8,6 +8,218 @@ class Model(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
+class CompletionTerminalSnapshotUsage(Model):
+    input_tokens: Union[int, None] = Field(default=None)
+    output_tokens: Union[int, None] = Field(default=None)
+    duration_ms: Union[int, None] = Field(default=None)
+    sprite_ms: Union[int, None] = Field(default=None)
+    sprite_ram_gb_ms: Union[int, None] = Field(default=None)
+    tool_calls: Union[int, None] = Field(default=None)
+    cost_usd: Union[Union[float, None], None] = Field(default=None)
+    billing: Union[BillingState, None] = Field(default=None)
+    usage_cost: Union[UsageCost, None] = Field(default=None)
+
+
+class CompletionTerminalSnapshot(Model):
+    event_id: str
+    occurred_at: str
+    event_type: Literal['turn.completed', 'turn.failed', 'turn.cancelled']
+    data: CompletionTerminalSnapshotData
+    v: Union[Literal[2, 3], None] = Field(default=None)
+    accepted_protocol_version: Union[Literal[2, 3], None] = Field(default=None)
+
+
+class CompletionTerminalSnapshotData(Model):
+    turn_id: str
+    usage: Union[CompletionTerminalSnapshotUsage, None] = Field(default=None)
+    cost: Union[Union[float, None], None] = Field(default=None)
+    finish_reason: Union[str, None] = Field(default=None)
+    reason: Union[str, None] = Field(default=None)
+    code: Union[str, None] = Field(default=None)
+    message: Union[str, None] = Field(default=None)
+    chat_usage: Union[CompletionTerminalSnapshotChatUsage, None] = Field(default=None)
+    chat_cost: Union[Union[float, None], None] = Field(default=None)
+
+
+class CompletionTerminalSnapshotChatUsage(Model):
+    input_tokens: int
+    output_tokens: int
+    cost_usd: Union[float, None]
+    duration_ms: int
+    sprite_ms: Union[int, None] = Field(default=None)
+    sprite_ram_gb_ms: Union[int, None] = Field(default=None)
+    tool_calls: Union[int, None] = Field(default=None)
+    billing: Union[BillingState, None] = Field(default=None)
+    usage_cost: Union[UsageCost, None] = Field(default=None)
+
+
+class BillingState(Model):
+    status: Literal['inactive']
+
+
+class CurrencyAmount(Model):
+    currency: str
+    amount: str
+
+
+class UsageCost(Model):
+    status: Literal['pending', 'complete']
+    basis: Literal['reported', 'calculated', 'mixed', 'none']
+    scope_status: Literal['open', 'closed']
+    revision: int
+    as_of: str
+    invocation_count: int
+    pending_invocation_count: int
+    totals: Union[list[CurrencyAmount], None]
+    priced_subtotals: list[CurrencyAmount]
+
+
+class ConversionState(Model):
+    status: Literal['queued', 'running', 'completed', 'failed']
+    error_code: Union[Union[str, None], None] = Field(default=None)
+    recoverable: Union[bool, None] = Field(default=None)
+    next_retry_at: Union[Union[str, None], None] = Field(default=None)
+
+
+class IndexingState(Model):
+    status: Literal['pending_conversion', 'pending', 'processed', 'withdrawn', 'failed']
+
+
+class WikiSource(Model):
+    file_id: str
+    workspace_id: str
+    original_name: str
+    mime_type: str
+    byte_size: int
+    lifecycle: Literal['uploaded', 'inbox', 'raw', 'outbox', 'deleting', 'deleted']
+    source_revision: int
+    conversion: ConversionState
+    indexing: IndexingState
+    canonical_raw_path: Union[str, None]
+    billing: BillingState
+    usage_cost: UsageCost
+    status_url: str
+
+
+class BatchSizes(Model):
+    inbox: int
+    outbox: int
+
+
+class FileOutcome(Model):
+    file_id: str
+    status: Literal['pending', 'running', 'succeeded', 'withdrawn', 'failed']
+    error_code: Union[str, None]
+
+
+class PhaseResult(Model):
+    status: Literal['pending', 'running', 'completed', 'failed', 'skipped_empty']
+    selected: int
+    succeeded: int
+    withdrawn: int
+    failed: int
+    files: list[FileOutcome]
+
+
+class WikiOperation(Model):
+    operation_id: str
+    workspace_id: str
+    kind: Literal['inbox', 'outbox', 'sync']
+    status: Literal['queued', 'running', 'completed', 'failed']
+    phase: Union[str, None]
+    phases: WikiOperationPhases
+    started_at: Union[str, None]
+    finished_at: Union[str, None]
+    batch_sizes: BatchSizes
+    billing: BillingState
+    usage_cost: UsageCost
+
+
+class WikiOperationPhases(Model):
+    inbox: Union[PhaseResult, None] = Field(default=None)
+    outbox: Union[PhaseResult, None] = Field(default=None)
+
+
+class Category(Model):
+    category_id: str
+    name: str
+    description: str
+
+
+class Categories(Model):
+    categories: list[Category]
+    catalog_revision: int
+
+
+class CatalogEntry(Model):
+    entry_id: str
+    type: Literal['raw', 'artifact']
+    target_id: str
+    canonical_path: str
+    description: str
+    inserted_at: str
+
+
+class IndexRange(Model):
+    from_: int = Field(alias='from')
+    to: int
+
+
+class CategoryIndex(Model):
+    entries: list[CatalogEntry]
+    total_count: int
+    returned_count: int
+    requested_range: Union[IndexRange, None]
+    actual_range: Union[IndexRange, None]
+    catalog_revision: int
+    is_complete: bool
+
+
+class WikiFileProcessedEvent(Model):
+    schema_version: Literal['1']
+    event_id: str
+    event_type: Literal['wiki.inbox.file.processed']
+    operation_id: str
+    workspace_id: str
+    occurred_at: str
+    file_id: str
+    source_revision: int
+    canonical_raw_path: str
+    availability: Literal['raw']
+
+
+class WikiFileDeletedEvent(Model):
+    schema_version: Literal['1']
+    event_id: str
+    event_type: Literal['wiki.outbox.file.deleted']
+    operation_id: str
+    workspace_id: str
+    occurred_at: str
+    file_id: str
+    source_revision: int
+    previous_canonical_raw_path: Union[str, None]
+    lifecycle: Literal['deleted']
+
+
+class WikiOperationEvent(Model):
+    schema_version: Literal['1']
+    event_id: str
+    event_type: Literal['wiki.inbox.completed', 'wiki.inbox.failed', 'wiki.outbox.completed', 'wiki.outbox.failed', 'wiki.sync.completed', 'wiki.sync.failed']
+    operation_id: str
+    workspace_id: str
+    occurred_at: str
+    status: Literal['completed', 'failed']
+    phases: WikiOperationEventPhases
+    finished_at: str
+    billing: BillingState
+    usage_cost: UsageCost
+
+
+class WikiOperationEventPhases(Model):
+    inbox: Union[PhaseResult, None] = Field(default=None)
+    outbox: Union[PhaseResult, None] = Field(default=None)
+
+
 class Error(Model):
     error: ErrorError
 
@@ -74,11 +286,14 @@ class RestoreChatAccepted(Model):
 
 
 class Capabilities(Model):
-    protocol_version: int
-    families: list[Literal['turn', 'agent']]
+    protocol_version: Literal[3]
+    families: list[Literal['turn', 'agent', 'chat']]
     event_types: list[str]
     tool_kinds: list[Literal['server', 'client', 'knowledge', 'code']]
-    features: list[Literal['replay', 'fork', 'restore', 'ping', 'background_delegation', 'client_tools']]
+    features: list[str]
+    contract_version: Literal[3]
+    supported_contract_versions: list[Literal[2, 3]]
+    legacy_v2_mode: Literal['historical_reads_replay_only']
 
 
 class Workspace(Model):
@@ -139,6 +354,7 @@ class Chat(Model):
     workspace_id: str
     user_id: str
     team_id: str
+    title: Union[str, None]
     created_at: str
     updated_at: str
 
@@ -167,7 +383,10 @@ class Completion(Model):
     finished_at: Union[Union[str, None], None] = Field(default=None)
     duration_ms: Union[Union[int, None], None] = Field(default=None)
     usage: CompletionUsage
-    cost_usd: float
+    billing: Union[BillingState, None] = Field(default=None)
+    usage_cost: Union[UsageCost, None] = Field(default=None)
+    terminal_snapshot: Union[Union[CompletionTerminalSnapshot, None], None] = Field(default=None)
+    cost_usd: Union[float, None]
     status: Literal['running', 'succeeded', 'failed', 'canceled']
     finish_reason: Union[Literal['stop', 'error', 'canceled', None], None] = Field(default=None)
     content_hash: Union[Union[str, None], None] = Field(default=None)
@@ -444,7 +663,7 @@ class ImageGenerationRequest(Model):
     objects_image: Union[InputImage, None] = Field(default=None)
     resolution: Union[Literal['0.5k', '1k', '2k', '3k', '4k'], None] = Field(default=None)
     dimensions: Union[ImageDimensions, None] = Field(default=None)
-    aspect_ratio: Union[Literal[61, 969, 556, 243, 184, 182, 123, 1269, 561, 'as_input_image'], None] = Field(default=None)
+    aspect_ratio: Union[Literal['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9', '9:21', 'as_input_image'], None] = Field(default=None)
     format: Union[Literal['png', 'jpeg', 'webp', 'svg'], None] = Field(default=None)
     quality: Union[int, None] = Field(default=None)
     model_settings: Union[dict[str, Any], None] = Field(default=None)
@@ -637,6 +856,14 @@ class ThrottleErrorError(Model):
     message: str
 
 
+class CapabilitiesLegacy(Model):
+    protocol_version: Literal[2]
+    families: list[Literal['turn', 'agent', 'chat']]
+    event_types: list[str]
+    tool_kinds: list[Literal['server', 'client', 'knowledge', 'code']]
+    features: list[Literal['replay', 'fork', 'restore', 'ping', 'background_delegation', 'client_tools', 'chat_title']]
+
+
 class ATPAgent(Model):
     instance_id: str
     name: str
@@ -648,11 +875,17 @@ class ATPAgent(Model):
 class ATPUsage(Model):
     input_tokens: int
     output_tokens: int
-    cost_usd: float
+    cost_usd: Union[float, None]
     duration_ms: int
     sprite_ms: Union[int, None] = Field(default=None)
     sprite_ram_gb_ms: Union[int, None] = Field(default=None)
     tool_calls: Union[int, None] = Field(default=None)
+    billing: Union[ATPBillingstate, None] = Field(default=None)
+    usage_cost: Union[ATPUsagecost, None] = Field(default=None)
+
+
+class ATPChatTitleUpdated(Model):
+    title: str
 
 
 class ATPTurnStarted(Model):
@@ -663,19 +896,23 @@ class ATPTurnStarted(Model):
 class ATPTurnCompleted(Model):
     turn_id: str
     usage: ATPUsage
-    cost: float
+    cost: Union[float, None]
     chat_usage: ATPUsage
-    chat_cost: float
+    chat_cost: Union[float, None]
     finish_reason: str
+    billing: Union[ATPBillingstate, None] = Field(default=None)
+    usage_cost: Union[ATPUsagecost, None] = Field(default=None)
 
 
 class ATPTurnCancelled(Model):
     turn_id: str
     reason: str
     usage: ATPUsage
-    cost: float
+    cost: Union[float, None]
     chat_usage: ATPUsage
-    chat_cost: float
+    chat_cost: Union[float, None]
+    billing: Union[ATPBillingstate, None] = Field(default=None)
+    usage_cost: Union[ATPUsagecost, None] = Field(default=None)
 
 
 class ATPTurnFailed(Model):
@@ -683,9 +920,11 @@ class ATPTurnFailed(Model):
     code: str
     message: str
     usage: ATPUsage
-    cost: float
+    cost: Union[float, None]
     chat_usage: ATPUsage
-    chat_cost: float
+    chat_cost: Union[float, None]
+    billing: Union[ATPBillingstate, None] = Field(default=None)
+    usage_cost: Union[ATPUsagecost, None] = Field(default=None)
 
 
 class ATPTurnSteered(Model):
@@ -835,6 +1074,27 @@ class ATPApprovalExpire(Model):
     approval_id: str
 
 
+class ATPBillingstate(Model):
+    status: Literal['inactive']
+
+
+class ATPCurrencyamount(Model):
+    currency: str
+    amount: str
+
+
+class ATPUsagecost(Model):
+    status: Literal['pending', 'complete']
+    basis: Literal['reported', 'calculated', 'mixed', 'none']
+    scope_status: Literal['open', 'closed']
+    revision: int
+    as_of: str
+    invocation_count: int
+    pending_invocation_count: int
+    totals: Union[list[ATPCurrencyamount], None]
+    priced_subtotals: list[ATPCurrencyamount]
+
+
 class HealthCheckResponse(Model):
     data: Union[HealthCheckResponseData, None] = Field(default=None)
 
@@ -864,6 +1124,23 @@ class TestGenerateImageResponse(Model):
     files: list[TestImageFileMetadata]
     received_at: str
 
+
+class WithdrawWikiSourceBody(Model):
+    file_id: str
+
+
+class CreateWikiInboxRunBody(Model):
+    webhook_url: str
+
+
+class CreateWikiOutboxRunBody(Model):
+    webhook_url: str
+
+
+class CreateWikiSyncRunBody(Model):
+    webhook_url: str
+
+WikiWebhookEvent = Union[WikiFileProcessedEvent, WikiFileDeletedEvent, WikiOperationEvent]
 WorkspaceMetadata = Union[dict[str, Any], list[Any]]
 WorkspaceUpdateRequest = Union[Any, Any]
 UserToolUpdateRequest = Union[Any, Any, Any]
@@ -878,6 +1155,30 @@ ProviderWebhookPayload = dict[str, Any]
 ATPToolkind = Literal['server', 'client', 'knowledge', 'code']
 ATPPing = dict[str, Any]
 
+CompletionTerminalSnapshotUsage.model_rebuild()
+CompletionTerminalSnapshot.model_rebuild()
+CompletionTerminalSnapshotData.model_rebuild()
+CompletionTerminalSnapshotChatUsage.model_rebuild()
+BillingState.model_rebuild()
+CurrencyAmount.model_rebuild()
+UsageCost.model_rebuild()
+ConversionState.model_rebuild()
+IndexingState.model_rebuild()
+WikiSource.model_rebuild()
+BatchSizes.model_rebuild()
+FileOutcome.model_rebuild()
+PhaseResult.model_rebuild()
+WikiOperation.model_rebuild()
+WikiOperationPhases.model_rebuild()
+Category.model_rebuild()
+Categories.model_rebuild()
+CatalogEntry.model_rebuild()
+IndexRange.model_rebuild()
+CategoryIndex.model_rebuild()
+WikiFileProcessedEvent.model_rebuild()
+WikiFileDeletedEvent.model_rebuild()
+WikiOperationEvent.model_rebuild()
+WikiOperationEventPhases.model_rebuild()
 Error.model_rebuild()
 ErrorError.model_rebuild()
 ChatMessageRequest.model_rebuild()
@@ -969,8 +1270,10 @@ WorkspaceFileRequest.model_rebuild()
 ConvertToPdfRequest.model_rebuild()
 ThrottleError.model_rebuild()
 ThrottleErrorError.model_rebuild()
+CapabilitiesLegacy.model_rebuild()
 ATPAgent.model_rebuild()
 ATPUsage.model_rebuild()
+ATPChatTitleUpdated.model_rebuild()
 ATPTurnStarted.model_rebuild()
 ATPTurnCompleted.model_rebuild()
 ATPTurnCancelled.model_rebuild()
@@ -999,7 +1302,14 @@ ATPAgentFailed.model_rebuild()
 ATPApprovalRequest.model_rebuild()
 ATPApprovalResponse.model_rebuild()
 ATPApprovalExpire.model_rebuild()
+ATPBillingstate.model_rebuild()
+ATPCurrencyamount.model_rebuild()
+ATPUsagecost.model_rebuild()
 HealthCheckResponse.model_rebuild()
 HealthCheckResponseData.model_rebuild()
 CreateApiKeyResponse.model_rebuild()
 TestGenerateImageResponse.model_rebuild()
+WithdrawWikiSourceBody.model_rebuild()
+CreateWikiInboxRunBody.model_rebuild()
+CreateWikiOutboxRunBody.model_rebuild()
+CreateWikiSyncRunBody.model_rebuild()

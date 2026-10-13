@@ -23,7 +23,7 @@ def test_shared_valid(event):
 )
 def test_shared_invalid(case):
     with pytest.raises(ProtocolError) as error:
-        parse_event(case["event"])
+        parse_event(case["event"], contract_version=2)
     assert error.value.raw == case["event"]
 
 

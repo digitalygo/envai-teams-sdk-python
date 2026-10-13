@@ -11,6 +11,11 @@ class PingEvent(Event):
     data: models.ATPPing
 
 @dataclass(frozen=True)
+class ChatTitleUpdatedEvent(Event):
+    type: Literal['chat.title.updated']
+    data: models.ATPChatTitleUpdated
+
+@dataclass(frozen=True)
 class TurnStartedEvent(Event):
     type: Literal['turn.started']
     data: models.ATPTurnStarted
@@ -145,9 +150,10 @@ class ApprovalExpireEvent(Event):
     type: Literal['approval.expire']
     data: models.ATPApprovalExpire
 
-KnownEvent = Union[PingEvent, TurnStartedEvent, TurnCompletedEvent, TurnCancelledEvent, TurnFailedEvent, TurnSteeredEvent, AgentStartedEvent, AgentPlanEvent, AgentTextDeltaEvent, AgentTextDoneEvent, AgentReasoningDeltaEvent, AgentReasoningDoneEvent, AgentDelegatedEvent, AgentToolStartEvent, AgentToolDeltaEvent, AgentToolCompleteEvent, AgentToolRequestEvent, AgentToolResultEvent, AgentEscalateEvent, AgentEscalationResultEvent, AgentArtifactEvent, AgentContextCompactingEvent, AgentContextCompactedEvent, AgentDoneEvent, AgentFailedEvent, ApprovalRequestEvent, ApprovalResponseEvent, ApprovalExpireEvent]
+KnownEvent = Union[PingEvent, ChatTitleUpdatedEvent, TurnStartedEvent, TurnCompletedEvent, TurnCancelledEvent, TurnFailedEvent, TurnSteeredEvent, AgentStartedEvent, AgentPlanEvent, AgentTextDeltaEvent, AgentTextDoneEvent, AgentReasoningDeltaEvent, AgentReasoningDoneEvent, AgentDelegatedEvent, AgentToolStartEvent, AgentToolDeltaEvent, AgentToolCompleteEvent, AgentToolRequestEvent, AgentToolResultEvent, AgentEscalateEvent, AgentEscalationResultEvent, AgentArtifactEvent, AgentContextCompactingEvent, AgentContextCompactedEvent, AgentDoneEvent, AgentFailedEvent, ApprovalRequestEvent, ApprovalResponseEvent, ApprovalExpireEvent]
 EVENT_TYPES = {
     'ping': PingEvent,
+    'chat.title.updated': ChatTitleUpdatedEvent,
     'turn.started': TurnStartedEvent,
     'turn.completed': TurnCompletedEvent,
     'turn.cancelled': TurnCancelledEvent,

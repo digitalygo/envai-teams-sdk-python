@@ -1,0 +1,13 @@
+{
+  "schema": "Categories",
+  "data": {
+    "categories": [
+      {
+        "category_id": "wcat_01j5abcdefghjkmnpqrstvwxyz",
+        "name": "Project",
+        "description": "Project notes"
+      }
+    ],
+    "catalog_revision": 3
+  }
+}

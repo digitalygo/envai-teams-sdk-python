@@ -1,0 +1,14 @@
+{
+  "origin": "Captured from production journal code paths using synthetic providers and disposable PostgreSQL 18.3 in execution-plane internal/chat/durable_journal_test.go with ENVAITEST_SNAPSHOT_DIR. No paid provider calls or customer data.",
+  "snapshot_status": "wiki-v1-working-tree; backend publication commit not assigned",
+  "files": {
+    "actual-completed.json": {
+      "sha256": "0f712087ca71ce30b6dd6f20a4b2da391148b2ab1e329a8b8248f831200b3dfa",
+      "bytes": 786
+    },
+    "actual-recovered.json": {
+      "sha256": "091880a19764d9fb92b2cf3034aaf6a0c372fcef323cc92bc6d472fd33610796",
+      "bytes": 853
+    }
+  }
+}

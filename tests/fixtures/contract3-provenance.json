@@ -1,0 +1,39 @@
+{
+  "repository": "digitalygo/envai-teams",
+  "source_state": "immutable_backend_commit",
+  "commit": "c27963d0848540679bccf30d2aeab354097b1a38",
+  "contract_version": 3,
+  "operations": 65,
+  "sources": {
+    "openapi.yaml": {
+      "repository_path": "packages/contracts/openapi.yaml",
+      "bytes": 219604,
+      "sha256": "d6c62be0cc562c1d4ab7c00261b46958a5fcd8fa414cbb99a2d2fc7770a4fd14",
+      "git_blob_sha": "7ea7d8d9e4f175ba285ca05227147d2de5ee41a4"
+    },
+    "events.json": {
+      "repository_path": "packages/contracts/events.json",
+      "bytes": 51786,
+      "sha256": "853704fc39c1538825921c1a55f25e61ce8140e64d95a70a3add2548423be702",
+      "git_blob_sha": "514c16c00fe7d489e04f4284d99474da0fd1834b"
+    },
+    "events-v2.json": {
+      "repository_path": "packages/contracts/events-v2.json",
+      "bytes": 47787,
+      "sha256": "88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6",
+      "git_blob_sha": "02b13b23cd06eacd81059d1ed99e0027769d75e4"
+    },
+    "wiki.json": {
+      "repository_path": "packages/contracts/wiki.json",
+      "bytes": 18820,
+      "sha256": "e7a41ff28309539c47fe19ad882342f2d20fffee7705c3724968ca4889238f6a",
+      "git_blob_sha": "d1fcb97738ebf58b95b39e06660c74959a8d290b"
+    },
+    "terminal-snapshot.json": {
+      "repository_path": "packages/contracts/terminal-snapshot.json",
+      "bytes": 8578,
+      "sha256": "c132b27031595c94a8b05eaf008545ccc3ac21d4dd170dd800c5e15b7f93e9bf",
+      "git_blob_sha": "77d885bda661800972ed56837e69a57ab613da82"
+    }
+  }
+}
