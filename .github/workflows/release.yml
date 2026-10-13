@@ -1,0 +1,55 @@
+name: Semantic Release
+on:
+  workflow_call:
+    secrets:
+      RELEASE_TOKEN:
+        required: false
+      KCHAT_WEBHOOK_URL:
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.event_name == 'push' && contains(fromJSON('["dev", "alpha", "beta", "main"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require release token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::Missing required repository/organization secret RELEASE_TOKEN"
+            exit 1
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --prefix .github/release-tools
+      - run: node .github/release-tools/patch-semantic-release.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install build twine
+      - name: Publish GitHub release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: node .github/release-tools/run.mjs
+      - name: Notify kChat
+        if: always() && (steps.release.outputs.released == 'true' || failure())
+        env:
+          KCHAT_WEBHOOK_URL: ${{ secrets.KCHAT_WEBHOOK_URL }}
+          RELEASE_OUTCOME: ${{ job.status }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        run: node .github/release-tools/notify.mjs

@@ -1,0 +1,73 @@
+name: Publish PyPI
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to publish after trusted-publisher setup
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'digitalygo/envai-teams-sdk-python'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/envai-teams-sdk/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download versioned GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|dev)\.[0-9]+)?$ ]]; then
+            echo '::error::Select a valid existing SDK release tag.'
+            exit 1
+          fi
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.whl' --pattern '*.tar.gz' --dir dist
+      - name: Verify package identity and version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          python - <<'PY'
+          import email, os, pathlib, re, tarfile, zipfile
+          version = os.environ['RELEASE_TAG'][1:]
+          for channel, suffix in [('alpha', 'a'), ('beta', 'b'), ('dev', '.dev')]:
+              version = re.sub(rf'-{channel}\.(\d+)$', rf'{suffix}\1', version)
+          files = list(pathlib.Path('dist').iterdir())
+          assert len(files) == 2, 'Expected exactly one wheel and one source distribution'
+          assert len(list(pathlib.Path('dist').glob('*.whl'))) == 1
+          assert len(list(pathlib.Path('dist').glob('*.tar.gz'))) == 1
+          for path in files:
+              if path.suffix == '.whl':
+                  with zipfile.ZipFile(path) as archive:
+                      names = [name for name in archive.namelist() if name.endswith('.dist-info/METADATA')]
+                      assert len(names) == 1
+                      metadata = archive.read(names[0]).decode()
+              else:
+                  with tarfile.open(path) as archive:
+                      members = [member for member in archive.getmembers() if member.name.count('/') == 1 and member.name.endswith('/PKG-INFO')]
+                      assert len(members) == 1
+                      metadata = archive.extractfile(members[0]).read().decode()
+              parsed = email.message_from_string(metadata)
+              assert parsed['Name'] == 'envai-teams-sdk', 'Unexpected package identity'
+              assert parsed['Version'] == version, 'Release and package versions differ'
+          print(f'Validated envai-teams-sdk {version}')
+          PY
+      - name: Publish through the configured PyPI trusted publisher
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          packages-dir: dist/

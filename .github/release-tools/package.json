@@ -1,0 +1,30 @@
+{
+  "name": "envai-sdk-release-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Locked Semantic Release tooling for Envai SDK GitHub releases",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-coverage-include=adapters/release-matcher/index.js --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 test/*.test.mjs"
+  },
+  "dependencies": {
+    "@semantic-release/commit-analyzer": "13.0.1",
+    "@semantic-release/github": "12.0.9",
+    "@semantic-release/npm": "file:./stubs/semantic-release-npm",
+    "@semantic-release/release-notes-generator": "14.1.1",
+    "micromatch": "file:./adapters/release-matcher",
+    "semantic-release": "25.0.2"
+  },
+  "overrides": {
+    "@semantic-release/npm": "$@semantic-release/npm",
+    "semantic-release@25.0.2": {
+      "micromatch": "$micromatch"
+    },
+    "@semantic-release/commit-analyzer@13.0.1": {
+      "micromatch": "$micromatch"
+    }
+  }
+}

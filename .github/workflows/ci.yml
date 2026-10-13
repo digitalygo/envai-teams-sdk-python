@@ -2,9 +2,12 @@ name: Python SDK
 on:
   pull_request:
   push:
-    branches: [alpha]
+    branches: [dev, alpha, beta, main]
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,6 +17,8 @@ jobs:
         python: ['3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -29,3 +34,29 @@ jobs:
           /tmp/wheel-test/bin/pip install dist/*.whl
           cd /tmp
           /tmp/wheel-test/bin/python -c "import envai; from envai._schema import OPERATIONS; assert len(OPERATIONS) == 52; print(envai.__version__)"
+
+  release-checks:
+    name: Release tooling
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --prefix .github/release-tools
+      - run: node .github/release-tools/patch-semantic-release.mjs
+      - run: npm test --prefix .github/release-tools
+      - run: npm audit --audit-level=high --prefix .github/release-tools
+
+  release:
+    needs: [test, release-checks]
+    if: github.event_name == 'push' && contains(fromJSON('["dev", "alpha", "beta", "main"]'), github.ref_name)
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      KCHAT_WEBHOOK_URL: ${{ secrets.KCHAT_WEBHOOK_URL }}

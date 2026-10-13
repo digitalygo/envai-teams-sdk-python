@@ -1,0 +1,5 @@
+* @lorenzocamporesi
+*.md @lucanori @lorenzocamporesi
+.github/** @lucanori
+release.config.cjs @lucanori
+docs/** @lucanori

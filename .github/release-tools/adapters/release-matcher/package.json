@@ -1,0 +1,15 @@
+{
+  "name": "@envai-sdk/release-matcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scoped matching API for the locked semantic-release and commit-analyzer consumers",
+  "type": "module",
+  "exports": "./index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "dependencies": {
+    "picomatch": "2.3.2"
+  }
+}

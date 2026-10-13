@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Europe/Rome",
+  "schedule": [
+    "* 11-12 * * 3"
+  ],
+  "enabledManagers": [
+    "pep621",
+    "npm",
+    "github-actions"
+  ],
+  "reviewersFromCodeOwners": true,
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "groupName": "{{manager}} patch dependencies"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "semanticCommitType": "ci"
+    },
+    {
+      "matchManagers": [
+        "pep621",
+        "npm"
+      ],
+      "semanticCommitType": "build"
+    }
+  ]
+}
