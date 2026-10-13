@@ -1,27 +1,26 @@
 # Envai Teams Python SDK
 
 Typed synchronous and asynchronous clients for the current Envai Teams API and
-Agent Team Protocol (ATP v2). Python 3.11+. This is an **alpha SDK**; no package
-release or production deployment is implied by this repository.
+Agent Team Protocol (ATP v2). Python 3.11+. The published **alpha prerelease** is
+[`1.0.0a2` on PyPI](https://pypi.org/project/envai-teams-sdk/1.0.0a2/).
+Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
 - [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 52 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
-## Install from public source
+## Install from PyPI
 
 ```sh
-git clone --branch alpha https://github.com/digitalygo/envai-teams-sdk-python.git
-cd envai-teams-sdk-python
 python -m venv .venv
 # Activate .venv using the command for your shell, then:
-python -m pip install .
-# Development and verification
-python -m pip install -e '.[dev]'
+python -m pip install "envai-teams-sdk==1.0.0a2"
 ```
 
-The distribution is `envai-teams-sdk`; import `envai`. The source-install commands above do not imply a PyPI release. For reproducible use, check out a reviewed commit before installing. HTTP uses HTTPX, models use
+The explicit version selects the alpha prerelease; no `--pre` flag is needed with this exact pin. The distribution is `envai-teams-sdk`; import `envai`. GitHub release `v1.0.0-alpha.2` uses Python package version `1.0.0a2`. For source installation and development, see [getting started](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md).
+
+HTTP uses HTTPX, models use
 Pydantic, schema validation uses the pinned JSON Schema, and client-tool signatures
 use `cryptography` Ed25519 plus the `rfc8785` implementation. No generated code or
 schema validator downloads remote references at runtime.
@@ -256,3 +255,4 @@ regressions. Combined runtime line/branch coverage is gated at 90%; generated mo
 are excluded from coverage but independently covered by the operation inventory
 and response-schema tests. Tests never call Envai production endpoints or require
 credentials. MIT, Copyright (c) 2026 DigItalyGo.
+

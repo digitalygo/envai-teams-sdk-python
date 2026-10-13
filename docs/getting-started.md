@@ -2,22 +2,32 @@
 
 [README](../README.md) · [API reference](api-reference.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
 
-## Install the public source
+## Install from PyPI
 
 Requires Python 3.11 or newer. Use an isolated virtual environment and a supported, patched Python release.
 
 ```sh
-git clone --branch alpha https://github.com/digitalygo/envai-teams-sdk-python.git
-cd envai-teams-sdk-python
 python -m venv .venv
 # POSIX shells:
 . .venv/bin/activate
+python -m pip install "envai-teams-sdk==1.0.0a2"
+```
+
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`. [`1.0.0a2`](https://pypi.org/project/envai-teams-sdk/1.0.0a2/) is a published alpha prerelease; APIs may change. The exact version pin opts into this prerelease without a `--pre` flag. Review upgrades deliberately and keep your application's dependency lock file.
+
+The distribution is `envai-teams-sdk`; application imports use `envai`. The corresponding GitHub release tag is [`v1.0.0-alpha.2`](https://github.com/digitalygo/envai-teams-sdk-python/releases/tag/v1.0.0-alpha.2). Its Python package version follows PEP 440 as `1.0.0a2`. The package contains the contracts and type marker; runtime validation does not retrieve remote schemas.
+
+## Source installation and examples
+
+For the examples and source checkout matching the release:
+
+```sh
+git clone --branch v1.0.0-alpha.2 https://github.com/digitalygo/envai-teams-sdk-python.git
+cd envai-teams-sdk-python
 python -m pip install .
 ```
 
-On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`. To reproduce a specific build, check out a reviewed commit SHA before installing. The distribution name is `envai-teams-sdk`; application imports use `envai`. These instructions install from GitHub source and do not assume a PyPI release.
-
-For development, install `python -m pip install -e '.[dev]'` and run the checks in the README. The package contains the contracts and type marker; runtime schema validation does not retrieve remote schemas.
+Run these commands in your activated environment. For development, use `python -m pip install -e '.[dev]'` and the checks in the README. To work on unreleased changes, explicitly choose the moving `alpha` branch or a reviewed commit SHA instead of the release tag.
 
 ## Credentials and first request
 
@@ -50,3 +60,4 @@ Reuse clients and close them with `with` / `async with`. Async clients must use 
 ## Verification scope
 
 Tests use HTTP mocks, signed fixture data, and temporary local stores. They do not require Envai credentials or contact a production API. Passing tests proves the client's bundled-contract behavior; verify your deployment URL, access, team configuration, and available capabilities separately.
+
