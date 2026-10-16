@@ -1,6 +1,6 @@
 # Python API reference
 
-[README](../README.md) · [All 65 operations](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
+[README](../README.md) · [All 71 operations](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
 
 ## Services and primitives
 
@@ -32,4 +32,4 @@ Typed event classes live in `envai.event_models`. Known events are checked again
 
 ## Wiki and contract selection
 
-See [Wiki V1](wiki.md) for typed upload-first sources, conversion diagnostics, runs, catalog GETs, exact-byte webhooks and durable application outbox. See [contract3 migration](migration-contract3.md) before upgrading. Both sync and async expose all65 documented operations, including explicit legacy read helpers.
+See [Wiki V1](wiki.md) for typed upload-first sources, conversion diagnostics, runs, catalog GETs, exact-byte webhooks and durable application outbox. See [contract3 migration](migration-contract3.md) before upgrading. Both sync and async expose all 71 documented operations, including explicit legacy read helpers.

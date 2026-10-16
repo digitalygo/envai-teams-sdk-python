@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any, AsyncGenerator, Callable, Generator
 from urllib.parse import parse_qsl, urlsplit
@@ -11,6 +12,7 @@ import httpx
 
 from . import _generated as generated
 from ._transport import AsyncTransport, RetryPolicy, SyncTransport
+from .attachments import AsyncAttachmentsService, AttachmentsService
 from .errors import CompatibilityError, ProtocolError, TransportError
 from .events import Event, TurnAccumulator, TurnResult
 from .stream import AsyncEventStream, EventStream
@@ -22,16 +24,40 @@ class ChatsService(generated.ChatsService):
         return EventStream(self._client, chat_id, **options)
 
     def send_and_stream(
-        self, chat_id: str, message: str, *, timeout: float = 120, **stream_options: Any
+        self,
+        chat_id: str,
+        message: str,
+        *,
+        timeout: float = 120,
+        attachment_ids: list[str] | None = None,
+        idempotency_key: str | None = None,
+        **stream_options: Any,
     ) -> Generator[Event, None, None]:
         """Attach through first ping before sending once; yield only this turn."""
         with self.events(chat_id, max_duration=timeout, **stream_options) as stream:
             accepted = None
+            replay: list[Event] = []
+            replay_bytes = 0
             for event in stream:
                 if accepted is None:
                     if event.type != "ping":
+                        if idempotency_key:
+                            replay_bytes += len(json.dumps(event.raw, ensure_ascii=False).encode())
+                            if replay_bytes > 16 * 1024 * 1024:
+                                raise ProtocolError("Idempotent send replay exceeds 16 MiB; resume using the known turn cursor")
+                            replay.append(event)
                         continue
-                    accepted = self.send_message(chat_id, body={"message": message})
+                    accepted = self.send_message(
+                        chat_id,
+                        body={"message": message, "attachment_ids": attachment_ids or []},
+                        idempotency_key=idempotency_key,
+                    )
+                    for previous in replay:
+                        if previous.turn_id == accepted.turn_id:
+                            yield previous
+                            if previous.terminal:
+                                return
+                    replay.clear()
                     continue
                 if event.turn_id == accepted.turn_id:
                     yield event
@@ -40,10 +66,24 @@ class ChatsService(generated.ChatsService):
         raise TransportError("Stream ended before matching terminal event")
 
     def send_and_wait(
-        self, chat_id: str, message: str, *, timeout: float = 120, **stream_options: Any
+        self,
+        chat_id: str,
+        message: str,
+        *,
+        timeout: float = 120,
+        attachment_ids: list[str] | None = None,
+        idempotency_key: str | None = None,
+        **stream_options: Any,
     ) -> TurnResult:
         acc = TurnAccumulator()
-        events = self.send_and_stream(chat_id, message, timeout=timeout, **stream_options)
+        events = self.send_and_stream(
+            chat_id,
+            message,
+            timeout=timeout,
+            attachment_ids=attachment_ids,
+            idempotency_key=idempotency_key,
+            **stream_options,
+        )
         try:
             for event in events:
                 acc.accept(event)
@@ -59,16 +99,40 @@ class AsyncChatsService(generated.AsyncChatsService):
         return AsyncEventStream(self._client, chat_id, **options)
 
     async def send_and_stream(
-        self, chat_id: str, message: str, *, timeout: float = 120, **stream_options: Any
+        self,
+        chat_id: str,
+        message: str,
+        *,
+        timeout: float = 120,
+        attachment_ids: list[str] | None = None,
+        idempotency_key: str | None = None,
+        **stream_options: Any,
     ) -> AsyncGenerator[Event, None]:
         async with asyncio.timeout(timeout):
             async with self.events(chat_id, max_duration=timeout, **stream_options) as stream:
                 accepted = None
+                replay: list[Event] = []
+                replay_bytes = 0
                 async for event in stream:
                     if accepted is None:
                         if event.type != "ping":
+                            if idempotency_key:
+                                replay_bytes += len(json.dumps(event.raw, ensure_ascii=False).encode())
+                                if replay_bytes > 16 * 1024 * 1024:
+                                    raise ProtocolError("Idempotent send replay exceeds 16 MiB; resume using the known turn cursor")
+                                replay.append(event)
                             continue
-                        accepted = await self.send_message(chat_id, body={"message": message})
+                        accepted = await self.send_message(
+                            chat_id,
+                            body={"message": message, "attachment_ids": attachment_ids or []},
+                            idempotency_key=idempotency_key,
+                        )
+                        for previous in replay:
+                            if previous.turn_id == accepted.turn_id:
+                                yield previous
+                                if previous.terminal:
+                                    return
+                        replay.clear()
                         continue
                     if event.turn_id == accepted.turn_id:
                         yield event
@@ -77,10 +141,24 @@ class AsyncChatsService(generated.AsyncChatsService):
         raise TransportError("Stream ended before matching terminal event")
 
     async def send_and_wait(
-        self, chat_id: str, message: str, *, timeout: float = 120, **stream_options: Any
+        self,
+        chat_id: str,
+        message: str,
+        *,
+        timeout: float = 120,
+        attachment_ids: list[str] | None = None,
+        idempotency_key: str | None = None,
+        **stream_options: Any,
     ) -> TurnResult:
         acc = TurnAccumulator()
-        events = self.send_and_stream(chat_id, message, timeout=timeout, **stream_options)
+        events = self.send_and_stream(
+            chat_id,
+            message,
+            timeout=timeout,
+            attachment_ids=attachment_ids,
+            idempotency_key=idempotency_key,
+            **stream_options,
+        )
         try:
             async for event in events:
                 acc.accept(event)
@@ -246,6 +324,7 @@ class EnvaiClient(SyncTransport, generated.Operations):
         self.models = generated.ModelsService(self)
         self.capabilities = generated.CapabilitiesService(self)
         self.wiki = WikiService(self)
+        self.attachments = AttachmentsService(self)
 
     def stream_chat_events(self, chat_id: str, **options: Any) -> EventStream:
         return self.chats.events(chat_id, **options)
@@ -304,6 +383,7 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         self.models = generated.AsyncModelsService(self)
         self.capabilities = generated.AsyncCapabilitiesService(self)
         self.wiki = AsyncWikiService(self)
+        self.attachments = AsyncAttachmentsService(self)
 
     def stream_chat_events(self, chat_id: str, **options: Any) -> AsyncEventStream:
         return self.chats.events(chat_id, **options)

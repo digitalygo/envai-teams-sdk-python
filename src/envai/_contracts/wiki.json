@@ -312,7 +312,8 @@
             "running",
             "succeeded",
             "withdrawn",
-            "failed"
+            "failed",
+            "deferred"
           ]
         },
         "error_code": {

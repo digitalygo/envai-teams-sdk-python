@@ -135,6 +135,7 @@ class TransportBase:
             (op["path"].startswith("/chats/") or op["path"].startswith("/atp/v3/"))
             or operation
             in ("getCapabilities", "getCapabilitiesLegacy", "getCompletion", "listCompletions")
+            or "ChatAttachment" in operation
             or ("Wiki" in operation and operation != "getWikiWebhookJwks")
         )
 
@@ -168,7 +169,9 @@ class TransportBase:
         op = dict(OPERATIONS[operation])
         negotiated = self._negotiated(operation)
         if self.contract_version == 2 and (
-            op["method"] != "GET" or ("Wiki" in operation and operation != "getWikiWebhookJwks")
+            op["method"] != "GET"
+            or "ChatAttachment" in operation
+            or ("Wiki" in operation and operation != "getWikiWebhookJwks")
         ):
             raise CompatibilityError("Legacy contract 2 is read-only and cannot access Wiki V1")
         op["operation"] = operation
@@ -241,12 +244,27 @@ class TransportBase:
             )
             op["exhaustive"] = query.get("all") is True
         if files is not None:
-            if operation == "uploadWikiSource":
+            if operation in ("uploadWikiSource", "uploadChatAttachment"):
                 from .wiki import _validate_upload
 
                 _validate_upload(files)
             kwargs["files"], kwargs["data"] = files, data
+        attachment_ids = (
+            (kwargs.get("json") or {}).get("attachment_ids", [])
+            if operation == "sendChatMessage"
+            else []
+        )
+        if attachment_ids and not headers.get("Idempotency-Key"):
+            raise ValueError("Attachment messages require Idempotency-Key")
+        op["attachment_ids"] = attachment_ids
         return op, url, kwargs
+
+    @staticmethod
+    def _attachment_capability(operation: str, op: dict[str, Any], capabilities: Any) -> None:
+        if (
+            "ChatAttachment" in operation or op.get("attachment_ids")
+        ) and "chat_attachments" not in capabilities.features:
+            raise CompatibilityError("Server does not advertise chat_attachments")
 
     def _decode(self, op: dict[str, Any], response: httpx.Response) -> Any:
         try:
@@ -353,6 +371,8 @@ class TransportBase:
                     raise ProtocolError(
                         "Terminal snapshot belongs to a different completion", raw=value
                     )
+        if op.get("attachment_ids") and value.get("attachment_ids") != op["attachment_ids"]:
+            raise ProtocolError("Message acceptance omitted or changed attachment IDs", raw=value)
         if op["unwrap"]:
             value = value["data"]
         from ._generated import RESPONSE_TYPES
@@ -377,9 +397,10 @@ class SyncTransport(TransportBase):
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
         if op["method"] != "GET" and self._negotiated(operation):
-            self._request(
+            capabilities = self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
+            self._attachment_capability(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
             try:
@@ -414,9 +435,10 @@ class AsyncTransport(TransportBase):
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
         if op["method"] != "GET" and self._negotiated(operation):
-            await self._request(
+            capabilities = await self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
+            self._attachment_capability(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
             try:

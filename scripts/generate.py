@@ -217,6 +217,14 @@ models += "\n".join(k + " = " + v for k, v in ALIASES.items()) + "\n\n"
 models += "\n".join(k + ".model_rebuild()" for k in MODELS) + "\n"
 
 GROUPS = {
+    "attachments": {
+        "upload": "uploadChatAttachment",
+        "list": "listChatAttachments",
+        "get": "getChatAttachment",
+        "delete": "deleteChatAttachment",
+        "retry": "retryChatAttachment",
+        "download": "downloadChatAttachment",
+    },
     "workspaces": {
         "create": "createWorkspace",
         "list": "listWorkspaces",

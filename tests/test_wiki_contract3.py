@@ -417,7 +417,7 @@ def test_new_generator_preserves_conditional_fields_and_inline_requests():
     assert models.UsageCost.model_fields["revision"].is_required()
     assert models.CreateWikiInboxRunBody(webhook_url="https://receiver.test").webhook_url
     assert models.WithdrawWikiSourceBody(file_id="source").file_id == "source"
-    assert len(OPERATIONS) == 65
+    assert len(OPERATIONS) == 71
 
 
 @pytest.mark.parametrize("async_", [False, True])
