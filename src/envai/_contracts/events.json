@@ -199,7 +199,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 255,
-          "pattern": "^[^\\r\\n\u000b\f\u0085\u2028\u2029]*[^\\s\u0085\u2028\u2029][^\\r\\n\u000b\f\u0085\u2028\u2029]*$",
+          "pattern": "^[^\\r\\n\u000b\f  ]*[^\\s  ][^\\r\\n\u000b\f  ]*$",
           "description": "Server-normalized, nonblank, single-line chat title of at most 255 Unicode code points."
         }
       }
@@ -220,6 +220,12 @@
         "input": {
           "type": "string",
           "description": "The user message that triggered the turn. There is no separate input event."
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatAttachmentManifestEvent"
+          }
         }
       }
     },
@@ -1846,6 +1852,42 @@
           }
         }
       ]
+    },
+    "ChatAttachmentManifestEvent": {
+      "type": "object",
+      "required": [
+        "attachment_id",
+        "original_name",
+        "revision",
+        "sha256",
+        "bytes",
+        "conversion"
+      ],
+      "properties": {
+        "attachment_id": {
+          "type": "string"
+        },
+        "original_name": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conversion": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

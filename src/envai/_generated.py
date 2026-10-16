@@ -11,6 +11,7 @@ RESPONSE_TYPES = {
     'Categories': models.Categories,
     'CategoryIndex': models.CategoryIndex,
     'Chat': models.Chat,
+    'ChatAttachment': models.ChatAttachment,
     'ChatForked': models.ChatForked,
     'ChatMessageAccepted': models.ChatMessageAccepted,
     'Completion': models.Completion,
@@ -21,6 +22,7 @@ RESPONSE_TYPES = {
     'ImageGenerationStatusRecord': models.ImageGenerationStatusRecord,
     'ImageUploadRecord': models.ImageUploadRecord,
     'JwksDocument': models.JwksDocument,
+    'ListChatAttachmentsResponse': models.ListChatAttachmentsResponse,
     'ModelList': models.ModelList,
     'None': None,
     'RestoreChatAccepted': models.RestoreChatAccepted,
@@ -45,9 +47,9 @@ RESPONSE_TYPES = {
 
 class Operations:
     _request: Any
-    def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
+    def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
-        return self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
     def cancel_chat_turn(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
         """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
@@ -249,6 +251,30 @@ class Operations:
         """handleProviderWebhook: POST /webhooks/providers/{provider}."""
         return self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': x_fal_webhook_request_id, 'X-Fal-Webhook-User-Id': x_fal_webhook_user_id, 'X-Fal-Webhook-Timestamp': x_fal_webhook_timestamp, 'X-Fal-Webhook-Signature': x_fal_webhook_signature, 'X-BFL-Signature': x_bfl_signature}, request_options=request_options, body=body)
 
+    def upload_chat_attachment(self, workspace_id: str, chat_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """uploadChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return self._request('uploadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    def list_chat_attachments(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.ListChatAttachmentsResponse:
+        """listChatAttachments: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return self._request('listChatAttachments', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    def get_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """getChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return self._request('getChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    def delete_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """deleteChatAttachment: DELETE /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return self._request('deleteChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    def retry_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """retryChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry."""
+        return self._request('retryChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options)
+
+    def download_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, kind: Literal['original', 'derived'], request_options: RequestOptions | None = None) -> bytes:
+        """downloadChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download."""
+        return self._request('downloadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={'kind': kind}, headers={}, request_options=request_options)
+
     def upload_wiki_source(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
         """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
         return self._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
@@ -296,6 +322,35 @@ class Operations:
     def get_capabilities_legacy(self, *, request_options: RequestOptions | None = None) -> models.CapabilitiesLegacy:
         """getCapabilitiesLegacy: GET /capabilities."""
         return self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
+
+
+class AttachmentsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    def upload(self, workspace_id: str, chat_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """uploadChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return self._client._request('uploadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    def list(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.ListChatAttachmentsResponse:
+        """listChatAttachments: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return self._client._request('listChatAttachments', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    def get(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """getChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return self._client._request('getChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    def delete(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """deleteChatAttachment: DELETE /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return self._client._request('deleteChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    def retry(self, workspace_id: str, chat_id: str, attachment_id: str, *, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """retryChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry."""
+        return self._client._request('retryChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options)
+
+    def download(self, workspace_id: str, chat_id: str, attachment_id: str, *, kind: Literal['original', 'derived'], request_options: RequestOptions | None = None) -> bytes:
+        """downloadChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download."""
+        return self._client._request('downloadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={'kind': kind}, headers={}, request_options=request_options)
 
 
 class WorkspacesService:
@@ -360,9 +415,9 @@ class ChatsService:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
+    def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
-        return self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
     def cancel(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
         """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
@@ -592,9 +647,9 @@ class CapabilitiesService:
 
 class AsyncOperations:
     _request: Any
-    async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
+    async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
-        return await self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
     async def cancel_chat_turn(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
         """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""
@@ -796,6 +851,30 @@ class AsyncOperations:
         """handleProviderWebhook: POST /webhooks/providers/{provider}."""
         return await self._request('handleProviderWebhook', path_params={'provider': provider}, query={'callback_token': callback_token}, headers={'webhook-id': webhook_id, 'webhook-timestamp': webhook_timestamp, 'webhook-signature': webhook_signature, 'X-Fal-Webhook-Request-Id': x_fal_webhook_request_id, 'X-Fal-Webhook-User-Id': x_fal_webhook_user_id, 'X-Fal-Webhook-Timestamp': x_fal_webhook_timestamp, 'X-Fal-Webhook-Signature': x_fal_webhook_signature, 'X-BFL-Signature': x_bfl_signature}, request_options=request_options, body=body)
 
+    async def upload_chat_attachment(self, workspace_id: str, chat_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """uploadChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return await self._request('uploadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    async def list_chat_attachments(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.ListChatAttachmentsResponse:
+        """listChatAttachments: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return await self._request('listChatAttachments', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    async def get_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """getChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return await self._request('getChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    async def delete_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """deleteChatAttachment: DELETE /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return await self._request('deleteChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    async def retry_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """retryChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry."""
+        return await self._request('retryChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options)
+
+    async def download_chat_attachment(self, workspace_id: str, chat_id: str, attachment_id: str, *, kind: Literal['original', 'derived'], request_options: RequestOptions | None = None) -> bytes:
+        """downloadChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download."""
+        return await self._request('downloadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={'kind': kind}, headers={}, request_options=request_options)
+
     async def upload_wiki_source(self, workspace_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.WikiSource:
         """uploadWikiSource: POST /workspaces/{workspace_id}/files/sources."""
         return await self._request('uploadWikiSource', path_params={'workspace_id': workspace_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
@@ -843,6 +922,35 @@ class AsyncOperations:
     async def get_capabilities_legacy(self, *, request_options: RequestOptions | None = None) -> models.CapabilitiesLegacy:
         """getCapabilitiesLegacy: GET /capabilities."""
         return await self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
+
+
+class AsyncAttachmentsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def upload(self, workspace_id: str, chat_id: str, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """uploadChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return await self._client._request('uploadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, files=files, data=data)
+
+    async def list(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.ListChatAttachmentsResponse:
+        """listChatAttachments: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments."""
+        return await self._client._request('listChatAttachments', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    async def get(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """getChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return await self._client._request('getChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    async def delete(self, workspace_id: str, chat_id: str, attachment_id: str, *, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """deleteChatAttachment: DELETE /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}."""
+        return await self._client._request('deleteChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={}, request_options=request_options)
+
+    async def retry(self, workspace_id: str, chat_id: str, attachment_id: str, *, idempotency_key: str, request_options: RequestOptions | None = None) -> models.ChatAttachment:
+        """retryChatAttachment: POST /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry."""
+        return await self._client._request('retryChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options)
+
+    async def download(self, workspace_id: str, chat_id: str, attachment_id: str, *, kind: Literal['original', 'derived'], request_options: RequestOptions | None = None) -> bytes:
+        """downloadChatAttachment: GET /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download."""
+        return await self._client._request('downloadChatAttachment', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'attachment_id': attachment_id}, query={'kind': kind}, headers={}, request_options=request_options)
 
 
 class AsyncWorkspacesService:
@@ -907,9 +1015,9 @@ class AsyncChatsService:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return await self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    async def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
+    async def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
-        return await self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
     async def cancel(self, chat_id: str, *, request_options: RequestOptions | None = None) -> models.TurnAccepted:
         """cancelChatTurn: POST /atp/v3/chats/{chat_id}/cancel."""

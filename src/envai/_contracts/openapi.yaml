@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Envai AaaS API — execution plane and control plane
+  title: "Envai AaaS API: execution plane and control plane"
   description: "Contract for the Envai AaaS HTTP surface covering both the execution plane and the control plane.\
     \ The execution plane serves the Agent Team Protocol (ATP) through the Go gateway: the caller sends messages\
     \ to a chat, steers or cancels the active turn through small control endpoints, restores a chat from client\
@@ -47,6 +47,15 @@ paths:
       parameters:
       - $ref: '#/components/parameters/ChatId'
       - $ref: '#/components/parameters/ContractVersion'
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[!-~]+$
+        description: Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn.
       requestBody:
         required: true
         content:
@@ -1997,6 +2006,279 @@ paths:
           $ref: '#/components/responses/TooManyRequestsError'
         '500':
           $ref: '#/components/responses/ServerError'
+  /workspaces/{workspace_id}/chats/{chat_id}/attachments:
+    post:
+      operationId: uploadChatAttachment
+      tags:
+      - Chat attachments
+      summary: uploadChatAttachment
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[!-~]+$
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAttachmentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '413':
+          description: Original upload exceeds the configured byte limit
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChatAttachmentUploadRequest'
+    get:
+      operationId: listChatAttachments
+      tags:
+      - Chat attachments
+      summary: listChatAttachments
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAttachmentCollection'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
+  /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}:
+    get:
+      operationId: getChatAttachment
+      tags:
+      - Chat attachments
+      summary: getChatAttachment
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAttachmentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
+    delete:
+      operationId: deleteChatAttachment
+      tags:
+      - Chat attachments
+      summary: deleteChatAttachment
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAttachmentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
+  /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry:
+    post:
+      operationId: retryChatAttachment
+      tags:
+      - Chat attachments
+      summary: retryChatAttachment
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^[!-~]+$
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAttachmentResource'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
+  /workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download:
+    get:
+      operationId: downloadChatAttachment
+      tags:
+      - Chat attachments
+      summary: downloadChatAttachment
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: chat_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: kind
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - original
+          - derived
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServerError'
+        '426':
+          $ref: '#/components/responses/ContractUpgradeRequired'
   /workspaces/{workspace_id}/files/sources:
     post:
       operationId: uploadWikiSource
@@ -3285,6 +3567,7 @@ components:
           - succeeded
           - withdrawn
           - failed
+          - deferred
         error_code:
           anyOf:
           - type: string
@@ -3676,9 +3959,181 @@ components:
               - object
               - 'null'
               description: Additional error details (for example validation errors)
+    AttachmentManifest:
+      type: object
+      required:
+      - attachment_id
+      - original_name
+      - revision
+      - sha256
+      - bytes
+      - conversion
+      properties:
+        attachment_id:
+          type: string
+        original_name:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        bytes:
+          type: integer
+          minimum: 0
+        conversion:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    AttachmentConversion:
+      type: object
+      required:
+      - status
+      - error_code
+      - retryable
+      - recoverable
+      - next_retry_at
+      properties:
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+        error_code:
+          type:
+          - string
+          - 'null'
+          description: Sanitized stable conversion failure code; never a raw provider response or secret. Null
+            when no failure is recorded.
+          pattern: ^[a-z][a-z0-9_]{0,119}$
+          maxLength: 120
+        recoverable:
+          type: boolean
+          description: 'True only when an automatic technical recovery is durably scheduled and eligible: attempts
+            remain and the source has not completed or been withdrawn. False for initial queued work, healthy running,
+            terminal failures and exhausted retries.'
+        next_retry_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Time of the scheduled automatic technical recovery when recoverable is true; otherwise null.
+            Not an initial work schedule or an operator-repair promise.
+        retryable:
+          type: boolean
+          description: Explicit retry is permitted; uncertain provider outcomes cannot be resubmitted.
+      additionalProperties: true
+    ChatAttachment:
+      type: object
+      required:
+      - attachment_id
+      - workspace_id
+      - chat_id
+      - original_name
+      - mime_type
+      - byte_size
+      - lifecycle
+      - revision
+      - conversion
+      - derived
+      - expires_at
+      - attached_at
+      - usage_cost
+      properties:
+        attachment_id:
+          type: string
+        workspace_id:
+          type: string
+        chat_id:
+          type: string
+        original_name:
+          type: string
+        mime_type:
+          type: string
+        byte_size:
+          type: integer
+          minimum: 0
+        lifecycle:
+          type: string
+          enum:
+          - staging
+          - uploaded
+          - ready
+          - deleting
+          - deleted
+        revision:
+          type: integer
+          minimum: 1
+        conversion:
+          $ref: '#/components/schemas/AttachmentConversion'
+        derived:
+          anyOf:
+          - type: object
+            required:
+            - sha256
+            - bytes
+            - conversion
+            properties:
+              sha256:
+                type: string
+                pattern: ^[a-f0-9]{64}$
+              bytes:
+                type: integer
+                minimum: 0
+              conversion:
+                type: object
+                additionalProperties: true
+            additionalProperties: true
+          - type: 'null'
+        expires_at:
+          type: string
+          format: date-time
+        attached_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        usage_cost:
+          $ref: '#/components/schemas/UsageCost'
+      additionalProperties: true
+    ChatAttachmentResource:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ChatAttachment'
+    ChatAttachmentCollection:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          required:
+          - attachments
+          properties:
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChatAttachment'
+    ChatAttachmentUploadRequest:
+      type: object
+      required:
+      - file
+      properties:
+        file:
+          type: string
+          format: binary
+      additionalProperties: false
     ChatMessageRequest:
       type: object
-      description: Payload to send a user message to a chat
+      description: User text and IDs of ready attachments from this chat. Requires chat_attachments capability
+        and Idempotency-Key when IDs are supplied. Conversion completes before turn acceptance; no file is silently
+        omitted.
       required:
       - message
       properties:
@@ -3687,6 +4142,13 @@ components:
           minLength: 1
           description: User message, becomes the turn input
           example: Summarize the last week of traffic
+        attachment_ids:
+          description: Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.
+          type: array
+          uniqueItems: true
+          maxItems: 10
+          items:
+            type: string
     ChatMessageAccepted:
       type: object
       description: 'Acknowledgment for an accepted message. The message opened a turn identified by `turn_id` (the
@@ -3707,6 +4169,13 @@ components:
           description: Turn id `cmpl_<ulid>` of the started turn
           pattern: ^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$
           example: cmpl_01j5abcdefghjkmnpqrstvwxyz
+        attachment_ids:
+          description: Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.
+          type: array
+          uniqueItems: true
+          maxItems: 10
+          items:
+            type: string
     TurnAccepted:
       type: object
       description: 'Acknowledgment for an accepted asynchronous chat control operation (cancel, steer). Carries

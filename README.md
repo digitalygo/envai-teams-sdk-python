@@ -6,7 +6,7 @@ Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 65 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 71 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -89,7 +89,7 @@ are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains all **65 operation IDs** in
+The generated primitive layer retains all **71 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -260,3 +260,5 @@ credentials. MIT, Copyright (c) 2026 DigItalyGo.
 
 
 Wiki V1 and contract3 validation results, database crash/concurrency scope and release limits: [validation report](docs/wiki-validation.md).
+
+See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry and streaming with files. This surface is unreleased until the matching backend is deployed.

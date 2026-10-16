@@ -29,6 +29,10 @@ from envai.errors import (
 def sample(schema):
     if "$ref" in schema:
         return sample(OPENAPI["components"]["schemas"][schema["$ref"].rsplit("/", 1)[1]])
+    if "attachment_id" in schema.get("properties", {}):
+        return json.loads(
+            (Path(__file__).parent / "fixtures/chat-attachments/ready.json").read_text()
+        )["data"]
     if "is_complete" in schema.get("properties", {}):
         return json.loads(
             (Path(__file__).parent / "fixtures/wiki/category-index.json").read_text()
@@ -128,7 +132,11 @@ def test_full_surface_sync(name, op):
         if request.url.path.endswith("/atp/v3/capabilities"):
             from negotiated_transport import CAPABILITIES
 
-            return httpx.Response(200, json=CAPABILITIES, headers={"X-Envai-Contract-Version": "3"})
+            return httpx.Response(
+                200,
+                json={**CAPABILITIES, "features": [*CAPABILITIES["features"], "chat_attachments"]},
+                headers={"X-Envai-Contract-Version": "3"},
+            )
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
@@ -171,7 +179,11 @@ async def test_full_surface_async(name, op):
         if request.url.path.endswith("/atp/v3/capabilities"):
             from negotiated_transport import CAPABILITIES
 
-            return httpx.Response(200, json=CAPABILITIES, headers={"X-Envai-Contract-Version": "3"})
+            return httpx.Response(
+                200,
+                json={**CAPABILITIES, "features": [*CAPABILITIES["features"], "chat_attachments"]},
+                headers={"X-Envai-Contract-Version": "3"},
+            )
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
@@ -197,7 +209,7 @@ async def test_full_surface_async(name, op):
 
 def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
-    assert len(OPERATIONS) == 65
+    assert len(OPERATIONS) == 71
     for op in shared:
         assert OPERATIONS[op["id"]]["method"] == op["method"]
         assert OPERATIONS[op["id"]]["path"] == (

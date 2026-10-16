@@ -108,7 +108,7 @@ class BatchSizes(Model):
 
 class FileOutcome(Model):
     file_id: str
-    status: Literal['pending', 'running', 'succeeded', 'withdrawn', 'failed']
+    status: Literal['pending', 'running', 'succeeded', 'withdrawn', 'failed', 'deferred']
     error_code: Union[str, None]
 
 
@@ -231,13 +231,70 @@ class ErrorError(Model):
     details: Union[Union[dict[str, Any], None], None] = Field(default=None)
 
 
+class AttachmentManifest(Model):
+    attachment_id: str
+    original_name: str
+    revision: int
+    sha256: str
+    bytes: int
+    conversion: dict[str, Any]
+
+
+class AttachmentConversion(Model):
+    status: Literal['queued', 'running', 'completed', 'failed']
+    error_code: Union[str, None]
+    recoverable: bool
+    next_retry_at: Union[str, None]
+    retryable: bool
+
+
+class ChatAttachment(Model):
+    attachment_id: str
+    workspace_id: str
+    chat_id: str
+    original_name: str
+    mime_type: str
+    byte_size: int
+    lifecycle: Literal['staging', 'uploaded', 'ready', 'deleting', 'deleted']
+    revision: int
+    conversion: AttachmentConversion
+    derived: Union[ChatAttachmentDerived0, None]
+    expires_at: str
+    attached_at: Union[str, None]
+    usage_cost: UsageCost
+
+
+class ChatAttachmentDerived0(Model):
+    sha256: str
+    bytes: int
+    conversion: dict[str, Any]
+
+
+class ChatAttachmentResource(Model):
+    data: ChatAttachment
+
+
+class ChatAttachmentCollection(Model):
+    data: ChatAttachmentCollectionData
+
+
+class ChatAttachmentCollectionData(Model):
+    attachments: list[ChatAttachment]
+
+
+class ChatAttachmentUploadRequest(Model):
+    file: str
+
+
 class ChatMessageRequest(Model):
     message: str
+    attachment_ids: Union[list[str], None] = Field(default=None)
 
 
 class ChatMessageAccepted(Model):
     status: Literal['accepted']
     turn_id: str
+    attachment_ids: Union[list[str], None] = Field(default=None)
 
 
 class TurnAccepted(Model):
@@ -891,6 +948,7 @@ class ATPChatTitleUpdated(Model):
 class ATPTurnStarted(Model):
     turn_id: str
     input: str
+    attachments: Union[list[ATPChatattachmentmanifestevent], None] = Field(default=None)
 
 
 class ATPTurnCompleted(Model):
@@ -1095,6 +1153,15 @@ class ATPUsagecost(Model):
     priced_subtotals: list[ATPCurrencyamount]
 
 
+class ATPChatattachmentmanifestevent(Model):
+    attachment_id: str
+    original_name: str
+    revision: int
+    sha256: str
+    bytes: int
+    conversion: dict[str, Any]
+
+
 class HealthCheckResponse(Model):
     data: Union[HealthCheckResponseData, None] = Field(default=None)
 
@@ -1123,6 +1190,10 @@ class TestGenerateImageResponse(Model):
     files_count: int
     files: list[TestImageFileMetadata]
     received_at: str
+
+
+class ListChatAttachmentsResponse(Model):
+    attachments: list[ChatAttachment]
 
 
 class WithdrawWikiSourceBody(Model):
@@ -1181,6 +1252,14 @@ WikiOperationEvent.model_rebuild()
 WikiOperationEventPhases.model_rebuild()
 Error.model_rebuild()
 ErrorError.model_rebuild()
+AttachmentManifest.model_rebuild()
+AttachmentConversion.model_rebuild()
+ChatAttachment.model_rebuild()
+ChatAttachmentDerived0.model_rebuild()
+ChatAttachmentResource.model_rebuild()
+ChatAttachmentCollection.model_rebuild()
+ChatAttachmentCollectionData.model_rebuild()
+ChatAttachmentUploadRequest.model_rebuild()
 ChatMessageRequest.model_rebuild()
 ChatMessageAccepted.model_rebuild()
 TurnAccepted.model_rebuild()
@@ -1305,10 +1384,12 @@ ATPApprovalExpire.model_rebuild()
 ATPBillingstate.model_rebuild()
 ATPCurrencyamount.model_rebuild()
 ATPUsagecost.model_rebuild()
+ATPChatattachmentmanifestevent.model_rebuild()
 HealthCheckResponse.model_rebuild()
 HealthCheckResponseData.model_rebuild()
 CreateApiKeyResponse.model_rebuild()
 TestGenerateImageResponse.model_rebuild()
+ListChatAttachmentsResponse.model_rebuild()
 WithdrawWikiSourceBody.model_rebuild()
 CreateWikiInboxRunBody.model_rebuild()
 CreateWikiOutboxRunBody.model_rebuild()

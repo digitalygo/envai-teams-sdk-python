@@ -1,5 +1,15 @@
 # Wiki V1 / contract3 validation
 
+## Chat attachments contract update (2026-10-16)
+
+Current source schemas are pinned to backend commit `6a4e45bafe6f5856ef92a57b37db08769738b412`, with 71 HTTP operations. The attachment guide documents asynchronous conversion, whole-message rejection, explicit retry, retention and independent conversion costs. Source manifests identify exact upstream bytes separately from generated inventories and synthetic fixtures. Historical HTTP captures retain their original source commits. This update does not deploy the backend.
+
+Local checks: 838 tests passed with required PostgreSQL and 95.75% coverage. Ruff, Mypy, deterministic generation, sdist/wheel builds and isolated wheel import passed.
+
+## Earlier validation records
+
+The following counts, SDK heads and backend pins describe earlier checkpoints. They do not attest the current attachment implementation.
+
 Validated against Python SDK alpha baseline `b36a0539d11a337e585a674c54ee04cae88bb6b4` (tree `bf6150d0ddd9a4397765d8cb3b8f8f3a9d3dfe09`) and backend commit [`c27963d0848540679bccf30d2aeab354097b1a38`](https://github.com/digitalygo/envai-teams/commit/c27963d0848540679bccf30d2aeab354097b1a38). All five bundled shared schemas match independently retrieved remote Git blob IDs and local SHA256 byte hashes. Historical original fixture provenance remains unchanged and separate.
 
 ## Final checks
@@ -8,7 +18,7 @@ Validated against Python SDK alpha baseline `b36a0539d11a337e585a674c54ee04cae88
 - Python3.12.14: full real-PostgreSQL suite **797 passed**, followed by all **8 newly added agent/tool cost-bearing event cases passed**. Together these cover the final805-case suite. No paid provider or production service was used.
 - Changed executable coverage: **845/869, 97.24%**, including generated DTOs/methods and generator changes. Full runtime coverage including generated code: **95.48%** (line and branch metric). Per-file delta details are in `wiki-delta-coverage.json`; documentation/schema data are validated separately.
 - Ruff, mypy, deterministic generator drift, JSON Schema/fixture/provenance checks, actionlint and Git whitespace checks: passed.
-- Wheel and source distribution build, archive allowlist/metadata validation, and wheel import/resources outside the source checkout: passed. All65 operations and v2/v3/Wiki schemas are packaged.
+- Wheel and source distribution build, archive allowlist/metadata validation, and wheel import/resources outside the source checkout: passed. All71 operations and v2/v3/Wiki schemas are packaged.
 - Release-tool suite: **91 passed**, matcher coverage100%; package archive unit suite: **5 passed**. Locked npm audit: no known vulnerabilities.
 - The proposed `feat(wiki)!` commit with a `BREAKING CHANGE` trailer is classified as a major change by the repository's actual Semantic Release analyzer. Normal alpha release automation owns package versions/tags and publishing.
 

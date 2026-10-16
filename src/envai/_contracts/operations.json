@@ -13,6 +13,18 @@
           "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
           "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
         }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        },
+        "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn."
       }
     ],
     "request": {
@@ -1579,6 +1591,273 @@
     "auth": false,
     "stream": false,
     "public": false
+  },
+  "uploadChatAttachment": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChatAttachmentUploadRequest"
+    },
+    "media": "multipart/form-data",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatAttachmentResource"
+    },
+    "response_type": "ChatAttachment",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listChatAttachments": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatAttachmentCollection"
+    },
+    "response_type": "ListChatAttachmentsResponse",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getChatAttachment": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "attachment_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatAttachmentResource"
+    },
+    "response_type": "ChatAttachment",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteChatAttachment": {
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "attachment_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatAttachmentResource"
+    },
+    "response_type": "ChatAttachment",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "retryChatAttachment": {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/retry",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "attachment_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatAttachmentResource"
+    },
+    "response_type": "ChatAttachment",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "downloadChatAttachment": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}/attachments/{attachment_id}/download",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "attachment_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "kind",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "original",
+            "derived"
+          ]
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "type": "string",
+      "format": "binary"
+    },
+    "response_type": "bytes",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
   },
   "uploadWikiSource": {
     "method": "POST",

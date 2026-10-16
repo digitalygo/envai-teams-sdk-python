@@ -1,0 +1,34 @@
+{
+  "schema": "ChatAttachment",
+  "data": {
+    "attachment_id": "catt_01j5abcdefghjkmnpqrstvwxyz",
+    "workspace_id": "wsp_01j5abcdefghjkmnpqrstvwxyz",
+    "chat_id": "cht_01j5abcdefghjkmnpqrstvwxyz",
+    "original_name": "notes.md",
+    "mime_type": "text/markdown",
+    "byte_size": 17,
+    "lifecycle": "uploaded",
+    "revision": 1,
+    "conversion": {
+      "status": "failed",
+      "error_code": "provider_unavailable",
+      "recoverable": true,
+      "next_retry_at": "2026-10-15T00:01:00Z",
+      "retryable": false
+    },
+    "derived": null,
+    "expires_at": "2026-10-29T00:00:00Z",
+    "attached_at": null,
+    "usage_cost": {
+      "status": "complete",
+      "basis": "none",
+      "scope_status": "closed",
+      "revision": 1,
+      "as_of": "2026-10-13T16:00:00Z",
+      "invocation_count": 0,
+      "pending_invocation_count": 0,
+      "totals": [],
+      "priced_subtotals": []
+    }
+  }
+}

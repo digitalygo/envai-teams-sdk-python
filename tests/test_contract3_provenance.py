@@ -7,41 +7,29 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).parents[1]
-PINS = {
-    "openapi.yaml": (
-        219604,
-        "d6c62be0cc562c1d4ab7c00261b46958a5fcd8fa414cbb99a2d2fc7770a4fd14",
-        "7ea7d8d9e4f175ba285ca05227147d2de5ee41a4",
-    ),
-    "events.json": (
-        51786,
-        "853704fc39c1538825921c1a55f25e61ce8140e64d95a70a3add2548423be702",
-        "514c16c00fe7d489e04f4284d99474da0fd1834b",
-    ),
-    "events-v2.json": (
-        47787,
-        "88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6",
-        "02b13b23cd06eacd81059d1ed99e0027769d75e4",
-    ),
-    "wiki.json": (
-        18820,
-        "e7a41ff28309539c47fe19ad882342f2d20fffee7705c3724968ca4889238f6a",
-        "d1fcb97738ebf58b95b39e06660c74959a8d290b",
-    ),
-    "terminal-snapshot.json": (
-        8578,
-        "c132b27031595c94a8b05eaf008545ccc3ac21d4dd170dd800c5e15b7f93e9bf",
-        "77d885bda661800972ed56837e69a57ab613da82",
-    ),
-}
+PINS = {'openapi.yaml': (233072,
+                  'af736ba76d9673f34eac453e725fe57acb4517f6faf660bb8aed43465c7a0245',
+                  '347a58fa0ce76dc43a9f2c4ff94661ff0fe3cbf8'),
+ 'events.json': (52694,
+                 '609628f9a9eb59b9169f20ec7f1edf167a27d449d23b9c2697a17f50811db1e9',
+                 '5f971112cb99535bff366bcfa36def7f8dfa7e7d'),
+ 'events-v2.json': (47787,
+                    '88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6',
+                    '02b13b23cd06eacd81059d1ed99e0027769d75e4'),
+ 'wiki.json': (18844,
+               '94d25f2f2d7bfacee9544cd614cb86baaf1d952be1b714badb38b7a98a8e636f',
+               '2a2b1af96c99db7d072a3c766426fa493e881cb0'),
+ 'terminal-snapshot.json': (8578,
+                            'c132b27031595c94a8b05eaf008545ccc3ac21d4dd170dd800c5e15b7f93e9bf',
+                            '77d885bda661800972ed56837e69a57ab613da82')}
 
 
 def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "c27963d0848540679bccf30d2aeab354097b1a38"
-    assert manifest["contract_version"] == 3 and manifest["operations"] == 65
+    assert manifest["commit"] == "6a4e45bafe6f5856ef92a57b37db08769738b412"
+    assert manifest["contract_version"] == 3 and manifest["operations"] == 71
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():
         raw = (ROOT / "src/envai/_contracts" / name).read_bytes()
@@ -65,3 +53,21 @@ def test_actual_http_fixture_hashes_and_origin():
     assert manifest["origin"].startswith("Synthetic authenticated control-plane")
     for name, digest in manifest["sha256"].items():
         assert hashlib.sha256((fixtures / name).read_bytes()).hexdigest() == digest
+
+
+def test_derived_snapshots_and_shared_attachment_fixtures_have_distinct_provenance():
+    manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
+    assert set(manifest["derived_artifacts"]) == {"openapi.json", "operations.json"}
+    assert set(manifest["shared_fixtures"]) == {
+        "failed.json", "pending.json", "ready.json", "recoverable.json"
+    }
+    for collection in ("derived_artifacts", "shared_fixtures"):
+        for name, metadata in manifest[collection].items():
+            raw = (ROOT / metadata["snapshot_path"]).read_bytes()
+            assert hashlib.sha256(raw).hexdigest() == metadata["sha256"]
+            assert metadata["origin"]
+            if collection == "derived_artifacts":
+                assert len(raw) == metadata["bytes"]
+                assert metadata["source_repository_path"] == "packages/contracts/openapi.yaml"
+            else:
+                assert metadata["repository_path"] == "packages/contracts/fixtures/chat-attachments/" + name

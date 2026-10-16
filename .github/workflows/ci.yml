@@ -49,7 +49,7 @@ jobs:
           python -m venv /tmp/wheel-test
           /tmp/wheel-test/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/wheel-test/bin/python -c "import envai; from envai._schema import OPERATIONS; assert len(OPERATIONS) == 65; print(envai.__version__)"
+          /tmp/wheel-test/bin/python -c "import envai; from envai._schema import OPERATIONS; assert len(OPERATIONS) == 71; print(envai.__version__)"
 
   release-checks:
     name: Release tooling

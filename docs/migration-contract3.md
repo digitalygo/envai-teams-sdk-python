@@ -14,3 +14,7 @@ This is a breaking client/server negotiation change. Upgrade server routes and s
 Unrelated control-plane CRUD retains existing routes and does not require acknowledgment headers. Public JWKS and incoming provider HMAC callbacks are unnegotiated. Forward capability feature strings are accepted; capability features alone never establish contract compatibility. Never override the SDK selection by adding request headers.
 
 The source tree retains immutable original OpenAPI2 and strict numeric ATP2 schemas. The original baseline fixtures/provenance remain unchanged; the coordinated contract3 source manifest is separately tracked. Normal release automation owns package versions and tags. Do not rewrite earlier tags or assume a previously published alpha package includes this migration.
+
+## Chat attachments and deferred Wiki outcomes
+
+Update to the matching backend before enabling attachment sends. Contract 3 remains selected, and `chat_attachments` is an additional capability requirement. Preserve message idempotency keys and ordered IDs; verify acceptance. Handle the new `deferred` Wiki file outcome. See [attachment integration](chat-attachments.md).
