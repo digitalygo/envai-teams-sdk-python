@@ -14,7 +14,7 @@ from .wiki_inbox import (
 )
 from .wiki_webhooks import AsyncWikiWebhookVerifier, WikiWebhookVerifier
 
-__version__ = "1.0.0a3"
+__version__ = "1.0.0a4"
 __all__ = [
     "EnvaiClient",
     "AsyncEnvaiClient",
