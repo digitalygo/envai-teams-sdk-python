@@ -7,9 +7,9 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).parents[1]
-PINS = {'openapi.yaml': (232844,
-                  '3347eaad83510eaf97519a28dac9e74063b66f57d174ed527281c932496c3f0d',
-                  '7ea3448fe8d80610ae68b674f5ba902c08e46688'),
+PINS = {'openapi.yaml': (233072,
+                  'af736ba76d9673f34eac453e725fe57acb4517f6faf660bb8aed43465c7a0245',
+                  '347a58fa0ce76dc43a9f2c4ff94661ff0fe3cbf8'),
  'events.json': (52694,
                  '609628f9a9eb59b9169f20ec7f1edf167a27d449d23b9c2697a17f50811db1e9',
                  '5f971112cb99535bff366bcfa36def7f8dfa7e7d'),
@@ -28,7 +28,7 @@ def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "96acf00162984af4a86a671f924c53a18960fae6"
+    assert manifest["commit"] == "6a4e45bafe6f5856ef92a57b37db08769738b412"
     assert manifest["contract_version"] == 3 and manifest["operations"] == 71
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():

@@ -211,6 +211,8 @@ class TransportBase:
                 key: query.get(key) for key in ("artifact", "expires", "generation", "signature")
             }
         auth_headers = dict(self._headers)
+        if op["response_type"] == "bytes":
+            auth_headers["Accept"] = "application/octet-stream"
         if not op["auth"] or operation == "getJwks":
             auth_headers.pop("Authorization", None)
         if negotiated:

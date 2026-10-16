@@ -44,6 +44,7 @@ def test_attachment_services_scope_multipart_and_no_automatic_mutation_retry(tmp
         requests.append(request)
         assert request.headers["X-Envai-Contract-Version"] == "3"
         if "/download" in request.url.path:
+            assert request.headers["Accept"] == "application/octet-stream"
             return httpx.Response(
                 200, content=b"original", headers={"X-Envai-Contract-Version": "3"}
             )
@@ -265,3 +266,26 @@ def test_stream_helpers_retain_attachment_ids_and_key(monkeypatch, valid_events,
     assert sent == [
         ("c", {"body": {"message": "Read", "attachment_ids": ["a"]}, "idempotency_key": "stable"})
     ]
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+def test_polling_waits_for_scheduled_recovery_without_retry(async_mode):
+    recoverable = json.loads((ROOT / "recoverable.json").read_text())["data"]
+    reads = []
+
+    def handler(request):
+        assert request.method == "GET"
+        reads.append(request)
+        return response({"data": recoverable if len(reads) == 1 else READY})
+
+    async def run():
+        async with AsyncEnvaiClient("synthetic", transport=httpx.MockTransport(handler)) as client:
+            return await client.attachments.wait("w", "c", "a", interval=0.001, timeout=1)
+
+    if async_mode:
+        value = asyncio.run(run())
+    else:
+        with EnvaiClient("synthetic", transport=httpx.MockTransport(handler)) as client:
+            value = client.attachments.wait("w", "c", "a", interval=0.001, timeout=1)
+    assert value.lifecycle == "ready"
+    assert len(reads) == 2

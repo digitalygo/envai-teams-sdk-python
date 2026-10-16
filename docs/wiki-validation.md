@@ -2,7 +2,7 @@
 
 ## Chat attachments contract update (2026-10-16)
 
-Current source schemas are pinned to backend commit `96acf00162984af4a86a671f924c53a18960fae6`, with 71 HTTP operations. The attachment guide documents asynchronous conversion, whole-message rejection, explicit retry, retention and independent conversion costs. Source manifests identify exact upstream bytes separately from generated inventories and synthetic fixtures. Historical HTTP captures retain their original source commits. This update does not deploy the backend.
+Current source schemas are pinned to backend commit `6a4e45bafe6f5856ef92a57b37db08769738b412`, with 71 HTTP operations. The attachment guide documents asynchronous conversion, whole-message rejection, explicit retry, retention and independent conversion costs. Source manifests identify exact upstream bytes separately from generated inventories and synthetic fixtures. Historical HTTP captures retain their original source commits. This update does not deploy the backend.
 
 Local checks: 838 tests passed with required PostgreSQL and 95.75% coverage. Ruff, Mypy, deterministic generation, sdist/wheel builds and isolated wheel import passed.
 

@@ -6059,6 +6059,7 @@
             "example": "Summarize the last week of traffic"
           },
           "attachment_ids": {
+            "description": "Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.",
             "type": "array",
             "uniqueItems": true,
             "maxItems": 10,
@@ -6090,6 +6091,7 @@
             "example": "cmpl_01j5abcdefghjkmnpqrstvwxyz"
           },
           "attachment_ids": {
+            "description": "Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.",
             "type": "array",
             "uniqueItems": true,
             "maxItems": 10,

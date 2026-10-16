@@ -4143,6 +4143,7 @@ components:
           description: User message, becomes the turn input
           example: Summarize the last week of traffic
         attachment_ids:
+          description: Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.
           type: array
           uniqueItems: true
           maxItems: 10
@@ -4169,6 +4170,7 @@ components:
           pattern: ^cmpl_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$
           example: cmpl_01j5abcdefghjkmnpqrstvwxyz
         attachment_ids:
+          description: Ordered attachment IDs. The acceptance acknowledgment returns these IDs in the same order.
           type: array
           uniqueItems: true
           maxItems: 10
