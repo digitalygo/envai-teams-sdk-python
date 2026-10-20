@@ -1,0 +1,59 @@
+{
+  "headers": {
+    "x-envai-contract-version": [
+      "3"
+    ]
+  },
+  "body": {
+    "protocol_version": 3,
+    "contract_version": 3,
+    "supported_contract_versions": [
+      2,
+      3
+    ],
+    "legacy_v2_mode": "historical_reads_replay_only",
+    "families": [
+      "turn",
+      "agent",
+      "chat"
+    ],
+    "event_types": [
+      "ping",
+      "turn.started",
+      "chat.title.updated",
+      "turn.completed",
+      "turn.cancelled",
+      "turn.failed",
+      "turn.steered",
+      "agent.started",
+      "agent.text.delta",
+      "agent.text.done",
+      "agent.delegated",
+      "agent.tool.start",
+      "agent.tool.complete",
+      "agent.tool.request",
+      "agent.tool.result",
+      "agent.context.compacting",
+      "agent.context.compacted",
+      "agent.done"
+    ],
+    "tool_kinds": [
+      "server",
+      "client",
+      "knowledge",
+      "code"
+    ],
+    "features": [
+      "replay",
+      "fork",
+      "restore",
+      "ping",
+      "background_delegation",
+      "client_tools",
+      "chat_title",
+      "chat_attachments",
+      "chat_attachment_originals",
+      "wiki_original_sources"
+    ]
+  }
+}

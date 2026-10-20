@@ -3282,7 +3282,7 @@
             "$ref": "#/components/responses/NotFoundError"
           },
           "409": {
-            "description": "Attachment unavailable, not ready, failed, retry prohibited, or idempotency conflict"
+            "description": "Native retries return attachment_retry_not_permitted; legacy retries may be rejected when ineligible or when the idempotency key conflicts"
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
@@ -3478,6 +3478,15 @@
                     "type": "string",
                     "format": "binary",
                     "description": "Original up to 1,000,000,000 bytes inclusive; MD TXT CSV XLSX PDF DOCX MP3 MP4 only. MP4 audio only."
+                  },
+                  "processing": {
+                    "type": "string",
+                    "enum": [
+                      "convert",
+                      "original"
+                    ],
+                    "default": "convert",
+                    "description": "Omit or use convert for the existing conversion pipeline. Use original to stage the private original in inbox with conversion status not_required, no conversion job and no automatic analysis."
                   }
                 }
               }
@@ -5052,7 +5061,8 @@
               "queued",
               "running",
               "completed",
-              "failed"
+              "failed",
+              "not_required"
             ]
           },
           "error_code": {
@@ -5832,6 +5842,17 @@
           "original_name": {
             "type": "string"
           },
+          "mime_type": {
+            "type": "string",
+            "description": "Original MIME type for native originals; omitted on legacy converted manifests."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "native"
+            ],
+            "description": "Native original delivery marker; omitted on legacy converted manifests."
+          },
           "revision": {
             "type": "integer",
             "minimum": 1
@@ -5867,7 +5888,8 @@
               "queued",
               "running",
               "completed",
-              "failed"
+              "failed",
+              "not_required"
             ]
           },
           "error_code": {
@@ -6040,14 +6062,15 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary"
+            "format": "binary",
+            "description": "Native original; MD TXT CSV PDF MP3 MP4 only. The configured per-file native byte limit applies and no conversion, OCR or transcription is scheduled."
           }
         },
         "additionalProperties": false
       },
       "ChatMessageRequest": {
         "type": "object",
-        "description": "User text and IDs of ready attachments from this chat. Requires chat_attachments capability and Idempotency-Key when IDs are supplied. Conversion completes before turn acceptance; no file is silently omitted.",
+        "description": "User text and IDs of ready native original attachments from this chat. Requires chat_attachments capability and Idempotency-Key when IDs are supplied. Native originals are delivered to compatible models as private content parts; no conversion, OCR or transcription is requested and no file is silently omitted.",
         "required": [
           "message"
         ],

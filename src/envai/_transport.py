@@ -83,6 +83,28 @@ def check_cancel(options: RequestOptions | None) -> None:
         raise CancelledError("Request cancelled locally")
 
 
+def _capabilities_payload(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    data = value.get("data")
+    return data if isinstance(data, dict) else value
+
+
+def _normalize_features(features: Any) -> list[str]:
+    if isinstance(features, list):
+        if all(isinstance(feature, str) for feature in features):
+            return features
+        raise ProtocolError("Capabilities features list must contain strings")
+    if isinstance(features, dict):
+        if all(
+            isinstance(feature, str) and isinstance(enabled, bool)
+            for feature, enabled in features.items()
+        ):
+            return [feature for feature, enabled in features.items() if enabled]
+        raise ProtocolError("Capabilities feature map must contain boolean values")
+    raise ProtocolError("Capabilities features must be a list or a boolean map")
+
+
 class TransportBase:
     def _configure(
         self,
@@ -167,6 +189,14 @@ class TransportBase:
     ):
         check_cancel(request_options)
         op = dict(OPERATIONS[operation])
+        if operation == "uploadWikiSource" and data is not None:
+            if not isinstance(data, dict):
+                raise ValueError("Multipart data must be a dictionary")
+            if "processing" in data:
+                processing = data["processing"]
+                if processing not in ("convert", "original"):
+                    raise ValueError("Wiki source processing must be convert or original")
+                op["wiki_processing"] = processing
         negotiated = self._negotiated(operation)
         if self.contract_version == 2 and (
             op["method"] != "GET"
@@ -262,11 +292,19 @@ class TransportBase:
         return op, url, kwargs
 
     @staticmethod
-    def _attachment_capability(operation: str, op: dict[str, Any], capabilities: Any) -> None:
-        if (
+    def _capability_preflight(operation: str, op: dict[str, Any], capabilities: Any) -> None:
+        features = capabilities.features
+        if operation == "uploadChatAttachment":
+            if "chat_attachments" not in features:
+                raise CompatibilityError("Server does not advertise chat_attachments")
+            if "chat_attachment_originals" not in features:
+                raise CompatibilityError("Server does not advertise chat_attachment_originals")
+        elif (
             "ChatAttachment" in operation or op.get("attachment_ids")
-        ) and "chat_attachments" not in capabilities.features:
+        ) and "chat_attachments" not in features:
             raise CompatibilityError("Server does not advertise chat_attachments")
+        if op.get("wiki_processing") == "original" and "wiki_original_sources" not in features:
+            raise CompatibilityError("Server does not advertise wiki_original_sources")
 
     def _decode(self, op: dict[str, Any], response: httpx.Response) -> Any:
         try:
@@ -340,6 +378,14 @@ class TransportBase:
 
                 schema = copy.deepcopy(OPENAPI["components"]["schemas"]["Capabilities"])
                 schema["properties"]["features"]["items"].pop("enum", None)
+                target = _capabilities_payload(value)
+                if target is not None and "features" in target:
+                    normalized = _normalize_features(target["features"])
+                    if normalized is not target["features"]:
+                        value = copy.deepcopy(value)
+                        target = _capabilities_payload(value)
+                        if target is not None:
+                            target["features"] = normalized
                 validate(schema, value)
             else:
                 validate(op["response"], value)
@@ -402,7 +448,7 @@ class SyncTransport(TransportBase):
             capabilities = self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
-            self._attachment_capability(operation, op, capabilities)
+            self._capability_preflight(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
             try:
@@ -440,7 +486,7 @@ class AsyncTransport(TransportBase):
             capabilities = await self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
-            self._attachment_capability(operation, op, capabilities)
+            self._capability_preflight(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
             try:

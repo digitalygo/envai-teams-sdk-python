@@ -1893,6 +1893,15 @@
           "type": "string",
           "format": "binary",
           "description": "Original up to 1,000,000,000 bytes inclusive; MD TXT CSV XLSX PDF DOCX MP3 MP4 only. MP4 audio only."
+        },
+        "processing": {
+          "type": "string",
+          "enum": [
+            "convert",
+            "original"
+          ],
+          "default": "convert",
+          "description": "Omit or use convert for the existing conversion pipeline. Use original to stage the private original in inbox with conversion status not_required, no conversion job and no automatic analysis."
         }
       }
     },

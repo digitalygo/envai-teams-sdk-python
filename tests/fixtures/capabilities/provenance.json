@@ -1,0 +1,15 @@
+{
+  "origin": "Canonical contract-3 capabilities emitted by the Go execution plane for CapabilitiesFor(3) with CHAT_ATTACHMENTS_ENABLED=true and WIKI_ENABLED=true. Feature names are the canonical positive string list, not a boolean map. The bytes mirror the PHP SDK interoperability fixture captured from that response shape; this is synthetic capability metadata with no customer or provider data.",
+  "source_repository": "digitalygo/envai-teams",
+  "source_path": "apps/execution-plane/internal/gateway/capabilities.go",
+  "source_commit": "7192fc05ebec817bddc705186c8f195cc0dc5ec5",
+  "captured_from": "GET /api/v1/atp/v3/capabilities",
+  "php_reference": {
+    "repository": "digitalygo/envai-teams-sdk-php",
+    "commit": "93eafc02271035065ac975f91cd4f77d148c9d2c",
+    "path": "tests/fixtures/capabilities/canonical-v3.json"
+  },
+  "files": {
+    "canonical-v3.json": "48a95a70903d809aff6ca765476552b42c2128bbb3b4932698aac51803dd5995"
+  }
+}

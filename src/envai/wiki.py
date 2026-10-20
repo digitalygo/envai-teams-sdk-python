@@ -7,13 +7,18 @@ from __future__ import annotations
 
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from . import _generated as generated
 from ._transport import RequestOptions
 from .models import WikiSource
 
 MAX_SOURCE_BYTES = 1_000_000_000
+
+
+def _validate_processing(processing: str) -> None:
+    if not isinstance(processing, str) or processing not in ("convert", "original"):
+        raise ValueError("Wiki source processing must be convert or original")
 
 
 def _validate_upload(files: Any) -> None:
@@ -62,8 +67,10 @@ class WikiService(generated.WikiService):
         path: str | Path,
         *,
         idempotency_key: str,
+        processing: Literal["convert", "original"] = "convert",
         request_options: RequestOptions | None = None,
     ) -> WikiSource:
+        _validate_processing(processing)
         with _upload(path) as file:
             return self.upload(
                 workspace_id,
@@ -74,6 +81,7 @@ class WikiService(generated.WikiService):
                         mimetypes.guess_type(str(path))[0] or "application/octet-stream",
                     )
                 },
+                data={"processing": "original"} if processing == "original" else None,
                 idempotency_key=idempotency_key,
                 request_options=request_options,
             )
@@ -90,8 +98,10 @@ class AsyncWikiService(generated.AsyncWikiService):
         path: str | Path,
         *,
         idempotency_key: str,
+        processing: Literal["convert", "original"] = "convert",
         request_options: RequestOptions | None = None,
     ) -> WikiSource:
+        _validate_processing(processing)
         with _upload(path) as file:
             return await self.upload(
                 workspace_id,
@@ -102,6 +112,7 @@ class AsyncWikiService(generated.AsyncWikiService):
                         mimetypes.guess_type(str(path))[0] or "application/octet-stream",
                     )
                 },
+                data={"processing": "original"} if processing == "original" else None,
                 idempotency_key=idempotency_key,
                 request_options=request_options,
             )

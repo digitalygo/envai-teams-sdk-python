@@ -24,7 +24,7 @@ CAPS = {
     "families": [],
     "event_types": [],
     "tool_kinds": [],
-    "features": ["chat_attachments"],
+    "features": ["chat_attachments", "chat_attachment_originals"],
 }
 
 

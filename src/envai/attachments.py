@@ -22,6 +22,8 @@ def _done(value: ChatAttachment) -> bool:
     return (
         value.lifecycle in ("deleting", "deleted")
         or value.conversion.status == "completed"
+        or value.conversion.status == "not_required"
+        and value.lifecycle == "ready"
         or value.conversion.status == "failed"
         and not value.conversion.recoverable
     )

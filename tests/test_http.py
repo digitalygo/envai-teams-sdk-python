@@ -134,7 +134,14 @@ def test_full_surface_sync(name, op):
 
             return httpx.Response(
                 200,
-                json={**CAPABILITIES, "features": [*CAPABILITIES["features"], "chat_attachments"]},
+                json={
+                    **CAPABILITIES,
+                    "features": [
+                        *CAPABILITIES["features"],
+                        "chat_attachments",
+                        "chat_attachment_originals",
+                    ],
+                },
                 headers={"X-Envai-Contract-Version": "3"},
             )
         if name == "resolveChatApproval":
@@ -181,7 +188,14 @@ async def test_full_surface_async(name, op):
 
             return httpx.Response(
                 200,
-                json={**CAPABILITIES, "features": [*CAPABILITIES["features"], "chat_attachments"]},
+                json={
+                    **CAPABILITIES,
+                    "features": [
+                        *CAPABILITIES["features"],
+                        "chat_attachments",
+                        "chat_attachment_originals",
+                    ],
+                },
                 headers={"X-Envai-Contract-Version": "3"},
             )
         if name == "resolveChatApproval":
