@@ -8,6 +8,66 @@ class Model(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
+class NativeDeliveryRequest(Model):
+    workspace_id: str
+    event_id: str
+    origin_turn_id: str
+    task_id: str
+    output: str = Field(repr=False)
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+
+
+class NativeDeliveryReceipt(Model):
+    event_id: str
+    status: Literal['queued', 'delivered', 'cancelled', 'failed']
+    turn_id: Union[str, None] = Field(default=None)
+    error: Union[str, None] = Field(default=None)
+    duplicate: bool
+
+
+class TeamDelegationRequest(Model):
+    workspace_id: str
+    event_id: str
+    origin_turn_id: str
+    target_chat_id: str
+    prompt: str = Field(repr=False)
+    notify_origin: Union[bool, None] = Field(default=None)
+    strict_model: Union[bool, None] = Field(default=None)
+
+
+class TeamDelegationReceipt(Model):
+    task_id: str
+    target_chat_id: str
+    turn_id: str
+
+
+class DetachedTaskSnapshot(Model):
+    task_id: str
+    origin_turn_id: str
+    parent_task_id: Union[str, None] = Field(default=None)
+    target_chat_id: Union[str, None] = Field(default=None)
+    result_turn_id: Union[str, None] = Field(default=None)
+    output: Union[str, None] = Field(default=None, repr=False)
+    error: Union[str, None] = Field(default=None)
+    delivery_error: Union[str, None] = Field(default=None)
+    status: Literal['running', 'completed', 'failed', 'cancelled']
+
+
+class PhaseClassificationRequest(Model):
+    request_id: str
+    phase_id: str
+    final_output: str
+    task_context: Any
+    attempt: int
+
+
+class PhaseClassificationResult(Model):
+    model: str
+    request_id: str
+    invocation_id: str
+    decision: Literal['BLOCKED', 'NOT BLOCKED']
+
+
 class CompletionTerminalSnapshotUsage(Model):
     input_tokens: Union[int, None] = Field(default=None)
     output_tokens: Union[int, None] = Field(default=None)
@@ -133,11 +193,17 @@ class WikiOperation(Model):
     batch_sizes: BatchSizes
     billing: BillingState
     usage_cost: UsageCost
+    reported_problems: Union[list[ReportedProblem], None] = Field(default=None)
 
 
 class WikiOperationPhases(Model):
     inbox: Union[PhaseResult, None] = Field(default=None)
     outbox: Union[PhaseResult, None] = Field(default=None)
+
+
+class ReportedProblem(Model):
+    file_id: str
+    message: str
 
 
 class Category(Model):
@@ -291,6 +357,7 @@ class ChatAttachmentUploadRequest(Model):
 class ChatMessageRequest(Model):
     message: str
     attachment_ids: Union[list[str], None] = Field(default=None)
+    strict_model: Union[bool, None] = Field(default=None)
 
 
 class ChatMessageAccepted(Model):
@@ -346,7 +413,7 @@ class RestoreChatAccepted(Model):
 
 class Capabilities(Model):
     protocol_version: Literal[3]
-    families: list[Literal['turn', 'agent', 'chat']]
+    families: list[str]
     event_types: list[str]
     tool_kinds: list[Literal['server', 'client', 'knowledge', 'code']]
     features: list[str]
@@ -393,6 +460,11 @@ class WorkspaceCreateRequest(Model):
     metadata: Union[WorkspaceMetadata, None] = Field(default=None)
 
 
+class WorkspaceUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    metadata: Union[WorkspaceMetadata, None] = Field(default=None)
+
+
 class UserTool(Model):
     id: str
     name: str
@@ -421,6 +493,16 @@ class UserToolCreateRequest(Model):
 
 
 class UserToolCreateRequestParameters(Model):
+    type: Literal['object']
+
+
+class UserToolUpdateRequest(Model):
+    description: Union[Union[str, None], None] = Field(default=None)
+    parameters: Union[UserToolUpdateRequestParameters, None] = Field(default=None)
+    timeout_seconds: Union[int, None] = Field(default=None)
+
+
+class UserToolUpdateRequestParameters(Model):
     type: Literal['object']
 
 
@@ -542,6 +624,20 @@ class AgentCreateRequest(Model):
     config: Union[dict[str, Any], None] = Field(default=None)
 
 
+class AgentUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    description: Union[Union[str, None], None] = Field(default=None)
+    system_prompt: Union[str, None] = Field(default=None)
+    model: Union[Union[str, None], None] = Field(default=None)
+    mode: Union[Literal['primary', 'subagent'], None] = Field(default=None)
+    tools_enabled: Union[list[AgentTool], None] = Field(default=None)
+    external_tools_enabled: Union[list[AgentTool], None] = Field(default=None)
+    permissions: Union[dict[str, Any], None] = Field(default=None)
+    can_write_knowledge: Union[bool, None] = Field(default=None)
+    can_write_skills: Union[bool, None] = Field(default=None)
+    config: Union[dict[str, Any], None] = Field(default=None)
+
+
 class AgentTool(Model):
     name: str
 
@@ -569,6 +665,13 @@ class TeamCreateRequest(Model):
     name: str
     description: Union[Union[str, None], None] = Field(default=None)
     orchestrator_id: str
+    members: Union[list[TeamMemberCreateRequest], None] = Field(default=None)
+
+
+class TeamUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    description: Union[Union[str, None], None] = Field(default=None)
+    orchestrator_id: Union[str, None] = Field(default=None)
     members: Union[list[TeamMemberCreateRequest], None] = Field(default=None)
 
 
@@ -1124,6 +1227,8 @@ class ATPAgentDone(Model):
     summary: str
     usage: ATPUsage
     duration_ms: int
+    requested_model: Union[str, None] = Field(default=None)
+    model: Union[str, None] = Field(default=None)
 
 
 class ATPAgentFailed(Model):
@@ -1180,6 +1285,66 @@ class ATPChatattachmentmanifestevent(Model):
     conversion: dict[str, Any]
 
 
+class ATPTaskStarted(Model):
+    task_id: str
+    origin_turn_id: str
+
+
+class ATPTaskEvent(Model):
+    task_id: str
+    origin_turn_id: str
+    event_type: str
+    event_payload: dict[str, Any]
+
+
+class ATPTaskCompleted(Model):
+    task_id: str
+    origin_turn_id: str
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+    output: str = Field(repr=False)
+    error: str
+    result_turn_id: Union[str, None] = Field(default=None)
+
+
+class ATPTaskFailed(Model):
+    task_id: str
+    origin_turn_id: str
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+    output: str = Field(repr=False)
+    error: str
+    result_turn_id: Union[str, None] = Field(default=None)
+
+
+class ATPTaskCancelled(Model):
+    task_id: str
+    origin_turn_id: str
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+    output: str = Field(repr=False)
+    error: str
+    result_turn_id: Union[str, None] = Field(default=None)
+
+
+class ATPChatDeliveryQueued(Model):
+    task_id: str
+    origin_turn_id: str
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+    event_id: str
+
+
+class ATPChatDeliveryDelivered(Model):
+    task_id: str
+    origin_turn_id: str
+    status: Literal['completed', 'blocked', 'failed', 'cancelled']
+    event_id: str
+    delivery_turn_id: str
+
+
+class CancelDetachedTaskResponse(Model):
+    task_id: str
+    status: Literal['cancelled']
+    subtree: bool
+
+
 class HealthCheckResponse(Model):
     data: Union[HealthCheckResponseData, None] = Field(default=None)
 
@@ -1214,6 +1379,10 @@ class ListChatAttachmentsResponse(Model):
     attachments: list[ChatAttachment]
 
 
+class CancelDetachedTaskBody(Model):
+    subtree: Union[bool, None] = Field(default=None)
+
+
 class WithdrawWikiSourceBody(Model):
     file_id: str
 
@@ -1231,10 +1400,6 @@ class CreateWikiSyncRunBody(Model):
 
 WikiWebhookEvent = Union[WikiFileProcessedEvent, WikiFileDeletedEvent, WikiOperationEvent]
 WorkspaceMetadata = Union[dict[str, Any], list[Any]]
-WorkspaceUpdateRequest = Union[Any, Any]
-UserToolUpdateRequest = Union[Any, Any, Any]
-AgentUpdateRequest = Union[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]
-TeamUpdateRequest = Union[Any, Any, Any, Any]
 ModelListEntry = Union[LlmModelEntry, TeamModelEntry]
 OpenRouterPricing = Union[dict[str, Union[str, float, list[Any], dict[str, Any]]], None]
 OpenRouterArchitecture = Union[OpenRouterArchitectureValue, None]
@@ -1244,6 +1409,13 @@ ProviderWebhookPayload = dict[str, Any]
 ATPToolkind = Literal['server', 'client', 'knowledge', 'code']
 ATPPing = dict[str, Any]
 
+NativeDeliveryRequest.model_rebuild()
+NativeDeliveryReceipt.model_rebuild()
+TeamDelegationRequest.model_rebuild()
+TeamDelegationReceipt.model_rebuild()
+DetachedTaskSnapshot.model_rebuild()
+PhaseClassificationRequest.model_rebuild()
+PhaseClassificationResult.model_rebuild()
 CompletionTerminalSnapshotUsage.model_rebuild()
 CompletionTerminalSnapshot.model_rebuild()
 CompletionTerminalSnapshotData.model_rebuild()
@@ -1259,6 +1431,7 @@ FileOutcome.model_rebuild()
 PhaseResult.model_rebuild()
 WikiOperation.model_rebuild()
 WikiOperationPhases.model_rebuild()
+ReportedProblem.model_rebuild()
 Category.model_rebuild()
 Categories.model_rebuild()
 CatalogEntry.model_rebuild()
@@ -1294,11 +1467,14 @@ Workspace.model_rebuild()
 WorkspaceResource.model_rebuild()
 WorkspaceCollection.model_rebuild()
 WorkspaceCreateRequest.model_rebuild()
+WorkspaceUpdateRequest.model_rebuild()
 UserTool.model_rebuild()
 UserToolResource.model_rebuild()
 UserToolCollection.model_rebuild()
 UserToolCreateRequest.model_rebuild()
 UserToolCreateRequestParameters.model_rebuild()
+UserToolUpdateRequest.model_rebuild()
+UserToolUpdateRequestParameters.model_rebuild()
 Chat.model_rebuild()
 ChatResource.model_rebuild()
 ChatCollection.model_rebuild()
@@ -1313,11 +1489,13 @@ Agent.model_rebuild()
 AgentResource.model_rebuild()
 AgentCollection.model_rebuild()
 AgentCreateRequest.model_rebuild()
+AgentUpdateRequest.model_rebuild()
 AgentTool.model_rebuild()
 Team.model_rebuild()
 TeamResource.model_rebuild()
 TeamCollection.model_rebuild()
 TeamCreateRequest.model_rebuild()
+TeamUpdateRequest.model_rebuild()
 TeamMember.model_rebuild()
 TeamMemberCreateRequest.model_rebuild()
 ApiKey.model_rebuild()
@@ -1403,11 +1581,20 @@ ATPBillingstate.model_rebuild()
 ATPCurrencyamount.model_rebuild()
 ATPUsagecost.model_rebuild()
 ATPChatattachmentmanifestevent.model_rebuild()
+ATPTaskStarted.model_rebuild()
+ATPTaskEvent.model_rebuild()
+ATPTaskCompleted.model_rebuild()
+ATPTaskFailed.model_rebuild()
+ATPTaskCancelled.model_rebuild()
+ATPChatDeliveryQueued.model_rebuild()
+ATPChatDeliveryDelivered.model_rebuild()
+CancelDetachedTaskResponse.model_rebuild()
 HealthCheckResponse.model_rebuild()
 HealthCheckResponseData.model_rebuild()
 CreateApiKeyResponse.model_rebuild()
 TestGenerateImageResponse.model_rebuild()
 ListChatAttachmentsResponse.model_rebuild()
+CancelDetachedTaskBody.model_rebuild()
 WithdrawWikiSourceBody.model_rebuild()
 CreateWikiInboxRunBody.model_rebuild()
 CreateWikiOutboxRunBody.model_rebuild()

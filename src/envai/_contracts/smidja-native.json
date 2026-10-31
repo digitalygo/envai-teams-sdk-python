@@ -1,0 +1,173 @@
+{
+  "contract_version": 3,
+  "header": {
+    "X-Envai-Contract-Version": "3",
+    "X-Envai-Extensions": "native-tasks-v1"
+  },
+  "authentication": "Existing Envai bearer API key. Current alpha resources are user scoped; PR53 tenancy is not a dependency.",
+  "base_path": "/api/v1/atp/v3",
+  "features": [
+    "detached_background",
+    "native_deliveries",
+    "cross_team_delegation",
+    "phase_classification",
+    "delegated_job_lifecycle",
+    "delegation_notify_origin",
+    "strict_model"
+  ],
+  "routes": {
+    "POST /chats/{chat_id}/deliveries": {
+      "request": [
+        "workspace_id",
+        "event_id",
+        "origin_turn_id",
+        "task_id",
+        "status",
+        "output"
+      ],
+      "status_enum": [
+        "completed",
+        "blocked",
+        "failed",
+        "cancelled"
+      ],
+      "response": {
+        "event_id": "string",
+        "status": "queued|delivered|cancelled|failed",
+        "turn_id": "optional string",
+        "duplicate": "boolean",
+        "error": "optional generic delivery-turn admission failure"
+      },
+      "success": 202,
+      "semantics": "Origin turn must be known to the resident chat. Idle delivery starts a new system-input turn; busy delivery queues until terminal boundary. Same event_id and payload deduplicates; changed content returns 409. SSE chat.delivery.delivered supplies delivery_turn_id. Receipt status becomes cancelled when task cancellation removes a pending notification, or failed when delivery-turn admission fails."
+    },
+    "POST /chats/{chat_id}/delegations": {
+      "request": [
+        "workspace_id",
+        "event_id",
+        "origin_turn_id",
+        "target_chat_id",
+        "prompt",
+        "notify_origin?",
+        "strict_model?"
+      ],
+      "response": {
+        "task_id": "string identifying the entire delegated job",
+        "target_chat_id": "string",
+        "turn_id": "string identifying only the initial target coordinator turn"
+      },
+      "success": 202,
+      "semantics": "Same-owner, same-workspace existing target chat determines team. Busy target returns 409. Origin is free while target executes. The job remains running after an initial acknowledgment turn if detached children remain. Envai waits for the coordinator terminal and every pending child in its cohort, then batches all child results into one target synthesis turn. Additional delegation in synthesis creates another cohort. Only a coordinator turn with no pending children or child results completes the job and delivers its full final output natively to origin unless notify_origin is false.",
+      "phase_outcome": "Require delegated_job_lifecycle before enabling workflows that depend on complete-job outcomes. Use origin task.completed or origin GET task terminal status. task.output is the full final job output; optional result_turn_id identifies its final coordinator turn, not receipt turn_id. The initial target turn.completed is not the workflow phase outcome.",
+      "tool_stream": "Keep target-chat SSE subscribed through delegated-job terminal. Target coordinator and child tool events stay on that target stream; they are not forwarded as origin task.event wrappers. Post tool outputs to the target chat.",
+      "required_workflow_capability": "delegated_job_lifecycle",
+      "late_delegation": "When origin_turn_id belongs to a delegated job, a new delegation can join only its currently active coordinator turn. A new request against a past coordinator turn is rejected with 422 validation_error. Exact duplicate event_id requests still replay their original receipt.",
+      "notify_origin": {
+        "type": "boolean",
+        "default": true,
+        "capability": "delegation_notify_origin",
+        "semantics": "False suppresses only automatic result delivery and model wake at the origin. Origin task terminal events, GET status, full output and result_turn_id remain available. Child cohorts and target synthesis are unchanged.",
+        "idempotency": "Omitted and explicit true are equivalent. Changing the effective boolean for an existing event_id conflicts."
+      },
+      "strict_model": {
+        "type": "boolean",
+        "default": false,
+        "capability": "strict_model",
+        "semantics": "True checks the target configured root orchestrator model before admission and preserves that policy for later coordinator synthesis turns. Children retain their model resolution policy. Unavailable configured root returns 422 strict_model_unavailable before inference/tools. Changing the flag for an existing event_id conflicts."
+      }
+    },
+    "GET /chats/{chat_id}/tasks/{task_id}": {
+      "response": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "parent_task_id?",
+        "target_chat_id?",
+        "output?",
+        "error?",
+        "delivery_error?",
+        "result_turn_id?"
+      ],
+      "success": 200,
+      "semantics": "Unknown resident task returns 404 task_unknown; after restart or eviction this means unknown outcome, never proof of nonexecution. delivery_error exposes a failed native notification without changing the original output. For a cross-team job, result_turn_id identifies the final coordinator turn, independently of the receipt initial turn_id."
+    },
+    "POST /chats/{chat_id}/tasks/{task_id}/cancel": {
+      "request": {
+        "subtree": "boolean, defaults false"
+      },
+      "response": {
+        "task_id": "string",
+        "status": "cancelled",
+        "subtree": "boolean"
+      },
+      "success": 202,
+      "semantics": "Best effort task cancellation. Parent turn cancellation does not cancel detached tasks. Already-produced external effects remain. Cancellation also marks a terminal task cancelled, removes queued notification and prevents late results from waking its parent."
+    },
+    "POST /chats/{chat_id}/classify-phase": {
+      "request": [
+        "request_id",
+        "task_context",
+        "phase_id",
+        "attempt",
+        "final_output"
+      ],
+      "response": {
+        "decision": "BLOCKED|NOT BLOCKED",
+        "model": "string",
+        "request_id": "string",
+        "invocation_id": "string"
+      },
+      "success": 200,
+      "semantics": "Existing Decisions adapter, configured model without fallback, no tools. Independent durable accounting. request_id cannot be reused after admission, including restart; 409 avoids a repeated paid call. Client saves successful response. 502/503 uncertain result must pause, not blindly retry."
+    },
+    "POST /chats/{chat_id}/messages": {
+      "request": [
+        "message",
+        "attachment_ids?",
+        "strict_model?"
+      ],
+      "success": 202,
+      "strict_model": {
+        "type": "boolean",
+        "default": false,
+        "capability": "strict_model",
+        "semantics": "True requires the configured root orchestrator model to be explicitly available and rejects resolver fallback before inference or tools. Root-only; child model resolution keeps its existing policy. Native origin wake turns inherit the origin policy.",
+        "error": {
+          "status": 422,
+          "type": "validation_error",
+          "code": "strict_model_unavailable"
+        },
+        "idempotency": "strict_model is included in durable message input fingerprint. Omitted and false retain the legacy fingerprint; changing the effective policy for an existing key returns 409 idempotency_conflict, including accepted replays."
+      }
+    }
+  },
+  "events": [
+    "task.started",
+    "task.event",
+    "task.completed",
+    "task.failed",
+    "task.cancelled",
+    "chat.delivery.queued",
+    "chat.delivery.delivered"
+  ],
+  "tool_results": "Existing POST /chats/{chat_id}/tool-output accepts detached call_id via its task-owned broker. task.event wraps agent.tool.request as event_type and event_payload with task_id and origin_turn_id on the execution chat stream. For cross-team delegation, keep the target stream open through job terminal and post outputs to the target chat; tool events are not forwarded to the origin. New chat-level events have null turn_id; late task activity does not mutate an old terminal turn.",
+  "retention": "Delivery receipts, deduplication, task snapshots, and known origin correlations last only while the live chat remains resident. Restart or eviction can lose these. Classification admission is durable but response text is not retained there. No automatic paid replay.",
+  "compatibility": "Foreground behavior preserved. Background is detached when the chat manager supplies native lifecycle hooks. Scheduling concurrency remains separate from whether parent waits. Legacy v2 capabilities do not advertise the new features.",
+  "delegate_task": {
+    "background": "boolean; true selects detached execution",
+    "scheduling": "parallel|sequential; default parallel; controls same-team detached tasks",
+    "sequential_semantics": "Sequential tasks serialize within a user/chat; parallel tasks may coexist. Admission limits 8 running and 40 admitted. No FIFO workflow ordering guarantee."
+  },
+  "model_observability": {
+    "agent.started.model": "Resolved root model selected for provider request.",
+    "agent.done.requested_model": "Selected requested root model ID.",
+    "agent.done.model": "Optional last nonempty provider-reported root model ID. May use canonical aliases or suffixes; omitted when provider did not report a model."
+  },
+  "extension_negotiation": {
+    "scope": "Native clients send this header on all execution-plane requests, including message writes, capabilities discovery and every SSE connection/reconnect/replay. Message writes select native detached lifecycle; absent header keeps legacy parent-bound background lifecycle. Explicit delegation endpoints select native semantics. Unknown extension tokens are ignored. Only ATP v3 supports this extension.",
+    "acknowledgment": "Every ATP request passing contract negotiation echoes X-Envai-Extensions: native-tasks-v1 when enabled; Vary includes X-Envai-Extensions. Current contract3 only. Tokens are case-sensitive, comma separated across repeated header values, with surrounding whitespace trimmed. Unknown tokens ignored. Contract2 never enables extension and remains historical-read-only. No missing-opt-in error on explicitly native routes.",
+    "without_extension": "Legacy families turn/agent/chat and features; task.* and chat.delivery.* project to ignorable chat.extension with empty data and null agent/turn; agent.done omits requested_model/model. Canonical log is unchanged.",
+    "sequences": "Original sequence IDs retained including placeholders, preserving continuity. Cursor is last received positive seq, including unknown events. Changing extension mode requires replay from an earlier cursor to retrieve previously projected data.",
+    "strict_model": "Write enforcement is independent of extension negotiation. Model diagnostics require opting in on SSE; otherwise diagnostics remain in the canonical log and can be replayed with opt-in."
+  }
+}

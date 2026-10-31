@@ -6,12 +6,15 @@ QUERY/artifact writes are internal actor capabilities, not public HTTP endpoints
 from __future__ import annotations
 
 import mimetypes
+import threading
+import time
 from pathlib import Path
 from typing import Any, Literal
 
 from . import _generated as generated
-from ._transport import RequestOptions
-from .models import WikiSource
+from ._transport import RequestOptions, check_cancel, poll_sleep
+from .errors import ProtocolError
+from .models import WikiOperation, WikiSource
 
 MAX_SOURCE_BYTES = 1_000_000_000
 
@@ -60,7 +63,56 @@ def _index_options(options: dict[str, Any]) -> None:
         raise ValueError("Provide all=True or 1 <= from_ <= to")
 
 
+def _source_done(source: WikiSource) -> bool:
+    return (source.lifecycle in ("deleted", "deleting", "outbox") or
+            source.conversion.status == "completed" or
+            (source.conversion.status == "not_required" and source.lifecycle in ("inbox", "raw")) or
+            (source.conversion.status == "failed" and not source.conversion.recoverable))
+
+
 class WikiService(generated.WikiService):
+    def wait_source(
+        self, workspace_id: str, file_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> WikiSource:
+        """Poll identity-checked state only; never trigger processing or indexing."""
+        from .client import _poll_bounds
+        _poll_bounds(timeout, poll_interval)
+        deadline = time.monotonic()+timeout
+        options = RequestOptions(deadline=deadline, cancel=cancel)
+        while True:
+            check_cancel(options)
+            value = self.source(workspace_id, file_id, request_options=options)
+            if value.workspace_id != workspace_id or value.file_id != file_id:
+                raise ProtocolError("Wiki polling returned a different identity")
+            if _source_done(value):
+                return value
+            if cancel is not None:
+                cancel.wait(min(poll_interval, max(0, deadline-time.monotonic())))
+            else:
+                time.sleep(min(poll_interval, max(0, deadline-time.monotonic())))
+
+    def wait_operation(
+        self, workspace_id: str, operation_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> WikiOperation:
+        """Poll identity-checked state only; never trigger processing or indexing."""
+        from .client import _poll_bounds
+        _poll_bounds(timeout, poll_interval)
+        deadline = time.monotonic()+timeout
+        options = RequestOptions(deadline=deadline, cancel=cancel)
+        while True:
+            check_cancel(options)
+            value = self.operation(workspace_id, operation_id, request_options=options)
+            if value.workspace_id != workspace_id or value.operation_id != operation_id:
+                raise ProtocolError("Wiki polling returned a different identity")
+            if value.status in ("completed", "failed"):
+                return value
+            if cancel is not None:
+                cancel.wait(min(poll_interval, max(0, deadline-time.monotonic())))
+            else:
+                time.sleep(min(poll_interval, max(0, deadline-time.monotonic())))
+
     def upload_file(
         self,
         workspace_id: str,
@@ -92,6 +144,42 @@ class WikiService(generated.WikiService):
 
 
 class AsyncWikiService(generated.AsyncWikiService):
+    async def wait_source(
+        self, workspace_id: str, file_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> WikiSource:
+        """Poll identity-checked state only; never trigger processing or indexing."""
+        from .client import _poll_bounds
+        _poll_bounds(timeout, poll_interval)
+        deadline = time.monotonic()+timeout
+        options = RequestOptions(deadline=deadline, cancel=cancel)
+        while True:
+            check_cancel(options)
+            value = await self.source(workspace_id, file_id, request_options=options)
+            if value.workspace_id != workspace_id or value.file_id != file_id:
+                raise ProtocolError("Wiki polling returned a different identity")
+            if _source_done(value):
+                return value
+            await poll_sleep(min(poll_interval, max(0, deadline-time.monotonic())), options)
+
+    async def wait_operation(
+        self, workspace_id: str, operation_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> WikiOperation:
+        """Poll identity-checked state only; never trigger processing or indexing."""
+        from .client import _poll_bounds
+        _poll_bounds(timeout, poll_interval)
+        deadline = time.monotonic()+timeout
+        options = RequestOptions(deadline=deadline, cancel=cancel)
+        while True:
+            check_cancel(options)
+            value = await self.operation(workspace_id, operation_id, request_options=options)
+            if value.workspace_id != workspace_id or value.operation_id != operation_id:
+                raise ProtocolError("Wiki polling returned a different identity")
+            if value.status in ("completed", "failed"):
+                return value
+            await poll_sleep(min(poll_interval, max(0, deadline-time.monotonic())), options)
+
     async def upload_file(
         self,
         workspace_id: str,

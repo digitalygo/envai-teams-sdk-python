@@ -77,12 +77,14 @@ def annotation(schema, name):
         return NAMES[("event:" if "/$defs/" in schema["$ref"] else "") + key]
     if "const" in schema:
         return f"Literal[{schema['const']!r}]"
-    if name == "CapabilitiesFeaturesItem":
+    if name in ("CapabilitiesFeaturesItem", "CapabilitiesFamiliesItem"):
         return "str"
     if "enum" in schema:
         return "Literal[" + ", ".join(repr(x) for x in schema["enum"]) + "]"
     for union in ("anyOf", "oneOf"):
-        if union in schema:
+        if union in schema and not (schema.get("properties") and all(
+            set(branch) <= {"required"} for branch in schema[union]
+        )):
             return (
                 "Union["
                 + ", ".join(annotation(x, name + str(i)) for i, x in enumerate(schema[union]))
@@ -190,7 +192,7 @@ for path, entry in API["paths"].items():
         for p in op.get("parameters", []):
             if "$ref" in p:
                 p = API["components"]["parameters"][p["$ref"].rsplit("/", 1)[1]]
-            if p["name"] != "X-Envai-Contract-Version":
+            if p["name"] not in ("X-Envai-Contract-Version", "X-Envai-Extensions"):
                 params.append(p)
         request = op.get("requestBody", {})
         request_content = request.get("content", {})
@@ -270,6 +272,11 @@ GROUPS = {
         "submit_approval": "resolveChatApproval",
         "fork": "forkChat",
         "restore": "restoreChat",
+        "deliver": "deliverWorkflowResult",
+        "delegate": "delegateToTeam",
+        "get_task": "getDetachedTask",
+        "cancel_task": "cancelDetachedTask",
+        "classify_phase": "classifyPhase",
     },
     "completions": {"list": "listCompletions", "get": "getCompletion"},
     "wiki": {

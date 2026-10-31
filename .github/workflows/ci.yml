@@ -28,7 +28,22 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: envai_root_test
+          MYSQL_DATABASE: envai_definitions_test
+          MYSQL_USER: envai
+          MYSQL_PASSWORD: envai_sdk_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -penvai_root_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
+      TEST_MYSQL_DSN: mysql://envai:envai_sdk_test@127.0.0.1:3306/envai_definitions_test
+      ENVAI_REQUIRE_MYSQL: '1'
       TEST_DATABASE_URL: postgresql://envai:envai_sdk_test@127.0.0.1:5432/envai_wiki_test?sslmode=disable
       ENVAI_REQUIRE_POSTGRES: '1'
     steps:
@@ -49,7 +64,7 @@ jobs:
           python -m venv /tmp/wheel-test
           /tmp/wheel-test/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/wheel-test/bin/python -c "import envai; from envai._schema import OPERATIONS; assert len(OPERATIONS) == 71; print(envai.__version__)"
+          /tmp/wheel-test/bin/python -c "import envai; from envai._schema import OPERATIONS; assert len(OPERATIONS) == 76; print(envai.__version__)"
 
   release-checks:
     name: Release tooling

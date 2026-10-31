@@ -113,6 +113,9 @@ def arguments(op):
     if op["request"]:
         if op["media"] == "multipart/form-data":
             args["files"] = {"file": ("x.png", b"png", "image/png")}
+            if op["path"] == "/tests/images/generate":
+                args["files"] = {"files": [("x.png", b"png", "image/png")]}
+                args["data"] = {"prompt": "fixture", "model_code": "fixture-model"}
         else:
             args["body"] = sample(op["request"])
     if op["path"].endswith("/index"):
@@ -140,15 +143,18 @@ def test_full_surface_sync(name, op):
                         *CAPABILITIES["features"],
                         "chat_attachments",
                         "chat_attachment_originals",
+                        "detached_background", "native_deliveries",
+                        "cross_team_delegation", "delegated_job_lifecycle",
+                        "phase_classification",
                     ],
                 },
-                headers={"X-Envai-Contract-Version": "3"},
+                headers={"X-Envai-Contract-Version": "3", "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")},
             )
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
             )
-        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3")}
+        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3"), "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")}
         if not op["response"]:
             return httpx.Response(204, headers=ack)
         if op["response_type"] == "bytes":
@@ -160,6 +166,7 @@ def test_full_surface_sync(name, op):
         base_url="https://example.test/",
         transport=httpx.MockTransport(handler),
         contract_version=2 if name.endswith("Legacy") else 3,
+        native_tasks=not name.endswith("Legacy"),
     ) as client:
         method = getattr(client, snake(name))
         if name == "resolveChatApproval":
@@ -167,7 +174,7 @@ def test_full_surface_sync(name, op):
                 method(**arguments(op))
         else:
             method(**arguments(op))
-    expected = 2 if op["method"] != "GET" and EnvaiClient._negotiated(name) else 1
+    expected = 2 if (op["method"] != "GET" and EnvaiClient._negotiated(name)) or name == "getDetachedTask" else 1
     assert len(seen) == expected
     req = seen[-1]
     assert req.method == op["method"]
@@ -194,15 +201,18 @@ async def test_full_surface_async(name, op):
                         *CAPABILITIES["features"],
                         "chat_attachments",
                         "chat_attachment_originals",
+                        "detached_background", "native_deliveries",
+                        "cross_team_delegation", "delegated_job_lifecycle",
+                        "phase_classification",
                     ],
                 },
-                headers={"X-Envai-Contract-Version": "3"},
+                headers={"X-Envai-Contract-Version": "3", "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")},
             )
         if name == "resolveChatApproval":
             return httpx.Response(
                 409, json={"error": {"type": "conflict", "message": "Not implemented"}}
             )
-        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3")}
+        ack = {"X-Envai-Contract-Version": request.headers.get("X-Envai-Contract-Version", "3"), "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")}
         if not op["response"]:
             return httpx.Response(204, headers=ack)
         if op["response_type"] == "bytes":
@@ -213,6 +223,7 @@ async def test_full_surface_async(name, op):
         "secret",
         transport=httpx.MockTransport(handler),
         contract_version=2 if name.endswith("Legacy") else 3,
+        native_tasks=not name.endswith("Legacy"),
     ) as client:
         if name == "resolveChatApproval":
             with pytest.raises(ConflictError):
@@ -223,7 +234,7 @@ async def test_full_surface_async(name, op):
 
 def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
-    assert len(OPERATIONS) == 71
+    assert len(OPERATIONS) == 76
     for op in shared:
         assert OPERATIONS[op["id"]]["method"] == op["method"]
         assert OPERATIONS[op["id"]]["path"] == (

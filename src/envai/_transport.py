@@ -19,7 +19,14 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel, TypeAdapter
 
 from ._schema import LEGACY_OPENAPI, OPERATIONS, strict_json, validate, validate_legacy_costs
-from .errors import CancelledError, CompatibilityError, ProtocolError, TransportError, from_response
+from .errors import (
+    CancelledError,
+    CompatibilityError,
+    DeadlineExceeded,
+    ProtocolError,
+    TransportError,
+    from_response,
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +48,13 @@ class RetryPolicy:
 class RequestOptions:
     timeout: float | None = None
     cancel: threading.Event | None = field(default=None, repr=False)
+    deadline: float | None = None
+
+    def __post_init__(self):
+        if self.timeout is not None and (not math.isfinite(self.timeout) or self.timeout <= 0):
+            raise ValueError("Request timeout must be finite and positive")
+        if self.deadline is not None and not math.isfinite(self.deadline):
+            raise ValueError("Request deadline must be finite")
 
 
 def normalize_url(base: str) -> tuple[str, str]:
@@ -81,6 +95,31 @@ def delay(policy: RetryPolicy, attempt: int, retry_after: str | None = None) -> 
 def check_cancel(options: RequestOptions | None) -> None:
     if options and options.cancel and options.cancel.is_set():
         raise CancelledError("Request cancelled locally")
+    if options and options.deadline is not None and time.monotonic() >= options.deadline:
+        raise DeadlineExceeded("Operation deadline expired; outcome remains unknown")
+
+
+def _remaining(options: RequestOptions | None, timeout: Any) -> Any:
+    check_cancel(options)
+    if options and options.deadline is not None:
+        remaining = options.deadline - time.monotonic()
+        if isinstance(timeout, httpx.Timeout):
+            return httpx.Timeout(**{name: min(value, remaining) if value is not None else remaining
+                for name, value in timeout.as_dict().items()})
+        return min(timeout, remaining) if isinstance(timeout, (int, float)) else remaining
+    return timeout
+
+
+async def poll_sleep(seconds: float, options: RequestOptions) -> None:
+    """Keep cooperative cancellation responsive while waiting between safe reads."""
+    until = time.monotonic()+seconds
+    while time.monotonic() < until:
+        check_cancel(options)
+        wait = min(0.01, max(0, until-time.monotonic()))
+        if options.deadline is not None:
+            wait = min(wait, max(0, options.deadline-time.monotonic()))
+        await asyncio.sleep(wait)
+    check_cancel(options)
 
 
 def _capabilities_payload(value: Any) -> dict[str, Any] | None:
@@ -117,9 +156,13 @@ class TransportBase:
         retry: RetryPolicy | None,
         observer: Callable[[str, dict[str, Any]], None] | None,
         contract_version: int,
+        native_tasks: bool = False,
     ):
         if type(contract_version) is not int or contract_version not in (2, 3):
             raise ValueError("contract_version must be exactly 2 or 3")
+        if type(native_tasks) is not bool or (native_tasks and contract_version != 3):
+            raise ValueError("Native tasks require contract 3 and a boolean opt-in")
+        self.native_tasks = native_tasks
         self._contract_version = contract_version
         self.base_url, self.origin = normalize_url(base_url)
         self.jwks_url = jwks_url or self.origin + "/.well-known/jwks.json"
@@ -141,10 +184,21 @@ class TransportBase:
             "Accept": "application/json",
             "User-Agent": "envai-python/0.1.0a1 (python/" + platform.python_version() + ")",
         }
+        if native_tasks:
+            self._headers["X-Envai-Extensions"] = "native-tasks-v1"
         self.timeout = httpx.Timeout(timeout, connect=connect_timeout)
         self.stream_timeout = httpx.Timeout(stream_read_timeout, connect=connect_timeout)
         self.retry = retry or RetryPolicy()
         self.observer = observer
+
+    def _configure_headers(self, headers: dict[str, str] | None) -> None:
+        reserved = {"authorization", "host", "content-length", "x-envai-contract-version", "x-envai-extensions"}
+        for name, value in (headers or {}).items():
+            if not isinstance(name, str) or not isinstance(value, str) or name.lower() in reserved:
+                raise ValueError("Custom headers cannot override authentication or protocol negotiation")
+            # HTTPX validates invalid bytes before any request is dispatched.
+            httpx.Headers({name: value})
+            self._headers[name] = value
 
     @property
     def contract_version(self) -> int:
@@ -161,9 +215,16 @@ class TransportBase:
             or ("Wiki" in operation and operation != "getWikiWebhookJwks")
         )
 
-    def _acknowledge(self, response: httpx.Response, version: int) -> None:
+    def _acknowledge(self, response: httpx.Response, version: int, *, native: bool = False) -> None:
         if response.headers.get_list("X-Envai-Contract-Version") != [str(version)]:
             raise CompatibilityError("Server did not acknowledge the selected contract")
+        if native and "native-tasks-v1" not in {
+            token.strip() for value in response.headers.get_list("X-Envai-Extensions")
+            for token in value.split(",")
+        }:
+            raise CompatibilityError(
+                "Server did not acknowledge native-tasks-v1; mutation outcome may be unknown"
+            )
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
@@ -276,6 +337,30 @@ class TransportBase:
             )
             op["exhaustive"] = query.get("all") is True
         if files is not None:
+            if operation == "testGenerateImage":
+                entries = list(files.items()) if isinstance(files, dict) else list(files)
+                normalized = []
+                for name, value in entries:
+                    if name not in ("files", "files[]"):
+                        raise ValueError("Diagnostic image uploads use the files array")
+                    values = value if isinstance(value, list) else [value]
+                    for item in values:
+                        content = item[1] if isinstance(item, tuple) else item
+                        if isinstance(content, (bytes, str)):
+                            size = len(content.encode() if isinstance(content, str) else content)
+                        else:
+                            try:
+                                position = content.tell()
+                                content.seek(0, 2)
+                                size = content.tell()
+                                content.seek(position)
+                            except (AttributeError, OSError) as exc:
+                                raise ValueError("Image upload requires bytes or a seekable file") from exc
+                        if size > 10_240 * 1024:
+                            raise ValueError("Diagnostic image exceeds 10240 KB")
+                        normalized.append(("files[]", item))
+                validate(op["request"], {**(data or {}), "files": ["file"] * len(normalized)}, request=True)
+                files = normalized
             if operation in ("uploadWikiSource", "uploadChatAttachment"):
                 from .wiki import _validate_upload
 
@@ -289,11 +374,34 @@ class TransportBase:
         if attachment_ids and not headers.get("Idempotency-Key"):
             raise ValueError("Attachment messages require Idempotency-Key")
         op["attachment_ids"] = attachment_ids
+        op["body"] = kwargs.get("json", {})
+        op["native_tasks"] = self.native_tasks
+        if not self.native_tasks and (operation in (
+            "deliverWorkflowResult", "delegateToTeam", "getDetachedTask",
+            "cancelDetachedTask", "classifyPhase"
+        ) or op["body"].get("strict_model")):
+            raise CompatibilityError("Native operations require native_tasks=True")
         return op, url, kwargs
 
     @staticmethod
     def _capability_preflight(operation: str, op: dict[str, Any], capabilities: Any) -> None:
         features = capabilities.features
+        required = {
+            "deliverWorkflowResult": ("native_deliveries",),
+            "delegateToTeam": ("cross_team_delegation", "delegated_job_lifecycle"),
+            "getDetachedTask": ("detached_background",),
+            "cancelDetachedTask": ("detached_background",),
+            "classifyPhase": ("phase_classification",),
+        }.get(operation, ())
+        if op.get("native_tasks") and op["method"] != "GET" and op["path"].startswith("/atp/v3/chats/"):
+            required += ("detached_background",)
+        if op.get("body", {}).get("strict_model"):
+            required += ("strict_model",)
+        if op.get("body", {}).get("notify_origin") is False:
+            required += ("delegation_notify_origin",)
+        for feature in required:
+            if feature not in features:
+                raise CompatibilityError("Server does not advertise " + feature)
         if operation == "uploadChatAttachment":
             if "chat_attachments" not in features:
                 raise CompatibilityError("Server does not advertise chat_attachments")
@@ -345,7 +453,7 @@ class TransportBase:
                 raise CompatibilityError("Server rejected the selected contract")
             raise from_response(response.status_code, payload, response.headers.get("x-request-id"))
         if version is not None:
-            self._acknowledge(response, version)
+            self._acknowledge(response, version, native=self.native_tasks and op.get("path", "").startswith("/atp/v3/"))
         if op["response"] is None:
             return None
         if op["response_type"] == "bytes":
@@ -378,6 +486,7 @@ class TransportBase:
 
                 schema = copy.deepcopy(OPENAPI["components"]["schemas"]["Capabilities"])
                 schema["properties"]["features"]["items"].pop("enum", None)
+                schema["properties"]["families"]["items"].pop("enum", None)
                 target = _capabilities_payload(value)
                 if target is not None and "features" in target:
                     normalized = _normalize_features(target["features"])
@@ -444,13 +553,14 @@ class SyncTransport(TransportBase):
     def _request(self, operation: str, **kwargs: Any) -> Any:
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
-        if op["method"] != "GET" and self._negotiated(operation):
+        if (op["method"] != "GET" and self._negotiated(operation)) or operation == "getDetachedTask":
             capabilities = self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
             self._capability_preflight(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
+            request["timeout"] = _remaining(options, request["timeout"])
             try:
                 response = self._http.request(op["method"], url, **request)
             except httpx.TransportError as exc:
@@ -468,6 +578,9 @@ class SyncTransport(TransportBase):
                     check_cancel(options)
                     return self._decode(op, response)
                 wait = delay(self.retry, attempt, response.headers.get("retry-after"))
+            check_cancel(options)
+            if options and options.deadline is not None:
+                wait = min(wait, max(0, options.deadline - time.monotonic()))
             self._observe("http.retry", operation=operation, attempt=attempt + 1)
             if options and options.cancel:
                 options.cancel.wait(wait)
@@ -479,18 +592,39 @@ class SyncTransport(TransportBase):
 class AsyncTransport(TransportBase):
     _http: httpx.AsyncClient
 
+    async def _send(self, method: str, url: str, options: RequestOptions | None,
+                    request: dict[str, Any]) -> httpx.Response:
+        if options is None or (options.deadline is None and options.cancel is None):
+            return await self._http.request(method, url, **request)
+        task = asyncio.create_task(self._http.request(method, url, **request))
+        try:
+            while True:
+                check_cancel(options)
+                wait = 0.01
+                if options.deadline is not None:
+                    wait = min(wait, max(0, options.deadline-time.monotonic()))
+                done, _ = await asyncio.wait((task,), timeout=wait)
+                if done:
+                    check_cancel(options)
+                    return await task
+        finally:
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
     async def _request(self, operation: str, **kwargs: Any) -> Any:
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
-        if op["method"] != "GET" and self._negotiated(operation):
+        if (op["method"] != "GET" and self._negotiated(operation)) or operation == "getDetachedTask":
             capabilities = await self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
             self._capability_preflight(operation, op, capabilities)
         for attempt in range(self.retry.max_retries + 1):
             check_cancel(options)
+            request["timeout"] = _remaining(options, request["timeout"])
             try:
-                response = await self._http.request(op["method"], url, **request)
+                response = await self._send(op["method"], url, options, request)
             except httpx.TransportError as exc:
                 if op["method"] != "GET" or attempt == self.retry.max_retries:
                     raise TransportError(
@@ -506,6 +640,12 @@ class AsyncTransport(TransportBase):
                     check_cancel(options)
                     return self._decode(op, response)
                 wait = delay(self.retry, attempt, response.headers.get("retry-after"))
+            check_cancel(options)
+            if options and options.deadline is not None:
+                wait = min(wait, max(0, options.deadline - time.monotonic()))
             self._observe("http.retry", operation=operation, attempt=attempt + 1)
-            await asyncio.sleep(wait)
+            until = time.monotonic()+wait
+            while time.monotonic() < until:
+                check_cancel(options)
+                await asyncio.sleep(min(0.01, max(0, until-time.monotonic())))
         raise AssertionError("unreachable")

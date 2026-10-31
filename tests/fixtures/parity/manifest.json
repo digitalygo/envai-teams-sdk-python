@@ -1,0 +1,287 @@
+{
+  "version": 2,
+  "synthetic": true,
+  "canonical_server_reference": "20dfd5a6c8ec9e75d3754875d4f94520feb3bbf6",
+  "fixtures_sha256": "ec969c671fae79c9cde6258555f207f9e09f4eb1b4058e966cf7ac359f5db255",
+  "requirements": [
+    "Never count source-only inspection as executed PASS.",
+    "Use actual public helpers and real Ed25519/JWKS verifier for lifecycle scenarios; mocks may replace HTTP transport only.",
+    "No paid calls. Use temporary per-test persistent stores.",
+    "Record SDK test name, exact command, exit status, assertions and commit for every case.",
+    "Supplement fixture sequence numbers monotonically per stream; ping remains sequence zero. Preserve signed call_id/tool_name/args bytes.",
+    "For unavoidable runtime limits record PARTIAL with reason, never PASS.",
+    "Frozen version2 bundle must not change. Additional edge-case tests may reference the existing45 IDs; they do not alter fixture provenance."
+  ],
+  "cases": [
+    {
+      "id": "MODE-01",
+      "name": "Ordinary default",
+      "acceptance": "No extension request header; ordinary capabilities/messages/SSE succeed; foreground terminal closes helper."
+    },
+    {
+      "id": "MODE-02",
+      "name": "Native mode propagation",
+      "acceptance": "Exact native-tasks-v1 request token on capability preflight, admission, initial SSE, reconnect, lookup, cancellation and tool-output; legacy v2 native opt-in rejected."
+    },
+    {
+      "id": "MODE-03",
+      "name": "Native acknowledgment",
+      "acceptance": "Missing/wrong-case native ack fails before hydrate/dispatch; failed preflight causes zero POSTs; missing mutation ack yields unknown outcome with one POST, no retry."
+    },
+    {
+      "id": "REPLAY-01",
+      "name": "Foreground resolved replay",
+      "acceptance": "Fresh persistent store; request,result before ping; stable idempotent receipt for same running turn; zero handler effects and zero tool-output POSTs. Exercise actual high-level helper and real verifier."
+    },
+    {
+      "id": "REPLAY-02",
+      "name": "Foreground terminal replay",
+      "acceptance": "Fresh store; request,turn_terminal before ping; matching idempotent receipt; zero effects/submissions."
+    },
+    {
+      "id": "REPLAY-03",
+      "name": "Foreground pending replay",
+      "acceptance": "Fresh store; request before ping with no result/terminal; matching receipt; exactly one effect/submission, then matching result/terminal."
+    },
+    {
+      "id": "TASK-01",
+      "name": "Post-origin-terminal tool",
+      "acceptance": "Native stream origin turn terminal then task_request; exactly one verified handler effect and output POST to execution chat."
+    },
+    {
+      "id": "SIGN-01",
+      "name": "Invalid inner signature",
+      "acceptance": "task_bad_signature invokes zero effects, zero submissions, surfaces verification failure."
+    },
+    {
+      "id": "DEDUP-01",
+      "name": "Repeated call",
+      "acceptance": "Same valid signed request twice: exactly one effect/submission; include fresh runner with same persistent store."
+    },
+    {
+      "id": "DEDUP-02",
+      "name": "Ownership change",
+      "acceptance": "Same signed call direct then wrapped, wrapped then direct, task1 then task2: never second effect; ownership conflict explicit or safe suppression recorded."
+    },
+    {
+      "id": "CANCEL-01",
+      "name": "Verification race",
+      "acceptance": "Pause real verification key fetch; observe task cancellation; unblock verification; zero effects/submissions."
+    },
+    {
+      "id": "CANCEL-02",
+      "name": "Active task cancellation",
+      "acceptance": "Task cancellation cooperatively interrupts pending handler and prevents late submission; origin turn terminal alone does not interrupt detached task."
+    },
+    {
+      "id": "HTTP-01",
+      "name": "Deadline",
+      "acceptance": "Explicit finite overall operation deadline bounds capability negotiation plus polling/stream waiting; caller cancellation stops waiting; remote execution is not implicitly resubmitted/cancelled."
+    },
+    {
+      "id": "HTTP-02",
+      "name": "Explicit errors",
+      "acceptance": "401,403,404,409,422,429,502,503 retain typed status/error information; mutation network uncertainty never retries; classify-phase request_id unchanged."
+    },
+    {
+      "id": "MULTIPART-01",
+      "name": "Array form values",
+      "acceptance": "Array-valued multipart upload fields preserve each element using exact server field encoding; include empty/single/multiple elements and actual shared captured-wire expectations."
+    },
+    {
+      "id": "TYPE-01",
+      "name": "Update types",
+      "acceptance": "UpdateAgent/UpdateTeam model fields and optional omitted/null semantics match final canonical schema; compile/typecheck public request and response forms for each SDK."
+    },
+    {
+      "id": "PAGE-01",
+      "name": "Page two",
+      "acceptance": "Traverse authoritative pagination metadata to page two on the configured API origin with authentication preserved and no duplicated base path. Implementations may use validated numeric current_page/last_page or validate/resolve same-origin absolute/relative links. A cross-origin next link must never receive credentials; reject it or ignore it when authoritative numeric traversal suffices. Test actual page-two wire request."
+    },
+    {
+      "id": "JOB-01",
+      "name": "Fresh delegated final",
+      "acceptance": "Target SSE live before admission, remain through initial acknowledgment terminal and signed task tool; return final origin output/result_turn_id, never receipt turn_id."
+    },
+    {
+      "id": "JOB-02",
+      "name": "Running duplicate",
+      "acceptance": "Exact event_id receipt retry for already-running job with pending signed tool replay: safely service pending call once and reach final origin output; no indefinite wait or silent lost request."
+    },
+    {
+      "id": "JOB-03",
+      "name": "Terminal duplicate",
+      "acceptance": "Exact event_id receipt retry for terminal job returns explicit final completed/failed/cancelled snapshot with no replayed tool effects."
+    },
+    {
+      "id": "UNKNOWN-01",
+      "name": "Unknown resident task",
+      "acceptance": "404 task_unknown remains unknown outcome; no success/no claim of nonexecution; no delegation/classification resubmission."
+    },
+    {
+      "id": "STATE-01",
+      "name": "Terminal states",
+      "acceptance": "Failed/cancelled job outputs and errors preserved; delivery failed/cancelled status separate from job status; subtree cancellation wire boolean preserved."
+    },
+    {
+      "id": "HTTP-03",
+      "name": "Request identity",
+      "acceptance": "Caller request-ID reaches intended request, response/error request-ID exposed without overwriting caller identity; reserved auth/contract/extension selectors cannot be overridden by custom headers."
+    },
+    {
+      "id": "HTTP-04",
+      "name": "Structured transport errors",
+      "acceptance": "Typed errors preserve HTTP status, code, request identity and safe details across sync/async equivalents; no credentials appear in repr/log/error."
+    },
+    {
+      "id": "STREAM-01",
+      "name": "Foreign execution chat",
+      "acceptance": "Foreign-chat event rejected before handler, submission or cursor mutation; wrapper execution chat retained; same-account target routing remains explicit."
+    },
+    {
+      "id": "STREAM-02",
+      "name": "Bounded EOF",
+      "acceptance": "EOF/reconnect exhaustion during running job fails promptly with unknown outcome; no infinite wait or acknowledgment-as-success; pending waiter errors reach caller."
+    },
+    {
+      "id": "CONFIG-01",
+      "name": "Config/native DI",
+      "acceptance": "Custom headers and native opt-in survive every documented client configuration and dependency-injection path. Literal framework-specific integration may differ, equivalent config behavior must execute."
+    },
+    {
+      "id": "ERROR-01",
+      "name": "Waiter error propagation",
+      "acceptance": "Stream failure, invalid signature, tool-output failure and task lookup failure are surfaced through integrated helper rather than hidden until timeout or converted to success."
+    },
+    {
+      "id": "PERSIST-01",
+      "name": "Durable restart",
+      "acceptance": "Restart runner/process with same durable store: prior call claims and terminal admission barriers prevent repeated effects; account/deployment scopes isolated."
+    },
+    {
+      "id": "TYPE-02",
+      "name": "Runtime response validation",
+      "acceptance": "Malformed known request/result shapes fail before unsafe effects or false typed success, while documented additive fields remain compatible."
+    },
+    {
+      "id": "TOOLING-01",
+      "name": "valid Markdown/JSON/native builders compile same manifest",
+      "acceptance": "valid Markdown/JSON/native builders compile same manifest; absent/null/[]/{} cases preserved."
+    },
+    {
+      "id": "TOOLING-02",
+      "name": "local validation rejects badformat, emptybody, duplicate names, invalidmode/model(ifcatalog), unresolvedtools/agents, primary member/subagent orchestrator, max_tokens recursively.",
+      "acceptance": "local validation rejects badformat, emptybody, duplicate names, invalidmode/model(ifcatalog), unresolvedtools/agents, primary member/subagent orchestrator, max_tokens recursively."
+    },
+    {
+      "id": "TOOLING-03",
+      "name": "JCS/hash golden equality incl toolsets sorted, teamorder significant, Unicode/literal schema preservation.",
+      "acceptance": "JCS/hash golden equality incl toolsets sorted, teamorder significant, Unicode/literal schema preservation."
+    },
+    {
+      "id": "TOOLING-04",
+      "name": "all17golden plan/reconcile cases and deterministic operation/report identities.",
+      "acceptance": "all17golden plan/reconcile cases and deterministic operation/report identities."
+    },
+    {
+      "id": "TOOLING-05",
+      "name": "tool->agent->team create order and actual returnedID substitution",
+      "acceptance": "tool->agent->team create order and actual returnedID substitution; rerun unchanged writes0."
+    },
+    {
+      "id": "TOOLING-06",
+      "name": "rename agent/team keepsstoredID",
+      "acceptance": "rename agent/team keepsstoredID; toolrename createsnew and onlyprunesold with flag."
+    },
+    {
+      "id": "TOOLING-07",
+      "name": "adoption nooverwrite writes0/importsactual",
+      "acceptance": "adoption nooverwrite writes0/importsactual; adopt+overwrite updatesonce; conflict blocks allflags."
+    },
+    {
+      "id": "TOOLING-08",
+      "name": "managed-only prune reverse order, dependency failure surfaced, unmanaged resources untouched.",
+      "acceptance": "managed-only prune reverse order, dependency failure surfaced, unmanaged resources untouched."
+    },
+    {
+      "id": "TOOLING-09",
+      "name": "timeout-after-landed readbackequal success, timeout-before/different/unknown staysambiguous, no secondmutation",
+      "acceptance": "timeout-after-landed readbackequal success, timeout-before/different/unknown staysambiguous, no secondmutation; deletegone success."
+    },
+    {
+      "id": "TOOLING-10",
+      "name": "partialfailure preserves earliersuccess, stops furtherwrites, no ready",
+      "acceptance": "partialfailure preserves earliersuccess, stops furtherwrites, no ready; no fake rollback."
+    },
+    {
+      "id": "TOOLING-11",
+      "name": "lockreleased onsuccess/failure",
+      "acceptance": "lockreleased onsuccess/failure; concurrent processes serialized; crash/corruptfile cannot silently reset; accountscopes isolated; credentialrotation stable."
+    },
+    {
+      "id": "TOOLING-12",
+      "name": "durable file+DB roundtrip/restart, objectliteral shape, namespace and schema lifecycle",
+      "acceptance": "durable file+DB roundtrip/restart, objectliteral shape, namespace and schema lifecycle; DBrollback leaves nostate on failed transaction."
+    },
+    {
+      "id": "TOOLING-13",
+      "name": "readiness noimplicitnetwork",
+      "acceptance": "readiness noimplicitnetwork; partial/dryrun notready; catalogunavailable failclosed."
+    },
+    {
+      "id": "TOOLING-14",
+      "name": "CLI offline validate, plan JSON, dryrun0writes, drift exit2, status/state redaction, explicit destructiveflags.",
+      "acceptance": "CLI offline validate, plan JSON, dryrun0writes, drift exit2, status/state redaction, explicit destructiveflags."
+    },
+    {
+      "id": "TOOLING-15",
+      "name": "nativeSDK integration using existing typed/authenticated CRUD, no bypass of retries/auth/errorhandling",
+      "acceptance": "nativeSDK integration using existing typed/authenticated CRUD, no bypass of retries/auth/errorhandling; examples against mockremotes."
+    }
+  ],
+  "scenarios_sha256": "4b52cd70d88825bcd4686aedf82709d357f313d559b8bfefaaf6a88222c0cab4",
+  "freeze_state": "FROZEN",
+  "audit_areas": [
+    "Canonical HTTP operations",
+    "Native request/result surfaces",
+    "General request typing",
+    "Runtime response validation",
+    "Configuration",
+    "Authentication",
+    "Automatic mutation retries",
+    "GET retries",
+    "Timeouts/cancellation",
+    "Structured errors",
+    "SSE framing/cursors/gaps",
+    "Ordinary disconnect reconnect",
+    "Legacy finite replay",
+    "Foreground helper terminal behavior",
+    "Foreground idempotent tool replay",
+    "Inner tool signatures",
+    "Call deduplication",
+    "Included tool-state persistence",
+    "Task/turn terminal persistence",
+    "Native negotiation/acknowledgment",
+    "Post-origin-turn task tools",
+    "Final task output/result turn",
+    "Integrated delegation/stream/wait helper",
+    "Running duplicate-job recovery",
+    "Failed/cancelled/unknown outcomes",
+    "Deliveries/cancellation/classification",
+    "Attachments/original files",
+    "Main image generation",
+    "Diagnostic image file arrays",
+    "Wiki/source operations",
+    "Webhook verification/intake",
+    "Completion pagination",
+    "Definitions compiler/reconciler/CLI",
+    "Framework integration",
+    "Runtime floor"
+  ],
+  "bundle_files": {
+    "fixtures.json": "ec969c671fae79c9cde6258555f207f9e09f4eb1b4058e966cf7ac359f5db255",
+    "scenarios.json": "4b52cd70d88825bcd4686aedf82709d357f313d559b8bfefaaf6a88222c0cab4",
+    "TOOLING-SPEC.md": "830e880c6a32978c6cf6c4e0547c035f1e7161aa2c8203cd804c0d2d24710517",
+    "tooling-golden.json": "8b4b0f3c4f0eaa2f68863ac0f2d4c014c8ea97210933451164d987c5a1e5202a"
+  }
+}

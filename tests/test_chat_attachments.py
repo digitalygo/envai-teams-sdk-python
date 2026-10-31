@@ -263,6 +263,8 @@ def test_stream_helpers_retain_attachment_ids_and_key(monkeypatch, valid_events,
     if replayed == "overflow":
         assert sent == []
         return
+    options = sent[0][1].pop("request_options")
+    assert options.deadline is not None
     assert sent == [
         ("c", {"body": {"message": "Read", "attachment_ids": ["a"]}, "idempotency_key": "stable"})
     ]
