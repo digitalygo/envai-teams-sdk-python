@@ -235,7 +235,7 @@ turn; it does not infer permission to execute unrelated turns.
 ## Development and contract provenance
 
 The bundled contract3 HTTP and ATP contracts include strict immutable numeric ATP2 replay schemas. Default clients select contract3 and fail closed against older servers. See [migration](docs/migration-contract3.md) and [Wiki V1](docs/wiki.md).
-`tests/fixtures/contract3-provenance.json` records the five current shared contract snapshots. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
+`tests/fixtures/contract3-provenance.json` records the six current shared contract snapshots. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
 from five SDK-authored fixtures. Guards verify the source commit/path, byte count,
 SHA-256, and Git blob identity. Public guides are SDK documentation rather than
 copied contract files. Building or reading the SDK does not require access to a
@@ -266,7 +266,7 @@ See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry a
 ## Native background tasks and delegated jobs
 
 Canonical schemas and byte provenance are pinned to Envai server
-[`20dfd5a6c8ec9e75d3754875d4f94520feb3bbf6`](https://github.com/digitalygo/envai-teams/commit/20dfd5a6c8ec9e75d3754875d4f94520feb3bbf6),
+[`3a9ecf3a4ccd3291474848d3dc9d0100170b9e54`](https://github.com/digitalygo/envai-teams/commit/3a9ecf3a4ccd3291474848d3dc9d0100170b9e54),
 including the PR 56 compatibility review fixes.
 
 Opt in explicitly with `EnvaiClient(api_key, native_tasks=True)` (or
@@ -345,3 +345,80 @@ unchanged. `agent.done.requested_model` and optional `model` expose requested an
 provider-reported IDs. Resident delivery receipts, task state and deduplication can
 be lost after server restart/eviction. This source integration does not assert
 compatibility of any previously published package.
+
+
+### Managed delegation and recovery
+
+Both clients provide `chats.delegate_and_wait(...)` and `chats.resume_delegation(...)`.
+Pass a typed `TeamDelegationRequest`, registry, explicit durable store, and account/deployment
+scope. These helpers open the target SSE before admission, inspect the origin snapshot
+before releasing buffered tool requests, keep the stream alive through post-turn activity,
+and return `DetachedTaskSnapshot` with the final `output` and `result_turn_id`. A completed,
+failed, or cancelled snapshot is returned as-is; HTTP, verification and tool-output failures
+raise. An exact `event_id` retry can resume a running resident job; `resume_delegation`
+accepts the saved `TeamDelegationReceipt` and performs no new delegation POST.
+
+```python
+final = client.chats.delegate_and_wait(
+    origin_chat, body=request, registry=registry, store=store,
+    scope="deployment/account", timeout=300, poll_interval=0.5,
+)
+# Resume a receipt obtained with the low-level delegate method:
+final = client.chats.resume_delegation(
+    origin_chat, receipt, registry=registry, store=store, scope="deployment/account",
+)
+```
+
+The stream owns the entire execution chat, so use one coordinated tool runner per chat.
+Resident history may be unavailable after eviction; a task 404 is an unknown outcome and
+never causes automatic resubmission. Caller cancellation is local and does not send remote
+cancellation. Explicit `chats.cancel_task` remains a separate application decision.
+
+Foreground idempotent helpers inspect all buffered result/terminal barriers before yielding
+requests to consumers. Tool owner bindings and terminal barriers persist through the supplied
+store, under the reserved `envai:internal:` scope namespace. User scopes cannot use that prefix.
+A replay that changes a call's direct/task ownership raises `ToolStateError` without executing it.
+
+### Durable distributed tool claims
+
+`PostgresToolState` is available with `pip install 'envai-teams-sdk[postgres]'` alongside
+`SQLiteToolState`. Provision `envai.postgres_tool_state.SCHEMA_SQL` explicitly using your
+migration process, then construct `PostgresToolState(conninfo)`. Construction never creates
+or repairs schema. PostgreSQL commits a unique claim before returning admission; independent
+workers and restarted processes share deduplication, resolved barriers, ownership and task
+terminal metadata. Keep each deployment/account scope stable across credential rotation.
+Ambiguous crash claims never expire or execute automatically. Both stores contain identifiers
+and hashes, not arguments, outputs or API credentials.
+
+### Polling and request bounds
+
+`chats.wait_for_task`, `wiki.wait_source`, `wiki.wait_operation`, image `generate_and_wait`,
+and managed delegation share an overall budget including negotiation and HTTP requests.
+`RequestOptions(deadline=time.monotonic() + seconds, cancel=threading_event)` also bounds
+safe GET retries; `timeout` remains the HTTP request timeout. Poll sleeps respond to local
+cancellation. Sync network reads use the remaining HTTPX timeout and recheck the deadline
+after returning; Python cannot forcibly interrupt a custom blocking transport or a handler
+that ignores cooperative cancellation. Async callers may also cancel the awaiting task.
+Wiki waiters only read state and never initiate indexing or paid processing.
+
+`completions.list(..., page=2)` provides the canonical page selector. `completions.iterate`
+uses numeric pages with shared authentication, retry, error and cancellation behavior; it
+never follows URLs supplied by the server. Use `request_options` for one traversal budget.
+Client `headers={"X-Application": "my-service"}` adds application headers across authenticated
+requests/SSE; authentication and negotiation headers cannot be overridden.
+
+Diagnostic image requests accept `files={"files": [("a.png", image_bytes, "image/png"), ...]}`
+and `data={"prompt": "...", "model_code": "..."}` in `test_generate_image`. The SDK encodes
+one `files[]` multipart field per image and validates the canonical one-to-four bound.
+
+
+### Portable definitions and deployment CLI
+
+The `envai.definitions` package compiles JSON/YAML manifests and Markdown agents,
+plans drift, and reconciles tools, agents and teams with durable state. It provides
+`Definitions`, `ClientRemote`, `FileStore`, `PostgresStore`, explicit override options,
+and `envai-definitions` commands. Validation runs offline; plans do not mutate the
+remote. Ambiguous writes use read-back reconciliation and are never retried blindly.
+See the [definitions guide](src/envai/definitions/README.md) and
+[offline manifest example](examples/definitions.py). Deployment APIs are synchronous;
+run them in a deployment/startup worker for async applications.

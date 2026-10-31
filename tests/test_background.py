@@ -21,7 +21,13 @@ from envai import (
     MemoryToolState,
     parse_event,
 )
-from envai.errors import CompatibilityError, ProtocolError, ToolVerificationError, TransportError
+from envai.errors import (
+    CompatibilityError,
+    ProtocolError,
+    ToolStateError,
+    ToolVerificationError,
+    TransportError,
+)
 
 JWKS = json.loads((Path(__file__).parent / "fixtures/signatures.json").read_text())["jwks"]
 NATIVE_ACK = {**ACK, "X-Envai-Extensions": "native-tasks-v1"}
@@ -387,7 +393,8 @@ def test_direct_and_wrapped_call_id_never_execute_twice(tool_event):
             runner.consume(ping(tool_event))
             runner.consume(tool_event)
             runner.wait()
-            runner.consume(wrapped(tool_event))
+            with pytest.raises(ToolStateError):
+                runner.consume(wrapped(tool_event))
             runner.wait()
     assert len(calls) == 1
 
@@ -425,9 +432,8 @@ async def test_background_example_keeps_target_tools_alive_after_initial_turn(
             submitted.set()
             return httpx.Response(204, headers=NATIVE_ACK)
         if request.url.path.endswith("/tasks/job"):
-            await submitted.wait()
             return httpx.Response(200, headers=NATIVE_ACK, json={"task_id": "job",
-                "origin_turn_id": "origin", "status": "completed", "output": "final job",
+                "origin_turn_id": "origin", "status": "completed" if submitted.is_set() else "running", "output": "final job",
                 "result_turn_id": "final-synthesis"})
         raise AssertionError(request.url)
 

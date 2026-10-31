@@ -160,9 +160,9 @@ class Operations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
     def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
@@ -493,9 +493,9 @@ class CompletionsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
     def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
@@ -800,9 +800,9 @@ class AsyncOperations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return await self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    async def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    async def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return await self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return await self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
     async def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
@@ -1133,9 +1133,9 @@ class AsyncCompletionsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    async def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return await self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return await self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
     async def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""

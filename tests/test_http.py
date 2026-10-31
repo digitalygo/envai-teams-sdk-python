@@ -113,6 +113,9 @@ def arguments(op):
     if op["request"]:
         if op["media"] == "multipart/form-data":
             args["files"] = {"file": ("x.png", b"png", "image/png")}
+            if op["path"] == "/tests/images/generate":
+                args["files"] = {"files": [("x.png", b"png", "image/png")]}
+                args["data"] = {"prompt": "fixture", "model_code": "fixture-model"}
         else:
             args["body"] = sample(op["request"])
     if op["path"].endswith("/index"):

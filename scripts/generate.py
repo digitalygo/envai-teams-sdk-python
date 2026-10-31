@@ -82,7 +82,9 @@ def annotation(schema, name):
     if "enum" in schema:
         return "Literal[" + ", ".join(repr(x) for x in schema["enum"]) + "]"
     for union in ("anyOf", "oneOf"):
-        if union in schema:
+        if union in schema and not (schema.get("properties") and all(
+            set(branch) <= {"required"} for branch in schema[union]
+        )):
             return (
                 "Union["
                 + ", ".join(annotation(x, name + str(i)) for i, x in enumerate(schema[union]))

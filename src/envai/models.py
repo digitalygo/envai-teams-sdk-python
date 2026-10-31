@@ -460,6 +460,11 @@ class WorkspaceCreateRequest(Model):
     metadata: Union[WorkspaceMetadata, None] = Field(default=None)
 
 
+class WorkspaceUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    metadata: Union[WorkspaceMetadata, None] = Field(default=None)
+
+
 class UserTool(Model):
     id: str
     name: str
@@ -488,6 +493,16 @@ class UserToolCreateRequest(Model):
 
 
 class UserToolCreateRequestParameters(Model):
+    type: Literal['object']
+
+
+class UserToolUpdateRequest(Model):
+    description: Union[Union[str, None], None] = Field(default=None)
+    parameters: Union[UserToolUpdateRequestParameters, None] = Field(default=None)
+    timeout_seconds: Union[int, None] = Field(default=None)
+
+
+class UserToolUpdateRequestParameters(Model):
     type: Literal['object']
 
 
@@ -609,6 +624,20 @@ class AgentCreateRequest(Model):
     config: Union[dict[str, Any], None] = Field(default=None)
 
 
+class AgentUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    description: Union[Union[str, None], None] = Field(default=None)
+    system_prompt: Union[str, None] = Field(default=None)
+    model: Union[Union[str, None], None] = Field(default=None)
+    mode: Union[Literal['primary', 'subagent'], None] = Field(default=None)
+    tools_enabled: Union[list[AgentTool], None] = Field(default=None)
+    external_tools_enabled: Union[list[AgentTool], None] = Field(default=None)
+    permissions: Union[dict[str, Any], None] = Field(default=None)
+    can_write_knowledge: Union[bool, None] = Field(default=None)
+    can_write_skills: Union[bool, None] = Field(default=None)
+    config: Union[dict[str, Any], None] = Field(default=None)
+
+
 class AgentTool(Model):
     name: str
 
@@ -636,6 +665,13 @@ class TeamCreateRequest(Model):
     name: str
     description: Union[Union[str, None], None] = Field(default=None)
     orchestrator_id: str
+    members: Union[list[TeamMemberCreateRequest], None] = Field(default=None)
+
+
+class TeamUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    description: Union[Union[str, None], None] = Field(default=None)
+    orchestrator_id: Union[str, None] = Field(default=None)
     members: Union[list[TeamMemberCreateRequest], None] = Field(default=None)
 
 
@@ -1364,10 +1400,6 @@ class CreateWikiSyncRunBody(Model):
 
 WikiWebhookEvent = Union[WikiFileProcessedEvent, WikiFileDeletedEvent, WikiOperationEvent]
 WorkspaceMetadata = Union[dict[str, Any], list[Any]]
-WorkspaceUpdateRequest = Union[Any, Any]
-UserToolUpdateRequest = Union[Any, Any, Any]
-AgentUpdateRequest = Union[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]
-TeamUpdateRequest = Union[Any, Any, Any, Any]
 ModelListEntry = Union[LlmModelEntry, TeamModelEntry]
 OpenRouterPricing = Union[dict[str, Union[str, float, list[Any], dict[str, Any]]], None]
 OpenRouterArchitecture = Union[OpenRouterArchitectureValue, None]
@@ -1435,11 +1467,14 @@ Workspace.model_rebuild()
 WorkspaceResource.model_rebuild()
 WorkspaceCollection.model_rebuild()
 WorkspaceCreateRequest.model_rebuild()
+WorkspaceUpdateRequest.model_rebuild()
 UserTool.model_rebuild()
 UserToolResource.model_rebuild()
 UserToolCollection.model_rebuild()
 UserToolCreateRequest.model_rebuild()
 UserToolCreateRequestParameters.model_rebuild()
+UserToolUpdateRequest.model_rebuild()
+UserToolUpdateRequestParameters.model_rebuild()
 Chat.model_rebuild()
 ChatResource.model_rebuild()
 ChatCollection.model_rebuild()
@@ -1454,11 +1489,13 @@ Agent.model_rebuild()
 AgentResource.model_rebuild()
 AgentCollection.model_rebuild()
 AgentCreateRequest.model_rebuild()
+AgentUpdateRequest.model_rebuild()
 AgentTool.model_rebuild()
 Team.model_rebuild()
 TeamResource.model_rebuild()
 TeamCollection.model_rebuild()
 TeamCreateRequest.model_rebuild()
+TeamUpdateRequest.model_rebuild()
 TeamMember.model_rebuild()
 TeamMemberCreateRequest.model_rebuild()
 ApiKey.model_rebuild()

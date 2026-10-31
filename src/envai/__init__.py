@@ -29,6 +29,7 @@ __all__ = [
     "models",
     "errors",
 ]
+from .postgres_tool_state import PostgresToolState
 from .tool_state import MemoryToolState, SQLiteToolState, ToolStateStore
 from .tool_verification import AsyncJwksVerifier, JwksVerifier
 from .tools import (
@@ -47,6 +48,7 @@ __all__ += [
     "ClientToolRunner",
     "AsyncClientToolRunner",
     "ToolContext",
+    "PostgresToolState",
     "MemoryToolState",
     "SQLiteToolState",
     "ToolStateStore",

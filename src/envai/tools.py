@@ -134,7 +134,7 @@ class RunnerState:
         timeout_margin: float = 0.1,
     ):
         if (
-            not scope
+            not scope or scope.startswith("envai:internal:")
             or not chat_id
             or not turn_id
             or not isinstance(max_concurrency, int)
@@ -157,7 +157,33 @@ class RunnerState:
         self.closed = False
         self.errors: list[Exception] = []
 
-    def _check(self, event: Event) -> bool:
+    @property
+    def pending(self) -> bool:
+        """Whether admitted local handlers still own execution slots."""
+        with self._guard:
+            return bool(self._contexts)
+
+    def _owner(self, event: Event, task_id: str | None) -> str:
+        return json.dumps(["task", task_id] if task_id is not None else ["turn", event.turn_id])
+
+    @property
+    def _metadata_scope(self) -> str:
+        return "envai:internal:background-v1:" + self.scope
+
+    def _owner_ended(self, event: Event, task_id: str | None) -> bool:
+        return self.store.get(self._metadata_scope, self.chat_id,
+                              "terminal:" + self._owner(event, task_id)) is not None
+
+    def _bind_owner(self, event: Event, task_id: str | None) -> None:
+        # Existing corruption must fail before even additive metadata writes.
+        self.store.get(self.scope, self.chat_id, event.data.call_id)
+        owner = self._owner(event, task_id)
+        self.store.claim(self._metadata_scope, self.chat_id, "owner:" + event.data.call_id,
+                         hashlib.sha256(owner.encode()).hexdigest(), owner)
+        if task_id is not None:
+            self._call_tasks[event.data.call_id] = task_id
+
+    def _check(self, event: Event, task_id: str | None = None) -> bool:
         # Revalidate even if an application constructed Event itself.
         parsed = parse_event(copy.deepcopy(event.raw))
         if parsed != event:
@@ -166,9 +192,8 @@ class RunnerState:
             raise ProtocolError("Tool runner received a different chat")
         if event.type == "ping" or (not self.background and event.turn_id != self.turn_id):
             return False
-        if self.background and event.type == "agent.tool.request":
-            task_id = self._call_tasks.get(event.data.call_id)
-            if task_id in self._ended_tasks or (
+        if event.type == "agent.tool.request":
+            if self._owner_ended(event, task_id) or task_id in self._ended_tasks or (
                 task_id is None and event.turn_id in self._ended_turns
             ):
                 return False
@@ -184,7 +209,9 @@ class RunnerState:
                 inner = {**snapshot.raw, "type": wrapper["event_type"],
                          "turn_id": wrapper["origin_turn_id"], "data": wrapper["event_payload"]}
                 snapshot = parse_event(inner)
-                self._call_tasks[snapshot.data.call_id] = wrapper["task_id"]
+                # A call's routing owner is immutable, including across restarts.
+                # Record only after signature verification in consume().
+
         if snapshot.type == "agent.tool.request":
             snapshot.raw["data"]["args"] = normalize_arguments(snapshot.raw["data"]["args"])
             snapshot = parse_event(snapshot.raw)
@@ -192,6 +219,8 @@ class RunnerState:
 
     def _cancel_event_contexts(self, event: Event) -> list[str]:
         with self._guard:
+            owner = self._owner(event, event.data.task_id if event.type in TASK_TERMINAL_EVENTS else None)
+            self.store.resolve(self._metadata_scope, self.chat_id, "terminal:" + owner, owner)
             if event.type in TASK_TERMINAL_EVENTS:
                 self._ended_tasks.add(event.data.task_id)
             else:
@@ -264,10 +293,12 @@ class ClientToolRunner(RunnerState):
 
     def consume(self, event: Event) -> None:
         admitted = time.monotonic()
+        task_id = event.data.task_id if self.background and event.type == "task.event" else None
         event = self._snapshot(event)
-        if not self._check(event):
+        if not self._check(event, task_id):
             return
         if event.type == "agent.tool.result":
+            self._bind_owner(event, task_id)
             self.store.resolve(self.scope, self.chat_id, event.data.call_id, event.turn_id or self.turn_id)
             with self._guard:
                 if context := self._contexts.get(event.data.call_id):
@@ -277,19 +308,20 @@ class ClientToolRunner(RunnerState):
             self._cancel_event_contexts(event)
             return
         if event.terminal:
+            self._cancel_event_contexts(event)
             self.close(wait=False)
             return
         if event.type != "agent.tool.request" or self.closed:
             return
         payload = self.verifier.verify(event.raw["data"])
-        if not self._claim(event, payload):
-            self.client._observe("tool.duplicate", call_id=event.data.call_id)
-            return
-        tool, context, error = self._prepare(event, admitted)
         with self._guard:
-            if self.closed:
-                self._transition(context.call_id, "ambiguous")
+            if self.closed or not self._check(event, task_id):
                 return
+            self._bind_owner(event, task_id)
+            if not self._claim(event, payload):
+                self.client._observe("tool.duplicate", call_id=event.data.call_id)
+                return
+            tool, context, error = self._prepare(event, admitted)
             if len(self._contexts) >= self.max_concurrency:
                 self._deliver(context, _output({"error": "tool_capacity_exceeded"}, True))
                 return
@@ -348,6 +380,9 @@ class ClientToolRunner(RunnerState):
             for context in self._contexts.values():
                 context.cancelled.set()
                 self._transition(context.call_id, "ambiguous")
+            for call_id, future in self._futures.items():
+                if future.cancel():
+                    self._contexts.pop(call_id, None)
         self._executor.shutdown(wait=wait, cancel_futures=True)
 
     def __enter__(self):
@@ -375,10 +410,12 @@ class AsyncClientToolRunner(RunnerState):
 
     async def consume(self, event: Event) -> None:
         admitted = time.monotonic()
+        task_id = event.data.task_id if self.background and event.type == "task.event" else None
         event = self._snapshot(event)
-        if not self._check(event):
+        if not self._check(event, task_id):
             return
         if event.type == "agent.tool.result":
+            self._bind_owner(event, task_id)
             self.store.resolve(self.scope, self.chat_id, event.data.call_id, event.turn_id or self.turn_id)
             if task := self._tasks.get(event.data.call_id):
                 task.cancel()
@@ -389,13 +426,15 @@ class AsyncClientToolRunner(RunnerState):
                     task.cancel()
             return
         if event.terminal:
+            self._cancel_event_contexts(event)
             await self.aclose()
             return
         if event.type != "agent.tool.request" or self.closed:
             return
         payload = await self.verifier.verify(event.raw["data"])
-        if self.closed or not self._check(event):
+        if self.closed or not self._check(event, task_id):
             return
+        self._bind_owner(event, task_id)
         if not self._claim(event, payload):
             self.client._observe("tool.duplicate", call_id=event.data.call_id)
             return

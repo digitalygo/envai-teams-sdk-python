@@ -1,0 +1,92 @@
+{
+  "synthetic": true,
+  "source": "Generated from canonical AgentResource sample; not server fixture provenance",
+  "operation": "getAgent",
+  "agent_id": "agt_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "response_cases": {
+    "valid": {
+      "data": {
+        "id": "agt_01j5abcdefghjkmnpqrstvwxyz",
+        "user_id": "usr_01j5abcdefghjkmnpqrstvwxyz",
+        "name": "researcher",
+        "description": "Research specialist",
+        "system_prompt": "x",
+        "model": "anthropic/claude-sonnet-4-5",
+        "mode": "primary",
+        "tools_enabled": [],
+        "external_tools_enabled": [],
+        "permissions": {},
+        "can_write_knowledge": false,
+        "can_write_skills": false,
+        "config": {},
+        "created_at": "2026-10-12T00:00:00Z",
+        "updated_at": "2026-10-12T00:00:00Z"
+      }
+    },
+    "missing_required": {
+      "data": {}
+    },
+    "invalid_enum": {
+      "data": {
+        "id": "agt_01j5abcdefghjkmnpqrstvwxyz",
+        "user_id": "usr_01j5abcdefghjkmnpqrstvwxyz",
+        "name": "researcher",
+        "description": "Research specialist",
+        "system_prompt": "x",
+        "model": "anthropic/claude-sonnet-4-5",
+        "mode": "unsupported",
+        "tools_enabled": [],
+        "external_tools_enabled": [],
+        "permissions": {},
+        "can_write_knowledge": false,
+        "can_write_skills": false,
+        "config": {},
+        "created_at": "2026-10-12T00:00:00Z",
+        "updated_at": "2026-10-12T00:00:00Z"
+      }
+    },
+    "wrong_type": {
+      "data": {
+        "id": "agt_01j5abcdefghjkmnpqrstvwxyz",
+        "user_id": "usr_01j5abcdefghjkmnpqrstvwxyz",
+        "name": 1,
+        "description": "Research specialist",
+        "system_prompt": "x",
+        "model": "anthropic/claude-sonnet-4-5",
+        "mode": "primary",
+        "tools_enabled": [],
+        "external_tools_enabled": [],
+        "permissions": {},
+        "can_write_knowledge": false,
+        "can_write_skills": false,
+        "config": {},
+        "created_at": "2026-10-12T00:00:00Z",
+        "updated_at": "2026-10-12T00:00:00Z"
+      }
+    },
+    "length_overflow": {
+      "data": {
+        "id": "agt_01j5abcdefghjkmnpqrstvwxyz",
+        "user_id": "usr_01j5abcdefghjkmnpqrstvwxyz",
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "description": "Research specialist",
+        "system_prompt": "x",
+        "model": "anthropic/claude-sonnet-4-5",
+        "mode": "primary",
+        "tools_enabled": [],
+        "external_tools_enabled": [],
+        "permissions": {},
+        "can_write_knowledge": false,
+        "can_write_skills": false,
+        "config": {},
+        "created_at": "2026-10-12T00:00:00Z",
+        "updated_at": "2026-10-12T00:00:00Z"
+      }
+    }
+  },
+  "mutation": {
+    "operation": "createAgent",
+    "body": {},
+    "expected_http_calls": 0
+  }
+}

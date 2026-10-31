@@ -62,6 +62,10 @@ class TransportError(EnvaiError):
     pass
 
 
+class DeadlineExceeded(TransportError, TimeoutError):
+    """The caller's operation budget expired; remote outcome can remain unknown."""
+
+
 class CancelledError(EnvaiError):
     pass
 
