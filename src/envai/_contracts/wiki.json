@@ -465,9 +465,36 @@
         },
         "usage_cost": {
           "$ref": "#/$defs/UsageCost"
+        },
+        "reported_problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReportedProblem"
+          }
         }
       },
       "additionalProperties": true
+    },
+    "ReportedProblem": {
+      "type": "object",
+      "required": [
+        "file_id",
+        "message"
+      ],
+      "properties": {
+        "file_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "^[^\\u0000]+$",
+          "description": "A free-form explanation reported by the managed inbox, not a verified provider fact."
+        }
+      },
+      "additionalProperties": false
     },
     "Category": {
       "type": "object",

@@ -26,16 +26,24 @@ def negotiated_transport(handler):
             response.headers["X-Envai-Contract-Version"] = request.headers[
                 "x-envai-contract-version"
             ]
+            if request.headers.get("X-Envai-Extensions"):
+                response.headers["X-Envai-Extensions"] = request.headers["X-Envai-Extensions"]
         return response
+
+    def capabilities(request):
+        features = CAPABILITIES["features"]
+        if request.headers.get("X-Envai-Extensions") == "native-tasks-v1":
+            features = [*features, "detached_background"]
+        return {**CAPABILITIES, "features": features}
 
     def sync(request):
         if request.url.path.endswith("/atp/v3/capabilities"):
-            return httpx.Response(200, json=CAPABILITIES, headers=ACK)
+            return acknowledge(httpx.Response(200, json=capabilities(request), headers=ACK), request)
         return acknowledge(handler(request), request)
 
     async def async_(request):
         if request.url.path.endswith("/atp/v3/capabilities"):
-            return httpx.Response(200, json=CAPABILITIES, headers=ACK)
+            return acknowledge(httpx.Response(200, json=capabilities(request), headers=ACK), request)
         return acknowledge(await handler(request), request)
 
     return httpx.MockTransport(async_ if inspect.iscoroutinefunction(handler) else sync)

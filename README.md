@@ -6,7 +6,7 @@ Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 71 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 76 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -89,7 +89,7 @@ are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains all **71 operation IDs** in
+The generated primitive layer retains all **76 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -262,3 +262,86 @@ credentials. MIT, Copyright (c) 2026 DigItalyGo.
 Wiki V1 and contract3 validation results, database crash/concurrency scope and release limits: [validation report](docs/wiki-validation.md).
 
 See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry and streaming with files. This surface is unreleased until the matching backend is deployed.
+
+## Native background tasks and delegated jobs
+
+Canonical schemas and byte provenance are pinned to Envai server
+[`20dfd5a6c8ec9e75d3754875d4f94520feb3bbf6`](https://github.com/digitalygo/envai-teams/commit/20dfd5a6c8ec9e75d3754875d4f94520feb3bbf6),
+including the PR 56 compatibility review fixes.
+
+Opt in explicitly with `EnvaiClient(api_key, native_tasks=True)` (or
+`AsyncEnvaiClient`). This sends `X-Envai-Extensions: native-tasks-v1` on
+capability discovery, mutations, SSE/reconnect and tool results. Native ATP
+responses must acknowledge that extension before hydration or stream dispatch; a
+missing mutation acknowledgment leaves an uncertain outcome and is not retried. The default
+client retains the server's existing foreground behavior. Native helpers fail
+closed without this opt-in.
+
+Contract 3 clients negotiate `detached_background`, `native_deliveries`,
+`cross_team_delegation`, `delegated_job_lifecycle`, `phase_classification`,
+`strict_model`, and `delegation_notify_origin` before the corresponding request.
+Unknown capability families and feature names are additive. These APIs also have
+async counterparts and generated typed request/result models in `envai.models`:
+
+```python
+receipt = client.chats.delegate(origin_chat, body=models.TeamDelegationRequest(
+    workspace_id=workspace_id, event_id=stable_event_id,
+    origin_turn_id=origin_turn_id, target_chat_id=target_chat,
+    prompt="Complete this phase", notify_origin=False, strict_model=True,
+))
+# Keep the target chat's tool stream running concurrently; see the example below.
+final = client.chats.wait_for_task(origin_chat, receipt.task_id, timeout=300)
+if final.status == "completed":
+    print(final.output, final.result_turn_id)
+else:
+    print(final.status, final.error)  # failed/cancelled remain explicit outcomes
+```
+
+`receipt.turn_id` identifies the initial acknowledgment coordinator turn. It is
+never a final-job result. `wait_for_task` requires `delegated_job_lifecycle`, reads the **origin** task and returns its
+full terminal output and optional final `result_turn_id`. `delivery_error` reports
+notification failure separately. A 404 or timeout means unknown outcome; it does
+not establish nonexecution and does not trigger another delegation.
+
+Use `BackgroundClientToolRunner` or `AsyncBackgroundClientToolRunner` with a
+caller-selected durable `ToolStateStore`, explicit identity scope, and execution
+chat ID. Feed the entire `client.chats.events(target_chat)` stream, including
+replay and first ping. These runners apply replayed result/terminal barriers before
+admitting pending requests, validate and unwrap `task.event.event_payload`, verify
+its original signature, and deduplicate by call ID. They survive the initial turn
+terminal and accept later synthesis and detached tools. Task cancellation stops
+that task's handlers and prevents later admission; turn cancellation stops direct
+turn handlers without cancelling detached children. Handler cancellation remains
+cooperative for synchronous functions. Close the runner and stream explicitly
+when the origin job terminates. Regular `ClientToolRunner`, `send_and_stream`, and
+`send_and_wait` retain their foreground terminal behavior.
+
+[examples/background_job.py](examples/background_job.py) provides a complete async
+orchestration function that subscribes the target before delegation, services its
+tools through synthesis, waits for final origin-task output, and closes both paths.
+Tool outputs always go to the execution chat; cross-team tools are not forwarded
+on the origin stream. Origin and existing target chats must share owner/workspace;
+the target chat binding determines the team. Do not multiplex different identities
+into a runner or deduplication scope. Recovery requires resident replay through
+first ping plus the same durable call store; a missing replay/history or unknown
+task requires application reconciliation, not resubmission.
+
+Other primitives are `chats.deliver(..., body=NativeDeliveryRequest(...))`,
+`chats.get_task(chat_id, task_id)`,
+`chats.cancel_task(chat_id, task_id, body={"subtree": True})`, and
+`chats.classify_phase(..., body=PhaseClassificationRequest(...))`. Cancellation is
+best effort, cannot undo external effects, and can suppress pending delivery of an
+already terminal task. Delivery accepts completed/blocked/failed/cancelled outcomes;
+its receipt status is queued/delivered/cancelled/failed. Phase classification returns
+exactly `BLOCKED` or `NOT BLOCKED`. Save its response: `request_id` admission is
+durable but responses are not retained, and a 502/503/transport failure may have
+incurred work. No mutation or classifier call is automatically retried.
+
+Phase jobs should set `notify_origin=False` to suppress automatic model wake while
+retaining task terminal/status output. `strict_model=True` on message/delegation
+requests (also supported by foreground helpers) rejects unavailable configured
+root models before admission and persists for synthesis; child model selection is
+unchanged. `agent.done.requested_model` and optional `model` expose requested and
+provider-reported IDs. Resident delivery receipts, task state and deduplication can
+be lost after server restart/eviction. This source integration does not assert
+compatibility of any previously published package.

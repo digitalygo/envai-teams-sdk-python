@@ -6,6 +6,7 @@ from ._transport import RequestOptions
 
 RESPONSE_TYPES = {
     'Agent': models.Agent,
+    'CancelDetachedTaskResponse': models.CancelDetachedTaskResponse,
     'Capabilities': models.Capabilities,
     'CapabilitiesLegacy': models.CapabilitiesLegacy,
     'Categories': models.Categories,
@@ -17,6 +18,7 @@ RESPONSE_TYPES = {
     'Completion': models.Completion,
     'CompletionCollection': models.CompletionCollection,
     'CreateApiKeyResponse': models.CreateApiKeyResponse,
+    'DetachedTaskSnapshot': models.DetachedTaskSnapshot,
     'HealthCheckResponse': models.HealthCheckResponse,
     'ImageGenerationAcceptedRecord': models.ImageGenerationAcceptedRecord,
     'ImageGenerationStatusRecord': models.ImageGenerationStatusRecord,
@@ -24,9 +26,12 @@ RESPONSE_TYPES = {
     'JwksDocument': models.JwksDocument,
     'ListChatAttachmentsResponse': models.ListChatAttachmentsResponse,
     'ModelList': models.ModelList,
+    'NativeDeliveryReceipt': models.NativeDeliveryReceipt,
     'None': None,
+    'PhaseClassificationResult': models.PhaseClassificationResult,
     'RestoreChatAccepted': models.RestoreChatAccepted,
     'Team': models.Team,
+    'TeamDelegationReceipt': models.TeamDelegationReceipt,
     'TestGenerateImageResponse': models.TestGenerateImageResponse,
     'TurnAccepted': models.TurnAccepted,
     'UserTool': models.UserTool,
@@ -47,6 +52,26 @@ RESPONSE_TYPES = {
 
 class Operations:
     _request: Any
+    def deliver_workflow_result(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return self._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delegate_to_team(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return self._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get_detached_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return self._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    def cancel_detached_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return self._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
     def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
@@ -443,6 +468,26 @@ class ChatsService:
         """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    def deliver(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return self._client._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delegate(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return self._client._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return self._client._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    def cancel_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return self._client._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
 
 class CompletionsService:
     def __init__(self, client: Any):
@@ -647,6 +692,26 @@ class CapabilitiesService:
 
 class AsyncOperations:
     _request: Any
+    async def deliver_workflow_result(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return await self._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delegate_to_team(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return await self._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get_detached_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return await self._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    async def cancel_detached_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return await self._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return await self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
     async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return await self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
@@ -1042,6 +1107,26 @@ class AsyncChatsService:
     async def restore(self, chat_id: str, *, body: models.RestoreChatRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.RestoreChatAccepted:
         """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return await self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def deliver(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return await self._client._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delegate(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return await self._client._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return await self._client._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    async def cancel_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return await self._client._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return await self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
 
 class AsyncCompletionsService:

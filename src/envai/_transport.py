@@ -117,9 +117,13 @@ class TransportBase:
         retry: RetryPolicy | None,
         observer: Callable[[str, dict[str, Any]], None] | None,
         contract_version: int,
+        native_tasks: bool = False,
     ):
         if type(contract_version) is not int or contract_version not in (2, 3):
             raise ValueError("contract_version must be exactly 2 or 3")
+        if type(native_tasks) is not bool or (native_tasks and contract_version != 3):
+            raise ValueError("Native tasks require contract 3 and a boolean opt-in")
+        self.native_tasks = native_tasks
         self._contract_version = contract_version
         self.base_url, self.origin = normalize_url(base_url)
         self.jwks_url = jwks_url or self.origin + "/.well-known/jwks.json"
@@ -141,6 +145,8 @@ class TransportBase:
             "Accept": "application/json",
             "User-Agent": "envai-python/0.1.0a1 (python/" + platform.python_version() + ")",
         }
+        if native_tasks:
+            self._headers["X-Envai-Extensions"] = "native-tasks-v1"
         self.timeout = httpx.Timeout(timeout, connect=connect_timeout)
         self.stream_timeout = httpx.Timeout(stream_read_timeout, connect=connect_timeout)
         self.retry = retry or RetryPolicy()
@@ -161,9 +167,16 @@ class TransportBase:
             or ("Wiki" in operation and operation != "getWikiWebhookJwks")
         )
 
-    def _acknowledge(self, response: httpx.Response, version: int) -> None:
+    def _acknowledge(self, response: httpx.Response, version: int, *, native: bool = False) -> None:
         if response.headers.get_list("X-Envai-Contract-Version") != [str(version)]:
             raise CompatibilityError("Server did not acknowledge the selected contract")
+        if native and "native-tasks-v1" not in {
+            token.strip() for value in response.headers.get_list("X-Envai-Extensions")
+            for token in value.split(",")
+        }:
+            raise CompatibilityError(
+                "Server did not acknowledge native-tasks-v1; mutation outcome may be unknown"
+            )
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
@@ -289,11 +302,34 @@ class TransportBase:
         if attachment_ids and not headers.get("Idempotency-Key"):
             raise ValueError("Attachment messages require Idempotency-Key")
         op["attachment_ids"] = attachment_ids
+        op["body"] = kwargs.get("json", {})
+        op["native_tasks"] = self.native_tasks
+        if not self.native_tasks and (operation in (
+            "deliverWorkflowResult", "delegateToTeam", "getDetachedTask",
+            "cancelDetachedTask", "classifyPhase"
+        ) or op["body"].get("strict_model")):
+            raise CompatibilityError("Native operations require native_tasks=True")
         return op, url, kwargs
 
     @staticmethod
     def _capability_preflight(operation: str, op: dict[str, Any], capabilities: Any) -> None:
         features = capabilities.features
+        required = {
+            "deliverWorkflowResult": ("native_deliveries",),
+            "delegateToTeam": ("cross_team_delegation", "delegated_job_lifecycle"),
+            "getDetachedTask": ("detached_background",),
+            "cancelDetachedTask": ("detached_background",),
+            "classifyPhase": ("phase_classification",),
+        }.get(operation, ())
+        if op.get("native_tasks") and op["method"] != "GET" and op["path"].startswith("/atp/v3/chats/"):
+            required += ("detached_background",)
+        if op.get("body", {}).get("strict_model"):
+            required += ("strict_model",)
+        if op.get("body", {}).get("notify_origin") is False:
+            required += ("delegation_notify_origin",)
+        for feature in required:
+            if feature not in features:
+                raise CompatibilityError("Server does not advertise " + feature)
         if operation == "uploadChatAttachment":
             if "chat_attachments" not in features:
                 raise CompatibilityError("Server does not advertise chat_attachments")
@@ -345,7 +381,7 @@ class TransportBase:
                 raise CompatibilityError("Server rejected the selected contract")
             raise from_response(response.status_code, payload, response.headers.get("x-request-id"))
         if version is not None:
-            self._acknowledge(response, version)
+            self._acknowledge(response, version, native=self.native_tasks and op.get("path", "").startswith("/atp/v3/"))
         if op["response"] is None:
             return None
         if op["response_type"] == "bytes":
@@ -378,6 +414,7 @@ class TransportBase:
 
                 schema = copy.deepcopy(OPENAPI["components"]["schemas"]["Capabilities"])
                 schema["properties"]["features"]["items"].pop("enum", None)
+                schema["properties"]["families"]["items"].pop("enum", None)
                 target = _capabilities_payload(value)
                 if target is not None and "features" in target:
                     normalized = _normalize_features(target["features"])
@@ -444,7 +481,7 @@ class SyncTransport(TransportBase):
     def _request(self, operation: str, **kwargs: Any) -> Any:
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
-        if op["method"] != "GET" and self._negotiated(operation):
+        if (op["method"] != "GET" and self._negotiated(operation)) or operation == "getDetachedTask":
             capabilities = self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )
@@ -482,7 +519,7 @@ class AsyncTransport(TransportBase):
     async def _request(self, operation: str, **kwargs: Any) -> Any:
         options = kwargs.get("request_options")
         op, url, request = self._prepare(operation, **kwargs)
-        if op["method"] != "GET" and self._negotiated(operation):
+        if (op["method"] != "GET" and self._negotiated(operation)) or operation == "getDetachedTask":
             capabilities = await self._request(
                 "getCapabilities", path_params={}, query={}, headers={}, request_options=options
             )

@@ -25,6 +25,570 @@
     }
   ],
   "paths": {
+    "/atp/v3/chats/{chat_id}/deliveries": {
+      "post": {
+        "operationId": "deliverWorkflowResult",
+        "summary": "Deliver an external workflow result",
+        "description": "Authenticated native system input. Idle chats wake in a new turn. Busy chats queue until the active turn terminates. Identical event_id retries return the same receipt with duplicate=true; changed content returns 409. Origin turn must be known to this live chat. Receipts and deduplication are process-local and may be lost on restart or eviction. Never blindly retry an uncertain paid operation after state loss.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeDeliveryReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or unsupported contract version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or task is missing or outside the authenticated scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input or origin correlation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key or active target turn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gateway draining or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Delivery inbox is full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeDeliveryRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atp/v3/chats/{chat_id}/delegations": {
+      "post": {
+        "operationId": "delegateToTeam",
+        "summary": "Delegate to another team chat",
+        "description": "Workflow consumers must require the delegated_job_lifecycle capability before relying on complete-job terminal semantics. Origin and target chats must belong to the authenticated owner and the same workspace. Target team is resolved from its existing chat binding. Execution and completion delivery are native Envai operations; the origin turn can finish independently. task_id identifies the complete delegated job; receipt turn_id identifies only its initial target coordinator turn. If that turn delegates detached children, its terminal does not complete the job. Envai waits for the coordinator terminal and all pending children in each cohort, then batches their results into one target synthesis turn. A synthesis that delegates more children starts another cohort. Only a coordinator turn with no pending children or results finalizes the origin task and its integral output. Use origin task.completed or origin GET task terminal status as the phase outcome. Task output is the full final job output, and optional result_turn_id identifies its final coordinator turn. A new delegation whose origin_turn_id belongs to a delegated job can attach only to its currently active coordinator turn; a past coordinator turn is rejected with 422. Exact duplicates still replay their receipt. Keep target-chat SSE open through job terminal for tools and submit their results to that target chat; tool events are not forwarded to origin. Optional notify_origin defaults to true. With the delegation_notify_origin capability, false suppresses only automatic origin delivery and model wake; origin task events, GET, final output and result_turn_id remain available, and target child cohorts and synthesis are unchanged. Omitted and explicit true are equivalent for idempotency; changing the effective boolean for the same event_id returns 409. Optional strict_model defaults to false; true rejects an unavailable configured target root model before admission with 422 strict_model_unavailable and persists the policy through coordinator synthesis turns. Root agent.started.model reports the requested selection; agent.done.requested_model identifies that selection and optional agent.done.model preserves the last provider-reported model, including aliases. An active target chat returns 409. Deduplication is process-local.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamDelegationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or unsupported contract version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or task is missing or outside the authenticated scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input or origin correlation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key or active target turn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gateway draining or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamDelegationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atp/v3/chats/{chat_id}/tasks/{task_id}": {
+      "get": {
+        "operationId": "getDetachedTask",
+        "summary": "Read a detached task",
+        "description": "Returns the resident task status and complete terminal output. A 404 task_unknown after restart or eviction means unknown outcome, not proof that the task never ran.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetachedTaskSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or unsupported contract version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or task is missing or outside the authenticated scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input or origin correlation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key or active target turn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gateway draining or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atp/v3/chats/{chat_id}/tasks/{task_id}/cancel": {
+      "post": {
+        "operationId": "cancelDetachedTask",
+        "summary": "Cancel a detached task",
+        "description": "Best effort cancellation. Cancel of a parent turn does not cancel detached tasks. subtree=true also cancels descendants owned by this origin. Cancelling a terminal task also removes its queued notification and prevents late-result delivery. Previously produced external effects cannot be undone.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "task_id",
+                    "status",
+                    "subtree"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "status": {
+                      "const": "cancelled"
+                    },
+                    "subtree": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or unsupported contract version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or task is missing or outside the authenticated scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input or origin correlation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key or active target turn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gateway draining or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "subtree": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/atp/v3/chats/{chat_id}/classify-phase": {
+      "post": {
+        "operationId": "classifyPhase",
+        "summary": "Classify whether a workflow phase is blocked",
+        "description": "Uses the configured Decisions adapter without tools or model fallback. Stores accounting separately from chat turns. Request body limit is 1 MiB. Reusing request_id returns 409 even after restart; the service does not repeat the paid call or retain the original response. Save the response locally. Invalid provider output never advances the workflow.",
+        "tags": [
+          "Chat execution"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ChatId"
+          },
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhaseClassificationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or unsupported contract version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat or task is missing or outside the authenticated scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input or origin correlation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key or active target turn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Gateway draining or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Complete input exceeds the request limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Provider failed, returned invalid output, or the outcome is unknown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhaseClassificationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/atp/v3/chats/{chat_id}/messages": {
       "post": {
         "operationId": "sendChatMessage",
@@ -39,6 +603,9 @@
           },
           {
             "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/NativeTasksExtension"
           },
           {
             "name": "Idempotency-Key",
@@ -131,7 +698,7 @@
       "get": {
         "operationId": "streamChatEvents",
         "summary": "Stream chat events",
-        "description": "Server-Sent Events stream with one `data:` line per event, JSON encoded. Attach with `after=<seq>` to receive retained events strictly after that sequence number. In the current implementation the replay window is bounded and in memory; eviction or restart discards events, resets sequence to 1 and exposes no epoch or cursor-expired signal. Within a resident runtime, positive sequence numbers are monotonic and continuous across turns. A wire-only `ping` with `seq: 0` is emitted periodically to keep proxies and load balancers from closing the idle stream. Each `data:` line is one Agent Team Protocol event envelope; `type` discriminates `data`, and the envelope and every per-type payload are defined in `events.json`.\n",
+        "description": "Server-Sent Events stream with one `data:` line per event, JSON encoded. Attach with `after=<seq>` to receive retained events strictly after that sequence number. In the current implementation the replay window is bounded and in memory; eviction or restart discards events, resets sequence to 1 and exposes no epoch or cursor-expired signal. Within a resident runtime, positive sequence numbers are monotonic and continuous across turns, including chat.extension placeholders for extension-only events. A wire-only `ping` with `seq: 0` is emitted periodically to keep proxies and load balancers from closing the idle stream. Each `data:` line is one Agent Team Protocol event envelope; `type` discriminates `data`, and the envelope and every per-type payload are defined in `events.json`.\n",
         "tags": [
           "Chat execution"
         ],
@@ -144,6 +711,9 @@
           },
           {
             "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/NativeTasksExtension"
           }
         ],
         "responses": {
@@ -161,6 +731,13 @@
                 "schema": {
                   "type": "string",
                   "const": "3"
+                }
+              },
+              "X-Envai-Extensions": {
+                "description": "Present only when native-tasks-v1 was accepted",
+                "schema": {
+                  "type": "string",
+                  "const": "native-tasks-v1"
                 }
               },
               "Vary": {
@@ -691,7 +1268,7 @@
       "get": {
         "operationId": "getCapabilities",
         "summary": "Advertised protocol metadata",
-        "description": "Returns protocol metadata and positively advertised names. The current alpha response is not exhaustive and a feature name may advertise an endpoint/event surface without proving the full intended semantics.\n",
+        "description": "Returns protocol metadata and positively advertised names. The current alpha response is not exhaustive and a feature name may advertise an endpoint/event surface without proving the full intended semantics. The delegated_job_lifecycle feature explicitly guarantees the documented cross-team job boundary, cohort synthesis and final task output semantics. Workflows relying on these semantics must require that feature in addition to cross_team_delegation. The delegation_notify_origin feature allows optional notification suppression without changing final-job results. These additive features do not change contract version 3.\n",
         "tags": [
           "Capabilities"
         ],
@@ -710,6 +1287,13 @@
                 "schema": {
                   "type": "string",
                   "const": "3"
+                }
+              },
+              "X-Envai-Extensions": {
+                "description": "Present only when native-tasks-v1 was accepted",
+                "schema": {
+                  "type": "string",
+                  "const": "native-tasks-v1"
                 }
               },
               "Vary": {
@@ -733,6 +1317,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/NativeTasksExtension"
           }
         ]
       }
@@ -4695,6 +5282,16 @@
           "default": false
         }
       },
+      "NativeTasksExtension": {
+        "name": "X-Envai-Extensions",
+        "in": "header",
+        "required": false,
+        "description": "Opt in to native task events, capabilities and model diagnostics. Native clients send on all execution requests, including messages, capabilities and every SSE request including replay. On messages this selects detached background execution; without it background children retain the parent-bound lifecycle. Case-sensitive comma-separated tokens across repeated header values are trimmed. Unknown tokens are ignored. Every ATP request passing negotiation echoes the accepted extension; contract2 never enables it. Explicit native routes add no missing-opt-in error; Vary includes this header. Without opt-in task and delivery events project to ignorable chat.extension placeholders with empty data and null agent/turn and agent.done model diagnostics omitted, preserving original sequence IDs and the canonical log. Strict model admission is independent of this stream projection.",
+        "schema": {
+          "type": "string",
+          "example": "native-tasks-v1"
+        }
+      },
       "ContractVersion": {
         "name": "X-Envai-Contract-Version",
         "in": "header",
@@ -4719,6 +5316,267 @@
       }
     },
     "schemas": {
+      "NativeDeliveryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_id",
+          "event_id",
+          "origin_turn_id",
+          "task_id",
+          "status",
+          "output"
+        ],
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin_turn_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "output": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "blocked",
+              "failed",
+              "cancelled"
+            ]
+          }
+        }
+      },
+      "NativeDeliveryReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "status",
+          "duplicate"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "delivered",
+              "cancelled",
+              "failed"
+            ]
+          },
+          "turn_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error": {
+            "type": "string",
+            "description": "Generic delivery-turn admission failure, if any."
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TeamDelegationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_id",
+          "event_id",
+          "origin_turn_id",
+          "target_chat_id",
+          "prompt"
+        ],
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin_turn_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_chat_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notify_origin": {
+            "type": "boolean",
+            "default": true,
+            "description": "Requires delegation_notify_origin capability. False suppresses only automatic origin result delivery and model wake. Origin task terminal events, GET status, output and result_turn_id remain available; target child cohorts and synthesis are unchanged. Omitted and explicit true are equivalent for idempotency."
+          },
+          "strict_model": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires strict_model capability. True requires the explicitly configured root orchestrator model to be available without resolver fallback before inference or tools. Unavailable or unverifiable configuration returns 422 strict_model_unavailable. Child model selection is unchanged. The effective flag participates in idempotency; omitted and false are equivalent, and changed policy returns 409."
+          }
+        }
+      },
+      "TeamDelegationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "target_chat_id",
+          "turn_id"
+        ],
+        "properties": {
+          "task_id": {
+            "description": "Identifier of the complete delegated job, including child cohorts and synthesis turns.",
+            "type": "string",
+            "minLength": 1
+          },
+          "target_chat_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "turn_id": {
+            "description": "Initial target coordinator turn only; its terminal need not be the job outcome.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "DetachedTaskSnapshot": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "origin_turn_id",
+          "status"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin_turn_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parent_task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_chat_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result_turn_id": {
+            "type": "string",
+            "description": "Final coordinator turn for a cross-team job, when available; distinct from receipt turn_id."
+          },
+          "output": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error": {
+            "type": "string",
+            "minLength": 1
+          },
+          "delivery_error": {
+            "type": "string",
+            "description": "Native notification failure; the original task output is unchanged."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          }
+        }
+      },
+      "PhaseClassificationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "task_context",
+          "phase_id",
+          "attempt",
+          "final_output"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "phase_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "final_output": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_context": {
+            "description": "Complete task context, any non-null JSON value."
+          },
+          "attempt": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "PhaseClassificationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "model",
+          "request_id",
+          "invocation_id"
+        ],
+        "properties": {
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "invocation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "BLOCKED",
+              "NOT BLOCKED"
+            ]
+          }
+        }
+      },
       "CompletionTerminalSnapshotUsage": {
         "type": "object",
         "additionalProperties": false,
@@ -5373,9 +6231,36 @@
           },
           "usage_cost": {
             "$ref": "#/components/schemas/UsageCost"
+          },
+          "reported_problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportedProblem"
+            }
           }
         },
         "additionalProperties": true
+      },
+      "ReportedProblem": {
+        "type": "object",
+        "required": [
+          "file_id",
+          "message"
+        ],
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "^[^\\u0000]+$",
+            "description": "A free-form explanation reported by the managed inbox, not a verified provider fact."
+          }
+        },
+        "additionalProperties": false
       },
       "Category": {
         "type": "object",
@@ -6089,6 +6974,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "strict_model": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires strict_model capability. True requires the explicitly configured root orchestrator model to be available without resolver fallback before inference or tools. Unavailable or unverifiable configuration returns 422 strict_model_unavailable. Child model selection is unchanged. The effective flag participates in idempotency; omitted and false are equivalent, and changed policy returns 409."
           }
         }
       },
@@ -6359,13 +7249,14 @@
           },
           "families": {
             "type": "array",
-            "description": "Event families the server may emit",
+            "description": "Event families the negotiated surface may emit; task requires native-tasks-v1",
             "items": {
               "type": "string",
               "enum": [
                 "turn",
                 "agent",
-                "chat"
+                "chat",
+                "task"
               ]
             }
           },
@@ -6411,7 +7302,7 @@
           },
           "features": {
             "type": "array",
-            "description": "Optional protocol features implemented by the server",
+            "description": "Optional protocol features implemented by the server. Require delegated_job_lifecycle before enabling workflows that use complete delegated-job outcomes; cross_team_delegation alone is insufficient.",
             "items": {
               "type": "string"
             }

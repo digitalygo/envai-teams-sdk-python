@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
 from typing import Any, AsyncGenerator, Callable, Generator
 from urllib.parse import parse_qsl, urlsplit
@@ -11,6 +12,7 @@ from urllib.parse import parse_qsl, urlsplit
 import httpx
 
 from . import _generated as generated
+from . import models
 from ._transport import AsyncTransport, RetryPolicy, SyncTransport
 from .attachments import AsyncAttachmentsService, AttachmentsService
 from .errors import CompatibilityError, ProtocolError, TransportError
@@ -18,8 +20,42 @@ from .events import Event, TurnAccumulator, TurnResult
 from .stream import AsyncEventStream, EventStream
 from .wiki import AsyncWikiService, WikiService
 
+TASK_TERMINAL_STATES = frozenset(("completed", "failed", "cancelled"))
+
+
+def _poll_bounds(timeout: float, poll_interval: float) -> None:
+    if not all(math.isfinite(v) and v > 0 for v in (timeout, poll_interval)):
+        raise ValueError("Polling bounds must be finite and positive")
+
+
+def _require_job_lifecycle(capabilities: models.Capabilities) -> None:
+    if "delegated_job_lifecycle" not in capabilities.features:
+        raise CompatibilityError("Final job waiting requires delegated_job_lifecycle")
+
+
+def _task_identity(task: models.DetachedTaskSnapshot, task_id: str) -> None:
+    if task.task_id != task_id:
+        raise ProtocolError("Task lookup returned a different task")
+
 
 class ChatsService(generated.ChatsService):
+    def wait_for_task(
+        self, chat_id: str, task_id: str, *, timeout: float = 120, poll_interval: float = 1
+    ) -> models.DetachedTaskSnapshot:
+        """Wait for the origin task's final output; keep target tool SSE open separately."""
+        _poll_bounds(timeout, poll_interval)
+        if not self._client.native_tasks:
+            raise CompatibilityError("Final job waiting requires native_tasks=True")
+        _require_job_lifecycle(self._client.capabilities.get())
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            task = self.get_task(chat_id, task_id)
+            _task_identity(task, task_id)
+            if task.status in TASK_TERMINAL_STATES:
+                return task
+            time.sleep(min(poll_interval, max(0, deadline - time.monotonic())))
+        raise TransportError("Task wait timed out; outcome remains unknown")
+
     def events(self, chat_id: str, **options: Any) -> EventStream:
         return EventStream(self._client, chat_id, **options)
 
@@ -30,6 +66,7 @@ class ChatsService(generated.ChatsService):
         *,
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
+        strict_model: bool = False,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> Generator[Event, None, None]:
@@ -49,7 +86,8 @@ class ChatsService(generated.ChatsService):
                         continue
                     accepted = self.send_message(
                         chat_id,
-                        body={"message": message, "attachment_ids": attachment_ids or []},
+                        body={"message": message, "attachment_ids": attachment_ids or [],
+                              **({"strict_model": strict_model} if strict_model is not False else {})},
                         idempotency_key=idempotency_key,
                     )
                     for previous in replay:
@@ -72,6 +110,7 @@ class ChatsService(generated.ChatsService):
         *,
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
+        strict_model: bool = False,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -81,6 +120,7 @@ class ChatsService(generated.ChatsService):
             message,
             timeout=timeout,
             attachment_ids=attachment_ids,
+            strict_model=strict_model,
             idempotency_key=idempotency_key,
             **stream_options,
         )
@@ -95,6 +135,22 @@ class ChatsService(generated.ChatsService):
 
 
 class AsyncChatsService(generated.AsyncChatsService):
+    async def wait_for_task(
+        self, chat_id: str, task_id: str, *, timeout: float = 120, poll_interval: float = 1
+    ) -> models.DetachedTaskSnapshot:
+        """Wait for the origin task's final output; keep target tool SSE open separately."""
+        _poll_bounds(timeout, poll_interval)
+        if not self._client.native_tasks:
+            raise CompatibilityError("Final job waiting requires native_tasks=True")
+        async with asyncio.timeout(timeout):
+            _require_job_lifecycle(await self._client.capabilities.get())
+            while True:
+                task = await self.get_task(chat_id, task_id)
+                _task_identity(task, task_id)
+                if task.status in TASK_TERMINAL_STATES:
+                    return task
+                await asyncio.sleep(poll_interval)
+
     def events(self, chat_id: str, **options: Any) -> AsyncEventStream:
         return AsyncEventStream(self._client, chat_id, **options)
 
@@ -105,6 +161,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         *,
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
+        strict_model: bool = False,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> AsyncGenerator[Event, None]:
@@ -124,7 +181,8 @@ class AsyncChatsService(generated.AsyncChatsService):
                             continue
                         accepted = await self.send_message(
                             chat_id,
-                            body={"message": message, "attachment_ids": attachment_ids or []},
+                            body={"message": message, "attachment_ids": attachment_ids or [],
+                              **({"strict_model": strict_model} if strict_model is not False else {})},
                             idempotency_key=idempotency_key,
                         )
                         for previous in replay:
@@ -147,6 +205,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         *,
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
+        strict_model: bool = False,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -156,6 +215,7 @@ class AsyncChatsService(generated.AsyncChatsService):
             message,
             timeout=timeout,
             attachment_ids=attachment_ids,
+            strict_model=strict_model,
             idempotency_key=idempotency_key,
             **stream_options,
         )
@@ -293,6 +353,7 @@ class EnvaiClient(SyncTransport, generated.Operations):
         base_url: str = "http://localhost:8111/api/v1",
         jwks_url: str | None = None,
         contract_version: int = 3,
+        native_tasks: bool = False,
         timeout: float = 30,
         connect_timeout: float = 10,
         stream_read_timeout: float = 45,
@@ -310,6 +371,7 @@ class EnvaiClient(SyncTransport, generated.Operations):
             retry,
             observer,
             contract_version,
+            native_tasks,
         )
         self._http = httpx.Client(transport=transport, follow_redirects=False, trust_env=False)
         self.workspaces = generated.WorkspacesService(self)
@@ -352,6 +414,7 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         base_url: str = "http://localhost:8111/api/v1",
         jwks_url: str | None = None,
         contract_version: int = 3,
+        native_tasks: bool = False,
         timeout: float = 30,
         connect_timeout: float = 10,
         stream_read_timeout: float = 45,
@@ -369,6 +432,7 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
             retry,
             observer,
             contract_version,
+            native_tasks,
         )
         self._http = httpx.AsyncClient(transport=transport, follow_redirects=False, trust_env=False)
         self.workspaces = generated.AsyncWorkspacesService(self)

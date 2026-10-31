@@ -199,7 +199,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 255,
-          "pattern": "^[^\\r\\n\u000b\f  ]*[^\\s  ][^\\r\\n\u000b\f  ]*$",
+          "pattern": "^[^\\r\\n\u000b\f\u0085\u2028\u2029]*[^\\s\u0085\u2028\u2029][^\\r\\n\u000b\f\u0085\u2028\u2029]*$",
           "description": "Server-normalized, nonblank, single-line chat title of at most 255 Unicode code points."
         }
       }
@@ -899,6 +899,14 @@
           "type": "integer",
           "minimum": 0,
           "description": "Wall clock duration of the agent's work in milliseconds."
+        },
+        "requested_model": {
+          "type": "string",
+          "description": "Exposed on SSE only with native-tasks-v1. Root agent model ID selected for provider requests. With strict_model this is the configured ID without resolver fallback."
+        },
+        "model": {
+          "type": "string",
+          "description": "Exposed on SSE only with native-tasks-v1. Last nonempty model ID reported by the provider for the root agent. Canonical aliases or suffixes may differ from requested_model; omitted if no provider model was reported."
         }
       }
     },
@@ -1669,6 +1677,164 @@
               "$ref": "#/$defs/Envelope"
             },
             {
+              "properties": {
+                "type": {
+                  "const": "task.started"
+                },
+                "data": {
+                  "$ref": "#/$defs/task.started"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "task.event"
+                },
+                "data": {
+                  "$ref": "#/$defs/task.event"
+                },
+                "turn_id": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "task.completed"
+                },
+                "data": {
+                  "$ref": "#/$defs/task.completed"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "task.failed"
+                },
+                "data": {
+                  "$ref": "#/$defs/task.failed"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "task.cancelled"
+                },
+                "data": {
+                  "$ref": "#/$defs/task.cancelled"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "chat.delivery.queued"
+                },
+                "data": {
+                  "$ref": "#/$defs/chat.delivery.queued"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "chat.delivery.delivered"
+                },
+                "data": {
+                  "$ref": "#/$defs/chat.delivery.delivered"
+                },
+                "turn_id": {
+                  "type": "null"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
               "not": {
                 "properties": {
                   "type": {
@@ -1701,7 +1867,14 @@
                       "agent.failed",
                       "approval.request",
                       "approval.response",
-                      "approval.expire"
+                      "approval.expire",
+                      "task.started",
+                      "task.event",
+                      "task.completed",
+                      "task.failed",
+                      "task.cancelled",
+                      "chat.delivery.queued",
+                      "chat.delivery.delivered"
                     ]
                   }
                 },
@@ -1885,6 +2058,224 @@
         "conversion": {
           "type": "object",
           "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "task.started": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "task.event": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "event_type",
+        "event_payload"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "event_payload": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "task.completed": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "output",
+        "error"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "output": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "result_turn_id": {
+          "type": "string",
+          "description": "Final coordinator turn for a cross-team job, when available. May be empty for a task without a final coordinator turn."
+        }
+      },
+      "additionalProperties": true
+    },
+    "task.failed": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "output",
+        "error"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "output": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "result_turn_id": {
+          "type": "string",
+          "description": "Final coordinator turn for a cross-team job, when available. May be empty for a task without a final coordinator turn."
+        }
+      },
+      "additionalProperties": true
+    },
+    "task.cancelled": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "output",
+        "error"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "output": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "result_turn_id": {
+          "type": "string",
+          "description": "Final coordinator turn for a cross-team job, when available. May be empty for a task without a final coordinator turn."
+        }
+      },
+      "additionalProperties": true
+    },
+    "chat.delivery.queued": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "event_id"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "event_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "chat.delivery.delivered": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "origin_turn_id",
+        "status",
+        "event_id",
+        "delivery_turn_id"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "origin_turn_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "delivery_turn_id": {
+          "type": "string"
         }
       },
       "additionalProperties": true
