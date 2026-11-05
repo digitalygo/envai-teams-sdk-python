@@ -37,7 +37,9 @@ paths:
       summary: Deliver an external workflow result
       description: Authenticated native system input. Idle chats wake in a new turn. Busy chats queue until the active
         turn terminates. Identical event_id retries return the same receipt with duplicate=true; changed content returns
-        409. Origin turn must be known to this live chat. Receipts and deduplication are process-local and may be
+        409. Optional origin_turn_id must be known when supplied; omission allows the first notification in an owned chat.
+        strict_model true requires the configured root model at wake admission, and a strict origin cannot be downgraded.
+        Receipts and deduplication are process-local and may be
         lost on restart or eviction. Never blindly retry an uncertain paid operation after state loss.
       tags:
       - Chat execution
@@ -399,6 +401,156 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PhaseClassificationRequest'
+  /atp/v3/chats/{chat_id}/classify-choice:
+    post:
+      operationId: classifyChoice
+      summary: Choose one explicit workflow branch
+      description: Uses the configured Decisions adapter without tools or model fallback. Stores accounting separately
+        from chat turns. Request body limit is 1 MiB. Reusing request_id returns 409 even after restart; the service
+        does not repeat the paid call or retain the original response. Save the response locally. Invalid provider
+        output never advances the workflow. Labels are caller-defined and validated as an exact closed enum.
+      tags:
+      - Chat execution
+      parameters:
+      - $ref: '#/components/parameters/ChatId'
+      - $ref: '#/components/parameters/ContractVersion'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChoiceClassificationResult'
+        '400':
+          description: Malformed JSON or unsupported contract version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Chat or task is missing or outside the authenticated scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Invalid input or origin correlation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflicting idempotency key or active target turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Gateway draining or service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Complete input exceeds the request limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Provider failed, returned invalid output, or the outcome is unknown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoiceClassificationRequest'
+  /atp/v3/chats/{chat_id}/jobs:
+    post:
+      operationId: startIndependentJob
+      summary: Start a native job without a parent turn
+      description: Starts a system-input coordinator in this owned workflow chat. No origin turn or user message is
+        required. The receipt turn_id identifies initial admission only. Observe task.completed or read task status
+        for final output and result_turn_id after all detached child cohorts and synthesis finish. Client tools stay
+        on this chat SSE stream. No automatic notification wakes another chat. Same request_id and payload replay
+        the receipt while resident; changed payload conflicts. Restart or eviction makes status and deduplication
+        unknown, never evidence that work was not executed. A busy chat returns 409.
+      tags:
+      - Chat execution
+      parameters:
+      - $ref: '#/components/parameters/ChatId'
+      - $ref: '#/components/parameters/ContractVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndependentJobRequest'
+      responses:
+        '202':
+          description: Native job admitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndependentJobReceipt'
+        '400':
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Chat outside authenticated owner scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflicting request_id or active chat turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Invalid input, workspace or unavailable strict model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Resident task capacity reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service draining
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /atp/v3/chats/{chat_id}/messages:
     post:
       operationId: sendChatMessage
@@ -3610,11 +3762,14 @@ components:
       required:
       - workspace_id
       - event_id
-      - origin_turn_id
       - task_id
       - status
       - output
       properties:
+        strict_model:
+          type: boolean
+          default: false
+          description: Require the configured root model for the delivery wake. A referenced strict origin cannot be downgraded.
         workspace_id:
           type: string
           minLength: 1
@@ -3623,7 +3778,7 @@ components:
           minLength: 1
         origin_turn_id:
           type: string
-          minLength: 1
+          description: Optional known resident origin turn. Omit for a new owned notification chat.
         task_id:
           type: string
           minLength: 1
@@ -3731,7 +3886,7 @@ components:
           minLength: 1
         origin_turn_id:
           type: string
-          minLength: 1
+          description: Empty for an independent job without a parent turn.
         parent_task_id:
           type: string
           minLength: 1
@@ -3740,7 +3895,7 @@ components:
           minLength: 1
         result_turn_id:
           type: string
-          description: Final coordinator turn for a cross-team job, when available; distinct from receipt turn_id.
+          description: Final coordinator turn for a delegated or independent job, when available; distinct from receipt turn_id.
         output:
           type: string
           minLength: 1
@@ -3757,6 +3912,82 @@ components:
           - completed
           - failed
           - cancelled
+    IndependentJobRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, request_id, prompt]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        prompt:
+          type: string
+          minLength: 1
+        strict_model:
+          type: boolean
+          default: false
+          description: Validate configured root before admission and every synthesis. Children retain their model policy.
+    IndependentJobReceipt:
+      type: object
+      additionalProperties: false
+      required: [task_id, turn_id]
+      properties:
+        task_id:
+          type: string
+        turn_id:
+          type: string
+          description: Initial coordinator turn only, not the final job outcome.
+    ChoiceClassificationRequest:
+      type: object
+      additionalProperties: false
+      required: [request_id, context, question, choices]
+      properties:
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        context:
+          description: Complete workflow context, any non-null JSON value. No truncation or summary.
+        question:
+          type: string
+          minLength: 1
+          maxLength: 8192
+        choices:
+          type: array
+          minItems: 2
+          maxItems: 32
+          items:
+            type: object
+            additionalProperties: false
+            required: [label, description]
+            properties:
+              label:
+                type: string
+                minLength: 1
+                maxLength: 128
+                description: Unique exact label, no leading or trailing whitespace or control characters.
+              description:
+                type: string
+                minLength: 1
+                maxLength: 4096
+    ChoiceClassificationResult:
+      type: object
+      additionalProperties: false
+      required: [choice, model, request_id, invocation_id]
+      properties:
+        choice:
+          type: string
+          description: Exactly one caller-supplied label. Any invented label fails the request.
+        model:
+          type: string
+        request_id:
+          type: string
+        invocation_id:
+          type: string
     PhaseClassificationRequest:
       type: object
       additionalProperties: false

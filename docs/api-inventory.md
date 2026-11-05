@@ -1,6 +1,6 @@
 # API inventory
 
-All 76 current operation IDs. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
+All 78 current operation IDs. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
 
 | Operation ID | Method | Path |
 | --- | --- | --- |
@@ -9,6 +9,8 @@ All 76 current operation IDs. Canonical ATP operations use contract3; the two ex
 | getDetachedTask | GET | `/atp/v3/chats/{chat_id}/tasks/{task_id}` |
 | cancelDetachedTask | POST | `/atp/v3/chats/{chat_id}/tasks/{task_id}/cancel` |
 | classifyPhase | POST | `/atp/v3/chats/{chat_id}/classify-phase` |
+| classifyChoice | POST | `/atp/v3/chats/{chat_id}/classify-choice` |
+| startIndependentJob | POST | `/atp/v3/chats/{chat_id}/jobs` |
 | sendChatMessage | POST | `/atp/v3/chats/{chat_id}/messages` |
 | streamChatEvents | GET | `/atp/v3/chats/{chat_id}/events` |
 | cancelChatTurn | POST | `/atp/v3/chats/{chat_id}/cancel` |

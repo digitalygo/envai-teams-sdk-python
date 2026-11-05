@@ -6,7 +6,7 @@ Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 76 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 78 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -89,7 +89,7 @@ are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains all **76 operation IDs** in
+The generated primitive layer retains all **78 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -266,7 +266,7 @@ See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry a
 ## Native background tasks and delegated jobs
 
 Canonical schemas and byte provenance are pinned to Envai server
-[`3a9ecf3a4ccd3291474848d3dc9d0100170b9e54`](https://github.com/digitalygo/envai-teams/commit/3a9ecf3a4ccd3291474848d3dc9d0100170b9e54),
+[`18ce9124604874d8d4bac784b521171d2ff9e064`](https://github.com/digitalygo/envai-teams/commit/18ce9124604874d8d4bac784b521171d2ff9e064),
 including the PR 56 compatibility review fixes.
 
 Opt in explicitly with `EnvaiClient(api_key, native_tasks=True)` (or
@@ -422,3 +422,28 @@ remote. Ambiguous writes use read-back reconciliation and are never retried blin
 See the [definitions guide](src/envai/definitions/README.md) and
 [offline manifest example](examples/definitions.py). Deployment APIs are synchronous;
 run them in a deployment/startup worker for async applications.
+
+### Independent jobs and finite choices
+
+The native surface is pinned to Envai commit `18ce9124604874d8d4bac784b521171d2ff9e064`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
+
+Independent jobs start without a parent turn. Their receipt identifies the initial coordinator; final task `output` and `result_turn_id` identify the completed job. Task snapshots keep the required `origin_turn_id` key with the empty string for independent jobs. Missing origin is invalid. Keep the execution chat’s native SSE subscription and client-tool runner alive while waiting; polling helpers do not execute tools.
+
+Finite-choice requests provide a full non-null JSON context, question, stable request ID and 2–32 exact labels with descriptions. The SDK rejects duplicate or invalid labels and verifies the returned label, request ID, model and invocation ID. An invented label is a protocol error. Classification admission is durable and a duplicate returns 409; uncertain outcomes are never automatically resubmitted. Job and delivery deduplication is only resident: after restart, 404 means unknown, not permission to repeat paid work.
+
+```python
+client = EnvaiClient(api_key, native_tasks=True)
+receipt = client.chats.start_job(chat_id, body={
+    "workspace_id": workspace_id, "request_id": request_id,
+    "prompt": "Review the supplied changes", "strict_model": True,
+})
+result = client.chats.wait_for_independent_job(chat_id, receipt.task_id)
+selected = client.chats.classify_choice(chat_id, body={
+    "request_id": classification_id, "context": {"output": result.output},
+    "question": "Can this phase continue?",
+    "choices": [{"label": "CONTINUE", "description": "No clarification required"},
+                {"label": "ASK", "description": "Owner input required"}],
+})
+```
+
+`AsyncEnvaiClient` exposes the same methods with `await`. Delivery accepts omitted or empty `origin_turn_id` and optional `strict_model`; existing nonempty-origin delivery remains unchanged.

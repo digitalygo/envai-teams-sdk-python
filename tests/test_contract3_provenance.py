@@ -7,31 +7,32 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).parents[1]
-PINS = {'openapi.yaml': (257785,
-                  'd7c256774b00d2149b4ab5fbfc6388787cb46d4a41e2795622880372ec343668',
-                  '7bf1bb0cf218e9c8765da15e8ddfd9f090e2fa93'),
+PINS = {'events-v2.json': (47787,
+                    '88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6',
+                    '02b13b23cd06eacd81059d1ed99e0027769d75e4'),
  'events.json': (62064,
                  'ea5e00c19d5a8cc2d0782530344595943fcd8d9ce572529bbc178d95765d9835',
                  '2629e12faf723ac7cd9940f979821b0594c82004'),
- 'events-v2.json': (47787,
-                    '88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6',
-                    '02b13b23cd06eacd81059d1ed99e0027769d75e4'),
- 'wiki.json': (19558,
-               'e360060a42c1d69a6cd15de3ea33745567d23166785efcb08f161c7acb38d30c',
-               '3d495bbe3b4cf53af3cab29d86d3a032a7fa8b8c'),
+ 'openapi.yaml': (266248,
+                  'a3fae2bc6faef4c9132ad792a4a13d1aa4c426d5db8e7619cf98f10ebe6a57e7',
+                  'e835fc0d406a78cdc9a203bc9f13090a671fbc55'),
+ 'smidja-native.json': (13630,
+                        '8393b2522f854b68c1c536c6913e8719f85f15a7b1c2128fc55a30e9d4685bc4',
+                        '7577f17a4beaaaf821d653fd355b18fb1e1765ca'),
  'terminal-snapshot.json': (8578,
                             'c132b27031595c94a8b05eaf008545ccc3ac21d4dd170dd800c5e15b7f93e9bf',
                             '77d885bda661800972ed56837e69a57ab613da82'),
- 'smidja-native.json': (11008,
-                        'daebc8ee18fe74ac6c536bef2f2a7b520260c9f7d80cf5a814d99ba8659efe7d',
-                        '22719db4614c5bdfc054bad1a31113061ca0a68b')}
+ 'wiki.json': (19558,
+               'e360060a42c1d69a6cd15de3ea33745567d23166785efcb08f161c7acb38d30c',
+               '3d495bbe3b4cf53af3cab29d86d3a032a7fa8b8c')}
+
 
 def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "3a9ecf3a4ccd3291474848d3dc9d0100170b9e54"
-    assert manifest["contract_version"] == 3 and manifest["operations"] == 76
+    assert manifest["commit"] == "18ce9124604874d8d4bac784b521171d2ff9e064"
+    assert manifest["contract_version"] == 3 and manifest["operations"] == 78
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():
         raw = (ROOT / "src/envai/_contracts" / name).read_bytes()

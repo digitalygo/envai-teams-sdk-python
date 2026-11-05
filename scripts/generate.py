@@ -277,6 +277,8 @@ GROUPS = {
         "get_task": "getDetachedTask",
         "cancel_task": "cancelDetachedTask",
         "classify_phase": "classifyPhase",
+        "classify_choice": "classifyChoice",
+        "start_job": "startIndependentJob",
     },
     "completions": {"list": "listCompletions", "get": "getCompletion"},
     "wiki": {

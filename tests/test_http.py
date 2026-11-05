@@ -27,6 +27,9 @@ from envai.errors import (
 
 
 def sample(schema):
+    if schema.get("$ref", "").endswith("/ChoiceClassificationRequest"):
+        return {"request_id": "x", "context": {}, "question": "Next?", "choices": [
+            {"label": "x", "description": "First"}, {"label": "y", "description": "Second"}]}
     if "$ref" in schema:
         return sample(OPENAPI["components"]["schemas"][schema["$ref"].rsplit("/", 1)[1]])
     if "attachment_id" in schema.get("properties", {}):
@@ -145,7 +148,8 @@ def test_full_surface_sync(name, op):
                         "chat_attachment_originals",
                         "detached_background", "native_deliveries",
                         "cross_team_delegation", "delegated_job_lifecycle",
-                        "phase_classification",
+                        "phase_classification", "finite_choice_classification",
+                        "independent_jobs", "originless_deliveries",
                     ],
                 },
                 headers={"X-Envai-Contract-Version": "3", "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")},
@@ -203,7 +207,8 @@ async def test_full_surface_async(name, op):
                         "chat_attachment_originals",
                         "detached_background", "native_deliveries",
                         "cross_team_delegation", "delegated_job_lifecycle",
-                        "phase_classification",
+                        "phase_classification", "finite_choice_classification",
+                        "independent_jobs", "originless_deliveries",
                     ],
                 },
                 headers={"X-Envai-Contract-Version": "3", "X-Envai-Extensions": request.headers.get("X-Envai-Extensions", "")},
@@ -234,7 +239,7 @@ async def test_full_surface_async(name, op):
 
 def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
-    assert len(OPERATIONS) == 76
+    assert len(OPERATIONS) == 78
     for op in shared:
         assert OPERATIONS[op["id"]]["method"] == op["method"]
         assert OPERATIONS[op["id"]]["path"] == (

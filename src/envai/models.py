@@ -9,9 +9,10 @@ class Model(BaseModel):
 
 
 class NativeDeliveryRequest(Model):
+    strict_model: Union[bool, None] = Field(default=None)
     workspace_id: str
     event_id: str
-    origin_turn_id: str
+    origin_turn_id: Union[str, None] = Field(default=None)
     task_id: str
     output: str = Field(repr=False)
     status: Literal['completed', 'blocked', 'failed', 'cancelled']
@@ -51,6 +52,37 @@ class DetachedTaskSnapshot(Model):
     error: Union[str, None] = Field(default=None)
     delivery_error: Union[str, None] = Field(default=None)
     status: Literal['running', 'completed', 'failed', 'cancelled']
+
+
+class IndependentJobRequest(Model):
+    workspace_id: str
+    request_id: str
+    prompt: str = Field(repr=False)
+    strict_model: Union[bool, None] = Field(default=None)
+
+
+class IndependentJobReceipt(Model):
+    task_id: str
+    turn_id: str
+
+
+class ChoiceClassificationRequest(Model):
+    request_id: str
+    context: Any
+    question: str
+    choices: list[ChoiceClassificationRequestChoicesItem]
+
+
+class ChoiceClassificationRequestChoicesItem(Model):
+    label: str
+    description: str
+
+
+class ChoiceClassificationResult(Model):
+    choice: str
+    model: str
+    request_id: str
+    invocation_id: str
 
 
 class PhaseClassificationRequest(Model):
@@ -1414,6 +1446,11 @@ NativeDeliveryReceipt.model_rebuild()
 TeamDelegationRequest.model_rebuild()
 TeamDelegationReceipt.model_rebuild()
 DetachedTaskSnapshot.model_rebuild()
+IndependentJobRequest.model_rebuild()
+IndependentJobReceipt.model_rebuild()
+ChoiceClassificationRequest.model_rebuild()
+ChoiceClassificationRequestChoicesItem.model_rebuild()
+ChoiceClassificationResult.model_rebuild()
 PhaseClassificationRequest.model_rebuild()
 PhaseClassificationResult.model_rebuild()
 CompletionTerminalSnapshotUsage.model_rebuild()

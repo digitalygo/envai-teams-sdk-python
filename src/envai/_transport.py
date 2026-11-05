@@ -250,6 +250,7 @@ class TransportBase:
     ):
         check_cancel(request_options)
         op = dict(OPERATIONS[operation])
+        op["path_params"] = dict(path_params)
         if operation == "uploadWikiSource" and data is not None:
             if not isinstance(data, dict):
                 raise ValueError("Multipart data must be a dictionary")
@@ -376,9 +377,11 @@ class TransportBase:
         op["attachment_ids"] = attachment_ids
         op["body"] = kwargs.get("json", {})
         op["native_tasks"] = self.native_tasks
+        from .native_contract import validate_native_request
+        validate_native_request(operation, op["body"])
         if not self.native_tasks and (operation in (
             "deliverWorkflowResult", "delegateToTeam", "getDetachedTask",
-            "cancelDetachedTask", "classifyPhase"
+            "cancelDetachedTask", "classifyPhase", "classifyChoice", "startIndependentJob"
         ) or op["body"].get("strict_model")):
             raise CompatibilityError("Native operations require native_tasks=True")
         return op, url, kwargs
@@ -386,15 +389,20 @@ class TransportBase:
     @staticmethod
     def _capability_preflight(operation: str, op: dict[str, Any], capabilities: Any) -> None:
         features = capabilities.features
+        op["independent_jobs"] = "independent_jobs" in features
         required = {
             "deliverWorkflowResult": ("native_deliveries",),
             "delegateToTeam": ("cross_team_delegation", "delegated_job_lifecycle"),
             "getDetachedTask": ("detached_background",),
             "cancelDetachedTask": ("detached_background",),
             "classifyPhase": ("phase_classification",),
+            "classifyChoice": ("finite_choice_classification",),
+            "startIndependentJob": ("independent_jobs",),
         }.get(operation, ())
         if op.get("native_tasks") and op["method"] != "GET" and op["path"].startswith("/atp/v3/chats/"):
             required += ("detached_background",)
+        if operation == "deliverWorkflowResult" and not op.get("body", {}).get("origin_turn_id"):
+            required += ("originless_deliveries",)
         if op.get("body", {}).get("strict_model"):
             required += ("strict_model",)
         if op.get("body", {}).get("notify_origin") is False:
@@ -532,6 +540,8 @@ class TransportBase:
             raise ProtocolError("Message acceptance omitted or changed attachment IDs", raw=value)
         if op["unwrap"]:
             value = value["data"]
+        from .native_contract import validate_native_response
+        validate_native_response(op, value)
         from ._generated import RESPONSE_TYPES
 
         annotation: Any = RESPONSE_TYPES[op["response_type"]]

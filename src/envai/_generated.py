@@ -15,6 +15,7 @@ RESPONSE_TYPES = {
     'ChatAttachment': models.ChatAttachment,
     'ChatForked': models.ChatForked,
     'ChatMessageAccepted': models.ChatMessageAccepted,
+    'ChoiceClassificationResult': models.ChoiceClassificationResult,
     'Completion': models.Completion,
     'CompletionCollection': models.CompletionCollection,
     'CreateApiKeyResponse': models.CreateApiKeyResponse,
@@ -23,6 +24,7 @@ RESPONSE_TYPES = {
     'ImageGenerationAcceptedRecord': models.ImageGenerationAcceptedRecord,
     'ImageGenerationStatusRecord': models.ImageGenerationStatusRecord,
     'ImageUploadRecord': models.ImageUploadRecord,
+    'IndependentJobReceipt': models.IndependentJobReceipt,
     'JwksDocument': models.JwksDocument,
     'ListChatAttachmentsResponse': models.ListChatAttachmentsResponse,
     'ModelList': models.ModelList,
@@ -71,6 +73,14 @@ class Operations:
     def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
         """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
         return self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return self._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def start_independent_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return self._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
@@ -488,6 +498,14 @@ class ChatsService:
         """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
         return self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return self._client._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
 
 class CompletionsService:
     def __init__(self, client: Any):
@@ -711,6 +729,14 @@ class AsyncOperations:
     async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
         """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
         return await self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return await self._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def start_independent_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return await self._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
     async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
@@ -1127,6 +1153,14 @@ class AsyncChatsService:
     async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
         """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
         return await self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return await self._client._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return await self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
 
 class AsyncCompletionsService:

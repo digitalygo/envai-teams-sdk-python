@@ -13,17 +13,21 @@
     "phase_classification",
     "delegated_job_lifecycle",
     "delegation_notify_origin",
-    "strict_model"
+    "strict_model",
+    "finite_choice_classification",
+    "independent_jobs",
+    "originless_deliveries"
   ],
   "routes": {
     "POST /chats/{chat_id}/deliveries": {
       "request": [
         "workspace_id",
         "event_id",
-        "origin_turn_id",
+        "origin_turn_id?",
         "task_id",
         "status",
-        "output"
+        "output",
+        "strict_model?"
       ],
       "status_enum": [
         "completed",
@@ -39,7 +43,7 @@
         "error": "optional generic delivery-turn admission failure"
       },
       "success": 202,
-      "semantics": "Origin turn must be known to the resident chat. Idle delivery starts a new system-input turn; busy delivery queues until terminal boundary. Same event_id and payload deduplicates; changed content returns 409. SSE chat.delivery.delivered supplies delivery_turn_id. Receipt status becomes cancelled when task cancellation removes a pending notification, or failed when delivery-turn admission fails."
+      "semantics": "Origin turn is optional. When supplied it must be known to the resident owned chat; omission allows first notification in a new owned chat. strict_model defaults false; explicit true or a referenced strict origin requires the configured root model at wake admission, with no model fallback. Idle delivery starts a new system-input turn; busy delivery queues until terminal boundary. Same event_id and payload deduplicates; changed content returns 409. SSE chat.delivery.delivered supplies delivery_turn_id. Receipt status becomes cancelled when task cancellation removes a pending notification, or failed when delivery-turn admission fails."
     },
     "POST /chats/{chat_id}/delegations": {
       "request": [
@@ -89,7 +93,7 @@
         "result_turn_id?"
       ],
       "success": 200,
-      "semantics": "Unknown resident task returns 404 task_unknown; after restart or eviction this means unknown outcome, never proof of nonexecution. delivery_error exposes a failed native notification without changing the original output. For a cross-team job, result_turn_id identifies the final coordinator turn, independently of the receipt initial turn_id."
+      "semantics": "Unknown resident task returns 404 task_unknown; after restart or eviction this means unknown outcome, never proof of nonexecution. delivery_error exposes a failed native notification without changing the original output. For an independent job, origin_turn_id is the empty string. For a cross-team or independent job, result_turn_id identifies the final coordinator turn, independently of the receipt initial turn_id."
     },
     "POST /chats/{chat_id}/tasks/{task_id}/cancel": {
       "request": {
@@ -139,6 +143,43 @@
         },
         "idempotency": "strict_model is included in durable message input fingerprint. Omitted and false retain the legacy fingerprint; changing the effective policy for an existing key returns 409 idempotency_conflict, including accepted replays."
       }
+    },
+    "POST /chats/{chat_id}/jobs": {
+      "request": [
+        "workspace_id",
+        "request_id",
+        "prompt",
+        "strict_model?"
+      ],
+      "response": {
+        "task_id": "string identifying the entire native job",
+        "turn_id": "initial coordinator turn only"
+      },
+      "success": 202,
+      "capability": "independent_jobs",
+      "semantics": "Start a native job in the specified owned workflow chat without a parent turn or synthetic user message. Task lifecycle, child cohorts, tool brokers and full final synthesis are native. Observe task.completed or GET task for authoritative final output and result_turn_id. No automatic origin notification. Subscribe to this chat SSE for coordinator and detached tool calls. Same request_id and payload return the same receipt while resident, changed input returns409; busy returns409. Strict model policy persists across synthesis. Cancel supports subtree. Restart/eviction means unknown outcome, never retry paid work blindly."
+    },
+    "POST /chats/{chat_id}/classify-choice": {
+      "request": {
+        "request_id": "string, 1..128 bytes",
+        "context": "any non-null JSON",
+        "question": "string, 1..8192 bytes",
+        "choices": [
+          {
+            "label": "unique exact string, 1..128 bytes, no control chars or surrounding whitespace",
+            "description": "nonempty string, max4096 bytes"
+          }
+        ]
+      },
+      "response": {
+        "choice": "exactly one requested label",
+        "model": "actual model",
+        "request_id": "request ID",
+        "invocation_id": "accounting invocation"
+      },
+      "success": 200,
+      "capability": "finite_choice_classification",
+      "semantics": "2..32 choices. Uses the same Luna Decisions adapter and scoped accounting as phase classification, no tools or model fallback. Invalid labels/provider output return502; input invalid422; body limit1MiB. Durable duplicate request_id in this endpoint scope returns409 even after restart and never repeats paid calls. Choice and phase request IDs have separate namespaces. Scope identifiers fit the40-character database limit. Save returned results locally."
     }
   },
   "events": [

@@ -99,7 +99,7 @@ def test_derived_operation_inventory_matches_pinned_source():
         }
         for name, operation in OPERATIONS.items()
     ]
-    assert len(current) == 76
+    assert len(current) == 78
     assert current == [
         {
             "id": op["operationId"],

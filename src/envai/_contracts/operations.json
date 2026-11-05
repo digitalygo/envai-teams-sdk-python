@@ -191,6 +191,66 @@
     "stream": false,
     "public": true
   },
+  "classifyChoice": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/classify-choice",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChoiceClassificationRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChoiceClassificationResult"
+    },
+    "response_type": "ChoiceClassificationResult",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "startIndependentJob": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/jobs",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/IndependentJobRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/IndependentJobReceipt"
+    },
+    "response_type": "IndependentJobReceipt",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
   "sendChatMessage": {
     "method": "POST",
     "path": "/atp/v3/chats/{chat_id}/messages",

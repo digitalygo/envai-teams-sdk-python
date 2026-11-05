@@ -49,6 +49,12 @@ def _task_identity(task: models.DetachedTaskSnapshot, task_id: str) -> None:
         raise ProtocolError("Task lookup returned a different task")
 
 
+def _independent_identity(task: models.DetachedTaskSnapshot, chat_id: str, task_id: str) -> None:
+    _task_identity(task, task_id)
+    if task.origin_turn_id != "" or task.target_chat_id != chat_id:
+        raise ProtocolError("Independent job snapshot changed execution identity")
+
+
 def _safe_replay(events: list[Event], turn_id: str) -> list[Event]:
     """Inspect the complete replay before exposing requests to any consumer."""
     selected = [event for event in events if event.turn_id == turn_id]
@@ -109,6 +115,29 @@ class ChatsService(generated.ChatsService):
             else:
                 time.sleep(min(poll_interval, max(0, deadline - time.monotonic())))
         raise TransportError("Task wait timed out; outcome remains unknown")
+
+    def wait_for_independent_job(
+        self, chat_id: str, task_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> models.DetachedTaskSnapshot:
+        """Read final job output; keep this chat's client-tool SSE open separately."""
+        _poll_bounds(timeout, poll_interval)
+        if not self._client.native_tasks:
+            raise CompatibilityError("Independent jobs require native_tasks=True")
+        deadline = time.monotonic() + timeout
+        options = RequestOptions(deadline=deadline, cancel=cancel)
+        if "independent_jobs" not in self._client.capabilities.get(request_options=options).features:
+            raise CompatibilityError("Server does not advertise independent_jobs")
+        while True:
+            task = self.get_task(chat_id, task_id, request_options=options)
+            _independent_identity(task, chat_id, task_id)
+            if task.status in TASK_TERMINAL_STATES:
+                return task
+            if cancel is not None:
+                cancel.wait(min(poll_interval, max(0, deadline-time.monotonic())))
+                check_cancel(options)
+            else:
+                time.sleep(min(poll_interval, max(0, deadline-time.monotonic())))
 
     def events(self, chat_id: str, **options: Any) -> EventStream:
         return EventStream(self._client, chat_id, **options)
@@ -233,6 +262,25 @@ class AsyncChatsService(generated.AsyncChatsService):
             while True:
                 task = await self.get_task(chat_id, task_id, request_options=options)
                 _task_identity(task, task_id)
+                if task.status in TASK_TERMINAL_STATES:
+                    return task
+                await poll_sleep(poll_interval, options)
+
+    async def wait_for_independent_job(
+        self, chat_id: str, task_id: str, *, timeout: float = 120,
+        poll_interval: float = 1, cancel: threading.Event | None = None,
+    ) -> models.DetachedTaskSnapshot:
+        """Read final job output without resubmitting admission or classification."""
+        _poll_bounds(timeout, poll_interval)
+        if not self._client.native_tasks:
+            raise CompatibilityError("Independent jobs require native_tasks=True")
+        options = RequestOptions(deadline=time.monotonic()+timeout, cancel=cancel)
+        async with asyncio.timeout(timeout):
+            if "independent_jobs" not in (await self._client.capabilities.get(request_options=options)).features:
+                raise CompatibilityError("Server does not advertise independent_jobs")
+            while True:
+                task = await self.get_task(chat_id, task_id, request_options=options)
+                _independent_identity(task, chat_id, task_id)
                 if task.status in TASK_TERMINAL_STATES:
                     return task
                 await poll_sleep(poll_interval, options)
