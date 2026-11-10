@@ -318,6 +318,827 @@ class WikiOperationEventPhases(Model):
     outbox: Union[PhaseResult, None] = Field(default=None)
 
 
+class AuthUser(Model):
+    id: str
+    name: str
+    email: str
+    email_verified: bool
+    email_verified_at: Union[str, None]
+    is_super_admin: bool
+
+
+class AuthUserResource(Model):
+    data: AuthUser
+
+
+class EmailVerificationResource(Model):
+    data: EmailVerificationResourceData
+
+
+class EmailVerificationResourceData(Model):
+    email_verified: Literal[True]
+
+
+class AuthUserCollection(Model):
+    data: list[AuthUser]
+    links: AuthUserCollectionLinks
+    meta: AuthUserCollectionMeta
+
+
+class AuthUserCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class AuthUserCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class CsrfResource(Model):
+    data: CsrfResourceData
+
+
+class CsrfResourceData(Model):
+    csrf_token: str
+
+
+class MessageResource(Model):
+    data: MessageResourceData
+
+
+class MessageResourceData(Model):
+    message: str
+
+
+class LoginRequest(Model):
+    email: str
+    password: str
+
+
+class RegisterRequest(Model):
+    name: str
+    email: str
+    password: str
+    company_name: str
+
+
+class RegisterFromInvitationRequest(Model):
+    token: str = Field(repr=False)
+    name: str
+    email: str
+    password: str
+
+
+class ForgotPasswordRequest(Model):
+    email: str
+
+
+class ResetPasswordRequest(Model):
+    token: str = Field(repr=False)
+    email: str
+    password: str
+
+
+class ResolveInvitationRequest(Model):
+    token: str = Field(repr=False)
+
+
+class InvitationResolution(Model):
+    email: str
+    account_exists: bool
+
+
+class InvitationResolutionResource(Model):
+    data: InvitationResolution
+
+
+class AcceptInvitationRequest(Model):
+    token: str = Field(repr=False)
+
+
+class PlatformRoleUpdateRequest(Model):
+    is_super_admin: bool
+
+
+class Company(Model):
+    id: str
+    name: str
+    created_by_user_id: Union[str, None]
+    role: Literal['user', 'admin', None]
+    created_at: str
+    updated_at: str
+
+
+class CompanyResource(Model):
+    data: Company
+
+
+class CompanyCollection(Model):
+    data: list[Company]
+    links: CompanyCollectionLinks
+    meta: CompanyCollectionMeta
+
+
+class CompanyCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class CompanyCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class CompanyCreateRequest(Model):
+    name: str
+
+
+class CompanyUpdateRequest(Model):
+    name: str
+
+
+class CompanyMember(Model):
+    id: str
+    company_id: str
+    user_id: str
+    name: Union[str, None]
+    email: Union[str, None]
+    role: Literal['user', 'admin']
+    created_at: str
+    updated_at: str
+
+
+class CompanyMemberResource(Model):
+    data: CompanyMember
+
+
+class CompanyMemberCollection(Model):
+    data: list[CompanyMember]
+    links: CompanyMemberCollectionLinks
+    meta: CompanyMemberCollectionMeta
+
+
+class CompanyMemberCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class CompanyMemberCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class CompanyMemberRoleUpdateRequest(Model):
+    role: Literal['user', 'admin']
+
+
+class CompanyInvitation(Model):
+    id: str
+    company_id: str
+    email: str
+    role: Literal['user', 'admin']
+    status: Literal['pending', 'accepted', 'revoked', 'expired']
+    expires_at: Union[str, None]
+    accepted_user_id: Union[str, None]
+    accepted_at: Union[str, None]
+    invited_by_user_id: Union[str, None]
+    created_at: str
+    updated_at: str
+
+
+class CompanyInvitationResource(Model):
+    data: CompanyInvitation
+
+
+class CompanyInvitationCollection(Model):
+    data: list[CompanyInvitation]
+    links: CompanyInvitationCollectionLinks
+    meta: CompanyInvitationCollectionMeta
+
+
+class CompanyInvitationCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class CompanyInvitationCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class CompanyInvitationCreateRequest(Model):
+    email: str
+    role: Literal['user', 'admin']
+
+
+class Project(Model):
+    id: str
+    company_id: str
+    name: str
+    description: Union[str, None]
+    created_at: str
+    updated_at: str
+
+
+class ProjectResource(Model):
+    data: Project
+
+
+class ProjectCollection(Model):
+    data: list[Project]
+    links: ProjectCollectionLinks
+    meta: ProjectCollectionMeta
+
+
+class ProjectCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class ProjectCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class ProjectCreateRequest(Model):
+    name: str
+    description: Union[Union[str, None], None] = Field(default=None)
+
+
+class ProjectUpdateRequest(Model):
+    name: str
+    description: Union[Union[str, None], None] = Field(default=None)
+
+
+class BillingWallet(Model):
+    company_id: str
+    currency: Literal['EUR']
+    balance: Union[str, None]
+    reserved: Union[str, None]
+    available: Union[str, None]
+    revision: int
+    enabled: bool
+    payments_configured: bool
+    payment_method_configured: bool
+    financial_state: Union[Literal['normal', 'review_required', None], None] = Field(default=None)
+    financial_review_reason: Union[Union[str, None], None] = Field(default=None)
+    auto_recharge: BillingAutoRecharge
+    capability: Union[BillingWalletCapability, None] = Field(default=None)
+
+
+class BillingWalletCapability(Model):
+    configured: Union[bool, None] = Field(default=None)
+    reason: Union[str, None] = Field(default=None)
+    version: Union[str, None] = Field(default=None)
+
+
+class BillingWalletResource(Model):
+    data: BillingWallet
+
+
+class BillingTransaction(Model):
+    id: str
+    kind: Literal['consumption', 'consumption_adjustment', 'topup_credit', 'topup_reversal', 'adjustment']
+    amount: str
+    currency: Literal['EUR']
+    status: str
+    created_at: str
+    credit_amount: Union[str, None] = Field(default=None)
+    amount_paid: Union[Union[str, None], None] = Field(default=None)
+    tax_amount: Union[Union[str, None], None] = Field(default=None)
+
+
+class BillingTransactionCollection(Model):
+    data: list[BillingTransaction]
+    links: BillingTransactionCollectionLinks
+    meta: BillingTransactionCollectionMeta
+
+
+class BillingTransactionCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class BillingTransactionCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class BillingTopupQuoteRequest(Model):
+    credit_amount: str
+
+
+class BillingTopupQuote(Model):
+    credit_amount: str
+    amount_before_tax: str
+    currency: Literal['EUR']
+    quote_version: str
+    tax_status: str
+
+
+class BillingTopupQuoteResource(Model):
+    data: BillingTopupQuote
+
+
+class BillingTopupRequest(Model):
+    credit_amount: str
+    quote_version: str
+    consent_version: Union[Union[str, None], None] = Field(default=None)
+
+
+class BillingTopupCheckout(Model):
+    topup_id: str
+    checkout_url: str
+    credit_amount: str
+    amount_before_tax: str
+    currency: Literal['EUR']
+    quote_version: str
+    tax_status: str
+
+
+class BillingTopupCheckoutResource(Model):
+    data: BillingTopupCheckout
+
+
+class BillingPaymentMethodSetupRequest(Model):
+    consent_version: str
+
+
+class BillingPaymentMethodSetup(Model):
+    setup_id: str
+    checkout_url: str
+    consent_version: str
+
+
+class BillingPaymentMethodSetupResource(Model):
+    data: BillingPaymentMethodSetup
+
+
+class BillingAutoRechargeUpdateRequest(Model):
+    enabled: bool
+    amount: Union[Union[str, None], None] = Field(default=None)
+    threshold: Union[Union[str, None], None] = Field(default=None)
+    consent_version: Union[Union[str, None], None] = Field(default=None)
+
+
+class BillingAutoRecharge(Model):
+    enabled: bool
+    amount: str
+    threshold: str
+    state: Literal['disabled', 'idle', 'armed', 'submitting', 'pending', 'unknown']
+    consent_version: Union[str, None]
+
+
+class BillingAutoRechargeResource(Model):
+    data: BillingAutoRecharge
+
+
+class BillingSpendLimitReset(Model):
+    unit: Literal['hour', 'day', 'week', 'month']
+    every: int
+    anchor_at: str
+    timezone: str
+
+
+class BillingSpendPeriod(Model):
+    starts_at: str
+    ends_at: Union[str, None]
+    spent: str
+    reserved: str
+    remaining: Union[str, None]
+    reset_version: int
+
+
+class BillingSpendLimit(Model):
+    scope: Literal['project', 'api_key']
+    scope_id: str
+    project_id: str
+    api_key_id: Union[str, None]
+    amount: Union[str, None]
+    reset: Union[BillingSpendLimitReset, None]
+    period: Union[BillingSpendPeriod, None]
+    can_manage: bool
+
+
+class BillingSpendLimitResource(Model):
+    data: BillingSpendLimit
+
+
+class BillingSpendLimitUpdateRequest(Model):
+    amount: Union[str, None]
+    reset: Union[BillingSpendLimitReset, None]
+
+
+class BillingWebhookOk(Model):
+    status: Literal['ok']
+
+
+class BillingError(Model):
+    error: BillingErrorError
+
+
+class BillingErrorError(Model):
+    type: Literal['billing_error']
+    code: str
+    message: Union[str, None] = Field(default=None)
+
+
+class ProjectMember(Model):
+    id: str
+    company_id: str
+    project_id: str
+    user_id: str
+    name: Union[str, None]
+    email: Union[str, None]
+    created_at: str
+    updated_at: str
+
+
+class ProjectMemberResource(Model):
+    data: ProjectMember
+
+
+class ProjectMemberCollection(Model):
+    data: list[ProjectMember]
+    links: ProjectMemberCollectionLinks
+    meta: ProjectMemberCollectionMeta
+
+
+class ProjectMemberCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class ProjectMemberCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class CleanupIntentState(Model):
+    id: str
+    kind: str
+    status: Literal['pending', 'processing', 'completed', 'failed']
+    attempts: int
+    deadline_at: Union[str, None]
+    started_at: Union[str, None]
+    finished_at: Union[str, None]
+    last_error_code: Union[str, None]
+
+
+class CleanupResult(Model):
+    resource_type: Literal['workspace', 'chat', 'project', 'company']
+    resource_id: str
+    cleanup: list[CleanupIntentState]
+
+
+class CleanupResource(Model):
+    data: CleanupResult
+
+
+class UsageMoney(Model):
+    currency: str
+    amount: str
+
+
+class UsageKeyBreakdown(Model):
+    api_key_id: str
+    totals: list[UsageMoney]
+    invocation_count: int
+    unknown_invocations: int
+    not_submitted_invocations: int
+    completion_count: int
+    unknown_currency_observations: int
+
+
+class UsageProjectBreakdown(Model):
+    project_id: str
+    totals: list[UsageMoney]
+    invocation_count: int
+    unknown_invocations: int
+    not_submitted_invocations: int
+    completion_count: int
+    media: UsageMediaTotals
+
+
+class UsageMediaTotals(Model):
+    totals: list[UsageMoney]
+    priced_observations: int
+    unknown_observations: int
+    unknown_currency_observations: int
+    by_api_key: list[UsageKeyBreakdown]
+
+
+class UsageReportDay(Model):
+    date: str
+    totals: list[UsageMoney]
+    invocation_count: int
+    unknown_invocations: int
+    not_submitted_invocations: int
+    completion_count: int
+    by_api_key: list[UsageKeyBreakdown]
+    media: UsageMediaTotals
+    by_project: Union[list[UsageProjectBreakdown], None]
+
+
+class UsageReportCollection(Model):
+    data: list[UsageReportDay]
+    links: UsageReportCollectionLinks
+    meta: UsageReportCollectionMeta
+
+
+class UsageReportCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class UsageReportCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class ProjectLogEntry(Model):
+    id: str
+    project_id: str
+    api_key_id: Union[str, None]
+    actor_api_key_id: Union[str, None]
+    chat_id: str
+    workspace_id: str
+    seq: int
+    turn_id: Union[str, None]
+    type: str
+    ts: str
+    agent: dict[str, Any]
+    data: dict[str, Any]
+
+
+class ProjectLogCollection(Model):
+    data: list[ProjectLogEntry]
+    links: ProjectLogCollectionLinks
+    meta: ProjectLogCollectionMeta
+
+
+class ProjectLogCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class ProjectLogCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
+class InternalWikiDispatchRequest(Model):
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    actor: InternalWikiDispatchRequestActor
+    action: str
+    arguments: Any
+
+
+class InternalWikiDispatchRequestActor(Model):
+    operation_id: str
+    claim_token: str
+    fence: int
+    phase: Union[Literal['inbox', 'outbox'], None] = Field(default=None)
+    turn_id: Union[str, None] = Field(default=None)
+    chat_id: Union[str, None] = Field(default=None)
+    file_id: Union[str, None] = Field(default=None)
+    attempt_id: Union[str, None] = Field(default=None)
+    attempt_fence: Union[int, None] = Field(default=None)
+
+
+class InternalDispatchResponse(Model):
+    data: dict[str, Any]
+
+
+class InternalAttachmentResolveRequest(Model):
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    chat_id: str
+    message: str
+    idempotency_key: str
+    attachment_ids: list[str]
+
+
+class InternalAttachmentResolveResource(Model):
+    data: InternalAttachmentResolveResourceData
+
+
+class InternalAttachmentResolveResourceData(Model):
+    project_id: str
+    api_key_id: str
+    input_id: str
+    turn_id: str
+    message: str
+    prepared_input: str
+    manifest: list[InternalAttachmentManifest]
+    accepted: bool
+
+
+class InternalAttachmentManifest(Model):
+    attachment_id: str
+    original_name: str
+    revision: int
+    sha256: str
+    bytes: int
+    conversion: AttachmentConversion
+
+
+class InternalBillingToolLimits(Model):
+    max_powered_ms: int
+    cleanup_grace_ms: Literal[5000]
+
+
+class InternalBillingLlmRates(Model):
+    prompt: str = Field(repr=False)
+    completion: str
+    request: str
+
+
+class InternalBillingReservation(Model):
+    reservation_id: str
+    max_amount: str
+    currency: Literal['EUR']
+    max_tokens: int
+    max_price: Union[InternalBillingLlmRates, dict[str, Any]]
+    tool_limits: Union[InternalBillingToolLimits, None] = Field(default=None)
+    status: Literal['held']
+
+
+class InternalBillingReservationResource(Model):
+    data: InternalBillingReservation
+
+
+class InternalBillingAdmissionRequest(Model):
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    chat_id: str
+
+
+class InternalBillingReserveRequest(Model):
+    invocation_id: str
+    owner_token: str
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    chat_id: Union[Union[str, None], None] = Field(default=None)
+    origin_type: Literal['turn', 'wiki_operation', 'upload', 'classification']
+    origin_id: str
+    claim_token: Union[Union[str, None], None] = Field(default=None)
+    claim_fence: Union[Union[int, None], None] = Field(default=None)
+    purpose: Union[str, None] = Field(default=None)
+    operation: Union[str, None] = Field(default=None)
+
+
+class InternalBillingSettleRequest(Model):
+    invocation_id: str
+    owner_token: str
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    chat_id: Union[Union[str, None], None] = Field(default=None)
+    origin_type: Literal['turn', 'wiki_operation', 'upload', 'classification']
+    origin_id: str
+    claim_token: Union[Union[str, None], None] = Field(default=None)
+    claim_fence: Union[Union[int, None], None] = Field(default=None)
+    purpose: Union[str, None] = Field(default=None)
+    operation: Union[str, None] = Field(default=None)
+    observation_id: Union[Union[str, None], None] = Field(default=None)
+
+
+class InternalBillingReleaseRequest(Model):
+    invocation_id: str
+    owner_token: str
+    project_id: str
+    api_key_id: str
+    workspace_id: str
+    chat_id: Union[Union[str, None], None] = Field(default=None)
+    origin_type: Literal['turn', 'wiki_operation', 'upload', 'classification']
+    origin_id: str
+    claim_token: Union[Union[str, None], None] = Field(default=None)
+    claim_fence: Union[Union[int, None], None] = Field(default=None)
+    purpose: Union[str, None] = Field(default=None)
+    operation: Union[str, None] = Field(default=None)
+
+
+class InternalBillingAdmissionResource(Model):
+    data: InternalBillingAdmissionResourceData
+
+
+class InternalBillingAdmissionResourceData(Model):
+    allowed: Literal[True]
+
+
+class InternalBillingSettleResource(Model):
+    data: InternalBillingSettleResourceData
+
+
+class InternalBillingSettleResourceData(Model):
+    reservation_id: str
+    status: Literal['settled', 'unknown']
+    notices: list[InternalBillingNotice]
+
+
+class InternalBillingReleaseResource(Model):
+    data: InternalBillingReleaseResourceData
+
+
+class InternalBillingReleaseResourceData(Model):
+    reservation_id: str
+    status: Literal['released']
+
+
+class InternalBillingCompanyNotice(Model):
+    id: str
+    type: Literal['billing.credit_exhausted']
+    reason: str
+    scope: Literal['company']
+    currency: Literal['EUR']
+
+
+class InternalBillingScopedNotice(Model):
+    id: str
+    type: Literal['billing.limit_reached']
+    reason: str
+    scope: Literal['project', 'api_key']
+    currency: Literal['EUR']
+    amount: str
+    remaining: str
+    reset_at: Union[Union[str, None], None] = Field(default=None)
+
+
+class InternalBillingError(Model):
+    error: InternalBillingErrorError
+
+
+class InternalBillingErrorError(Model):
+    type: Literal['billing_error']
+    code: str
+    details: Union[None, InternalBillingErrorErrorDetails1]
+
+
+class InternalBillingErrorErrorDetails1(Model):
+    notice: InternalBillingNotice
+
+
 class Error(Model):
     error: ErrorError
 
@@ -327,6 +1148,16 @@ class ErrorError(Model):
     code: Union[Union[str, None], None] = Field(default=None)
     message: str
     details: Union[Union[dict[str, Any], None], None] = Field(default=None)
+
+
+class ChatCronConflictError(Model):
+    error: ChatCronConflictErrorError
+
+
+class ChatCronConflictErrorError(Model):
+    type: Literal['cron_not_active', 'cron_schedule_invalid']
+    code: Literal['cron_not_active', 'cron_schedule_invalid']
+    message: Literal['The cron request could not be completed.']
 
 
 class AttachmentManifest(Model):
@@ -472,7 +1303,8 @@ class Capabilities(Model):
 
 class Workspace(Model):
     id: str
-    user_id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     metadata: WorkspaceMetadata
     created_at: str
@@ -497,7 +1329,7 @@ class WorkspaceUpdateRequest(Model):
     metadata: Union[WorkspaceMetadata, None] = Field(default=None)
 
 
-class UserTool(Model):
+class ProjectTool(Model):
     id: str
     name: str
     kind: Literal['client']
@@ -508,40 +1340,72 @@ class UserTool(Model):
     updated_at: str
 
 
-class UserToolResource(Model):
-    data: UserTool
+class ProjectToolResource(Model):
+    data: ProjectTool
 
 
-class UserToolCollection(Model):
-    data: list[UserTool]
+class ProjectToolCollection(Model):
+    data: list[ProjectTool]
 
 
-class UserToolCreateRequest(Model):
+class ProjectToolCreateRequest(Model):
     name: str
     kind: Union[Literal['client'], None] = Field(default=None)
     description: Union[Union[str, None], None] = Field(default=None)
-    parameters: UserToolCreateRequestParameters
+    parameters: ProjectToolCreateRequestParameters
     timeout_seconds: Union[int, None] = Field(default=None)
 
 
-class UserToolCreateRequestParameters(Model):
+class ProjectToolCreateRequestParameters(Model):
     type: Literal['object']
 
 
-class UserToolUpdateRequest(Model):
+class ProjectToolUpdateRequest(Model):
     description: Union[Union[str, None], None] = Field(default=None)
-    parameters: Union[UserToolUpdateRequestParameters, None] = Field(default=None)
+    parameters: Union[ProjectToolUpdateRequestParameters, None] = Field(default=None)
     timeout_seconds: Union[int, None] = Field(default=None)
 
 
-class UserToolUpdateRequestParameters(Model):
+class ProjectToolUpdateRequestParameters(Model):
     type: Literal['object']
+
+
+class ProjectSkill(Model):
+    id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
+    name: str
+    description: Union[str, None]
+    content: str = Field(repr=False)
+    created_at: str
+    updated_at: str
+
+
+class ProjectSkillResource(Model):
+    data: ProjectSkill
+
+
+class ProjectSkillCollection(Model):
+    data: list[ProjectSkill]
+
+
+class ProjectSkillCreateRequest(Model):
+    name: str
+    description: Union[Union[str, None], None] = Field(default=None)
+    content: str = Field(repr=False)
+
+
+class ProjectSkillUpdateRequest(Model):
+    name: Union[str, None] = Field(default=None)
+    description: Union[Union[str, None], None] = Field(default=None)
+    content: Union[str, None] = Field(default=None, repr=False)
 
 
 class Chat(Model):
     id: str
     workspace_id: str
-    user_id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     team_id: str
     title: Union[str, None]
     created_at: str
@@ -560,12 +1424,80 @@ class ChatCreateRequest(Model):
     team_id: str
 
 
+class ChatCron(Model):
+    id: str
+    workspace_id: str
+    origin_chat_id: str
+    team_id: str
+    target_mode: Literal['same_chat', 'new_chat']
+    prompt: str = Field(repr=False)
+    interval_minutes: Union[int, None]
+    daily_at: Union[str, None]
+    timezone: Union[str, None]
+    start_at: Union[str, None]
+    repeat_count: Union[int, None]
+    until: Union[str, None]
+    status: Literal['active', 'completed']
+    scheduled_count: int
+    delivery_count: int
+    next_due_at: Union[str, None]
+    max_until: str
+    created_at: str
+    updated_at: str
+
+
+class ChatCronResource(Model):
+    data: ChatCron
+
+
+class ChatCronCollection(Model):
+    data: list[ChatCron]
+
+
+class ChatCronUpdateRequest(Model):
+    target_mode: Union[Literal['same_chat', 'new_chat'], None] = Field(default=None)
+    prompt: Union[str, None] = Field(default=None, repr=False)
+    interval_minutes: Union[Union[int, None], None] = Field(default=None)
+    daily_at: Union[Union[str, None], None] = Field(default=None)
+    timezone: Union[Union[str, None], None] = Field(default=None)
+    start_at: Union[Union[str, None], None] = Field(default=None)
+    repeat_count: Union[Union[int, None], None] = Field(default=None)
+    until: Union[Union[str, None], None] = Field(default=None)
+
+
+class ChatCronToolCreateArguments(Model):
+    action: Literal['create']
+    prompt: str = Field(repr=False)
+    target_mode: Union[Literal['same_chat', 'new_chat'], None] = Field(default=None)
+    interval_minutes: Union[int, None] = Field(default=None)
+    daily_at: Union[str, None] = Field(default=None)
+    timezone: Union[str, None] = Field(default=None)
+    start_at: Union[str, None] = Field(default=None)
+    repeat_count: Union[int, None] = Field(default=None)
+    until: Union[str, None] = Field(default=None)
+
+
+class ChatCronToolListArguments(Model):
+    action: Literal['list']
+
+
+class ChatCronToolCancelArguments(Model):
+    action: Literal['cancel']
+    cron_id: str
+
+
+class ChatUpdateRequest(Model):
+    title: Union[Union[str, None], None] = Field(default=None)
+
+
 class Completion(Model):
     id: str
     workspace_id: str
     chat_id: str
     team_id: str
-    user_id: str
+    project_id: str
+    api_key_id: str
+    user_id: Union[str, None]
     model_orchestrator: Union[Union[str, None], None] = Field(default=None)
     models_subagents: list[str]
     started_at: str
@@ -618,7 +1550,8 @@ class CompletionCollectionMeta(Model):
 
 class Agent(Model):
     id: str
-    user_id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     description: Union[str, None]
     system_prompt: str
@@ -676,7 +1609,8 @@ class AgentTool(Model):
 
 class Team(Model):
     id: str
-    user_id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     description: Union[str, None]
     orchestrator_id: str
@@ -721,6 +1655,8 @@ class TeamMemberCreateRequest(Model):
 
 class ApiKey(Model):
     id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     scopes: list[Literal['completions:write']]
     expires_at: Union[str, None]
@@ -734,6 +1670,8 @@ class ApiKeyCreated(Model):
 
 class ApiKeyCreatedData(Model):
     id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     scopes: list[Literal['completions:write']]
     expires_at: Union[str, None]
@@ -749,7 +1687,8 @@ class ApiKeyCollection(Model):
 class ApiKeyCreate(Model):
     name: str
     scopes: Union[list[Literal['completions:write']], None] = Field(default=None)
-    expires_at: Union[Literal['30d', '90d', '1y', 'never'], None] = Field(default=None)
+    expires_at: Union[Literal['1h', '30d', '90d', '1y', 'never'], None] = Field(default=None)
+    spend_limit: Union[BillingSpendLimitUpdateRequest, None] = Field(default=None)
 
 
 class JwksDocument(Model):
@@ -1074,6 +2013,162 @@ class CapabilitiesLegacy(Model):
     features: list[Literal['replay', 'fork', 'restore', 'ping', 'background_delegation', 'client_tools', 'chat_title']]
 
 
+class ActivityDurationBucket(Model):
+    lower_ms: float
+    upper_ms: Union[float, None]
+    count: int
+
+
+class ActivityDurationDistribution(Model):
+    candidate_count: int
+    sample_count: int
+    missing_count: int
+    invalid_count: int
+    zero_count: int
+    min_ms: Union[float, None]
+    max_ms: Union[float, None]
+    avg_ms: Union[float, None]
+    p50_ms: Union[float, None]
+    p95_ms: Union[float, None]
+    buckets: list[ActivityDurationBucket]
+
+
+class ActivityDailyCounts(Model):
+    date: str
+    event_count: int
+    tool_start_count: int
+    file_read_start_count: int
+    turn_failure_count: int
+    agent_failure_count: int
+    tool_failure_count: int
+
+
+class ActivityEventTypeGroups(Model):
+    items: list[ActivityEventTypeGroupsItemsItem]
+    other_count: int
+    omitted_group_count: int
+
+
+class ActivityEventTypeGroupsItemsItem(Model):
+    type: str
+    count: int
+
+
+class ActivityToolGroups(Model):
+    items: list[ActivityToolGroupsItemsItem]
+    other_count: int
+    omitted_group_count: int
+    missing_name_count: int
+
+
+class ActivityToolGroupsItemsItem(Model):
+    tool_name: str
+    kind: Union[str, None]
+    count: int
+
+
+class ProjectActivityAnalytics(Model):
+    window: ProjectActivityAnalyticsWindow
+    coverage: ProjectActivityAnalyticsCoverage
+    daily: list[ActivityDailyCounts]
+    event_types: ActivityEventTypeGroups
+    tools: ActivityToolGroups
+    failures: ProjectActivityAnalyticsFailures
+    durations: ProjectActivityAnalyticsDurations
+    file_reads: list[ProjectActivityAnalyticsFileReadsItem]
+
+
+class ProjectActivityAnalyticsWindow(Model):
+    from_: str = Field(alias='from')
+    to: str
+    timezone: Literal['UTC']
+    api_key_id: Union[str, None]
+    chat_id: Union[str, None]
+
+
+class ProjectActivityAnalyticsCoverage(Model):
+    source: Literal['retained_chat_events']
+    aggregation: Literal['all_retained_matching_rows']
+    execution_history_complete: Literal[False]
+    configured_retention_days: int
+    observed_event_count: int
+    oldest_observed_at: Union[str, None]
+    newest_observed_at: Union[str, None]
+
+
+class ProjectActivityAnalyticsFailures(Model):
+    turn_event_count: int
+    agent_event_count: int
+    tool_event_count: int
+    tool_result_unknown_status_count: int
+
+
+class ProjectActivityAnalyticsDurations(Model):
+    tool_execution: ActivityDurationDistribution
+    turn_execution: ActivityDurationDistribution
+
+
+class ProjectActivityAnalyticsFileReadsItem(Model):
+    tool_name: Literal['read', 'wiki_read', 'skill_read', 'wiki_read_source', 'wiki_read_artifact']
+    count: int
+
+
+class ProjectActivityAnalyticsResource(Model):
+    data: ProjectActivityAnalytics
+
+
+class LegacyCompletion(Model):
+    id: str
+    workspace_id: str
+    chat_id: str
+    team_id: str
+    user_id: str
+    model_orchestrator: Union[Union[str, None], None] = Field(default=None)
+    models_subagents: list[str]
+    started_at: str
+    finished_at: Union[Union[str, None], None] = Field(default=None)
+    duration_ms: Union[Union[int, None], None] = Field(default=None)
+    usage: LegacyCompletionUsage
+    cost_usd: float
+    status: Literal['running', 'succeeded', 'failed', 'canceled']
+    finish_reason: Union[Literal['stop', 'error', 'canceled', None], None] = Field(default=None)
+    content_hash: Union[Union[str, None], None] = Field(default=None)
+    created_at: str
+    updated_at: str
+    billing: Union[BillingState, None] = Field(default=None)
+    usage_cost: Union[UsageCost, None] = Field(default=None)
+    terminal_snapshot: Union[Union[CompletionTerminalSnapshot, None], None] = Field(default=None)
+
+
+class LegacyCompletionUsage(Model):
+    prompt_tokens: Union[int, None] = Field(default=None)
+    completion_tokens: Union[int, None] = Field(default=None)
+    sprite_cpu_ms: Union[int, None] = Field(default=None)
+    sprite_ram_gb_ms: Union[int, None] = Field(default=None)
+
+
+class LegacyCompletionCollection(Model):
+    data: list[LegacyCompletion]
+    links: LegacyCompletionCollectionLinks
+    meta: LegacyCompletionCollectionMeta
+
+
+class LegacyCompletionCollectionLinks(Model):
+    first: Union[Union[str, None], None] = Field(default=None)
+    last: Union[Union[str, None], None] = Field(default=None)
+    prev: Union[Union[str, None], None] = Field(default=None)
+    next: Union[Union[str, None], None] = Field(default=None)
+
+
+class LegacyCompletionCollectionMeta(Model):
+    current_page: Union[int, None] = Field(default=None)
+    from_: Union[Union[int, None], None] = Field(default=None, alias='from')
+    last_page: Union[int, None] = Field(default=None)
+    per_page: Union[int, None] = Field(default=None)
+    to: Union[Union[int, None], None] = Field(default=None)
+    total: Union[int, None] = Field(default=None)
+
+
 class ATPAgent(Model):
     instance_id: str
     name: str
@@ -1101,6 +2196,7 @@ class ATPChatTitleUpdated(Model):
 class ATPTurnStarted(Model):
     turn_id: str
     input: str
+    source: Union[Literal['user', 'cron'], None] = Field(default=None)
     attachments: Union[list[ATPChatattachmentmanifestevent], None] = Field(default=None)
 
 
@@ -1371,6 +2467,31 @@ class ATPChatDeliveryDelivered(Model):
     delivery_turn_id: str
 
 
+class ATPChatCronWakeup(Model):
+    cron_id: str
+    occurrence_id: str
+    scheduled_at: str
+    delivered_at: str
+    prompt: str = Field(repr=False)
+    target_mode: Literal['same_chat', 'new_chat']
+    dispatch_mode: Literal['turn_started', 'turn_injected']
+
+
+class ATPBillingLimit_Reached(Model):
+    reason: Literal['limit_reached', 'limit_insufficient', 'limit_reserved']
+    scope: Literal['project', 'api_key']
+    currency: str
+    reset_at: Union[Union[str, None], None] = Field(default=None)
+    amount: Union[str, None] = Field(default=None)
+    remaining: Union[str, None] = Field(default=None)
+
+
+class ATPBillingCredit_Exhausted(Model):
+    reason: Literal['financial_review_required', 'credit_exhausted', 'credit_reserved', 'credit_insufficient', 'credit_unavailable']
+    scope: Literal['company']
+    currency: str
+
+
 class CancelDetachedTaskResponse(Model):
     task_id: str
     status: Literal['cancelled']
@@ -1390,6 +2511,8 @@ class HealthCheckResponseData(Model):
 
 class CreateApiKeyResponse(Model):
     id: str
+    project_id: str
+    created_by_user_id: Union[str, None]
     name: str
     scopes: list[Literal['completions:write']]
     expires_at: Union[str, None]
@@ -1431,7 +2554,9 @@ class CreateWikiSyncRunBody(Model):
     webhook_url: str
 
 WikiWebhookEvent = Union[WikiFileProcessedEvent, WikiFileDeletedEvent, WikiOperationEvent]
+InternalBillingNotice = Union[InternalBillingCompanyNotice, InternalBillingScopedNotice]
 WorkspaceMetadata = Union[dict[str, Any], list[Any]]
+ChatCronToolArguments = Union[ChatCronToolCreateArguments, ChatCronToolListArguments, ChatCronToolCancelArguments]
 ModelListEntry = Union[LlmModelEntry, TeamModelEntry]
 OpenRouterPricing = Union[dict[str, Union[str, float, list[Any], dict[str, Any]]], None]
 OpenRouterArchitecture = Union[OpenRouterArchitectureValue, None]
@@ -1478,8 +2603,130 @@ WikiFileProcessedEvent.model_rebuild()
 WikiFileDeletedEvent.model_rebuild()
 WikiOperationEvent.model_rebuild()
 WikiOperationEventPhases.model_rebuild()
+AuthUser.model_rebuild()
+AuthUserResource.model_rebuild()
+EmailVerificationResource.model_rebuild()
+EmailVerificationResourceData.model_rebuild()
+AuthUserCollection.model_rebuild()
+AuthUserCollectionLinks.model_rebuild()
+AuthUserCollectionMeta.model_rebuild()
+CsrfResource.model_rebuild()
+CsrfResourceData.model_rebuild()
+MessageResource.model_rebuild()
+MessageResourceData.model_rebuild()
+LoginRequest.model_rebuild()
+RegisterRequest.model_rebuild()
+RegisterFromInvitationRequest.model_rebuild()
+ForgotPasswordRequest.model_rebuild()
+ResetPasswordRequest.model_rebuild()
+ResolveInvitationRequest.model_rebuild()
+InvitationResolution.model_rebuild()
+InvitationResolutionResource.model_rebuild()
+AcceptInvitationRequest.model_rebuild()
+PlatformRoleUpdateRequest.model_rebuild()
+Company.model_rebuild()
+CompanyResource.model_rebuild()
+CompanyCollection.model_rebuild()
+CompanyCollectionLinks.model_rebuild()
+CompanyCollectionMeta.model_rebuild()
+CompanyCreateRequest.model_rebuild()
+CompanyUpdateRequest.model_rebuild()
+CompanyMember.model_rebuild()
+CompanyMemberResource.model_rebuild()
+CompanyMemberCollection.model_rebuild()
+CompanyMemberCollectionLinks.model_rebuild()
+CompanyMemberCollectionMeta.model_rebuild()
+CompanyMemberRoleUpdateRequest.model_rebuild()
+CompanyInvitation.model_rebuild()
+CompanyInvitationResource.model_rebuild()
+CompanyInvitationCollection.model_rebuild()
+CompanyInvitationCollectionLinks.model_rebuild()
+CompanyInvitationCollectionMeta.model_rebuild()
+CompanyInvitationCreateRequest.model_rebuild()
+Project.model_rebuild()
+ProjectResource.model_rebuild()
+ProjectCollection.model_rebuild()
+ProjectCollectionLinks.model_rebuild()
+ProjectCollectionMeta.model_rebuild()
+ProjectCreateRequest.model_rebuild()
+ProjectUpdateRequest.model_rebuild()
+BillingWallet.model_rebuild()
+BillingWalletCapability.model_rebuild()
+BillingWalletResource.model_rebuild()
+BillingTransaction.model_rebuild()
+BillingTransactionCollection.model_rebuild()
+BillingTransactionCollectionLinks.model_rebuild()
+BillingTransactionCollectionMeta.model_rebuild()
+BillingTopupQuoteRequest.model_rebuild()
+BillingTopupQuote.model_rebuild()
+BillingTopupQuoteResource.model_rebuild()
+BillingTopupRequest.model_rebuild()
+BillingTopupCheckout.model_rebuild()
+BillingTopupCheckoutResource.model_rebuild()
+BillingPaymentMethodSetupRequest.model_rebuild()
+BillingPaymentMethodSetup.model_rebuild()
+BillingPaymentMethodSetupResource.model_rebuild()
+BillingAutoRechargeUpdateRequest.model_rebuild()
+BillingAutoRecharge.model_rebuild()
+BillingAutoRechargeResource.model_rebuild()
+BillingSpendLimitReset.model_rebuild()
+BillingSpendPeriod.model_rebuild()
+BillingSpendLimit.model_rebuild()
+BillingSpendLimitResource.model_rebuild()
+BillingSpendLimitUpdateRequest.model_rebuild()
+BillingWebhookOk.model_rebuild()
+BillingError.model_rebuild()
+BillingErrorError.model_rebuild()
+ProjectMember.model_rebuild()
+ProjectMemberResource.model_rebuild()
+ProjectMemberCollection.model_rebuild()
+ProjectMemberCollectionLinks.model_rebuild()
+ProjectMemberCollectionMeta.model_rebuild()
+CleanupIntentState.model_rebuild()
+CleanupResult.model_rebuild()
+CleanupResource.model_rebuild()
+UsageMoney.model_rebuild()
+UsageKeyBreakdown.model_rebuild()
+UsageProjectBreakdown.model_rebuild()
+UsageMediaTotals.model_rebuild()
+UsageReportDay.model_rebuild()
+UsageReportCollection.model_rebuild()
+UsageReportCollectionLinks.model_rebuild()
+UsageReportCollectionMeta.model_rebuild()
+ProjectLogEntry.model_rebuild()
+ProjectLogCollection.model_rebuild()
+ProjectLogCollectionLinks.model_rebuild()
+ProjectLogCollectionMeta.model_rebuild()
+InternalWikiDispatchRequest.model_rebuild()
+InternalWikiDispatchRequestActor.model_rebuild()
+InternalDispatchResponse.model_rebuild()
+InternalAttachmentResolveRequest.model_rebuild()
+InternalAttachmentResolveResource.model_rebuild()
+InternalAttachmentResolveResourceData.model_rebuild()
+InternalAttachmentManifest.model_rebuild()
+InternalBillingToolLimits.model_rebuild()
+InternalBillingLlmRates.model_rebuild()
+InternalBillingReservation.model_rebuild()
+InternalBillingReservationResource.model_rebuild()
+InternalBillingAdmissionRequest.model_rebuild()
+InternalBillingReserveRequest.model_rebuild()
+InternalBillingSettleRequest.model_rebuild()
+InternalBillingReleaseRequest.model_rebuild()
+InternalBillingAdmissionResource.model_rebuild()
+InternalBillingAdmissionResourceData.model_rebuild()
+InternalBillingSettleResource.model_rebuild()
+InternalBillingSettleResourceData.model_rebuild()
+InternalBillingReleaseResource.model_rebuild()
+InternalBillingReleaseResourceData.model_rebuild()
+InternalBillingCompanyNotice.model_rebuild()
+InternalBillingScopedNotice.model_rebuild()
+InternalBillingError.model_rebuild()
+InternalBillingErrorError.model_rebuild()
+InternalBillingErrorErrorDetails1.model_rebuild()
 Error.model_rebuild()
 ErrorError.model_rebuild()
+ChatCronConflictError.model_rebuild()
+ChatCronConflictErrorError.model_rebuild()
 AttachmentManifest.model_rebuild()
 AttachmentConversion.model_rebuild()
 ChatAttachment.model_rebuild()
@@ -1505,17 +2752,30 @@ WorkspaceResource.model_rebuild()
 WorkspaceCollection.model_rebuild()
 WorkspaceCreateRequest.model_rebuild()
 WorkspaceUpdateRequest.model_rebuild()
-UserTool.model_rebuild()
-UserToolResource.model_rebuild()
-UserToolCollection.model_rebuild()
-UserToolCreateRequest.model_rebuild()
-UserToolCreateRequestParameters.model_rebuild()
-UserToolUpdateRequest.model_rebuild()
-UserToolUpdateRequestParameters.model_rebuild()
+ProjectTool.model_rebuild()
+ProjectToolResource.model_rebuild()
+ProjectToolCollection.model_rebuild()
+ProjectToolCreateRequest.model_rebuild()
+ProjectToolCreateRequestParameters.model_rebuild()
+ProjectToolUpdateRequest.model_rebuild()
+ProjectToolUpdateRequestParameters.model_rebuild()
+ProjectSkill.model_rebuild()
+ProjectSkillResource.model_rebuild()
+ProjectSkillCollection.model_rebuild()
+ProjectSkillCreateRequest.model_rebuild()
+ProjectSkillUpdateRequest.model_rebuild()
 Chat.model_rebuild()
 ChatResource.model_rebuild()
 ChatCollection.model_rebuild()
 ChatCreateRequest.model_rebuild()
+ChatCron.model_rebuild()
+ChatCronResource.model_rebuild()
+ChatCronCollection.model_rebuild()
+ChatCronUpdateRequest.model_rebuild()
+ChatCronToolCreateArguments.model_rebuild()
+ChatCronToolListArguments.model_rebuild()
+ChatCronToolCancelArguments.model_rebuild()
+ChatUpdateRequest.model_rebuild()
 Completion.model_rebuild()
 CompletionUsage.model_rebuild()
 CompletionResource.model_rebuild()
@@ -1583,6 +2843,25 @@ ConvertToPdfRequest.model_rebuild()
 ThrottleError.model_rebuild()
 ThrottleErrorError.model_rebuild()
 CapabilitiesLegacy.model_rebuild()
+ActivityDurationBucket.model_rebuild()
+ActivityDurationDistribution.model_rebuild()
+ActivityDailyCounts.model_rebuild()
+ActivityEventTypeGroups.model_rebuild()
+ActivityEventTypeGroupsItemsItem.model_rebuild()
+ActivityToolGroups.model_rebuild()
+ActivityToolGroupsItemsItem.model_rebuild()
+ProjectActivityAnalytics.model_rebuild()
+ProjectActivityAnalyticsWindow.model_rebuild()
+ProjectActivityAnalyticsCoverage.model_rebuild()
+ProjectActivityAnalyticsFailures.model_rebuild()
+ProjectActivityAnalyticsDurations.model_rebuild()
+ProjectActivityAnalyticsFileReadsItem.model_rebuild()
+ProjectActivityAnalyticsResource.model_rebuild()
+LegacyCompletion.model_rebuild()
+LegacyCompletionUsage.model_rebuild()
+LegacyCompletionCollection.model_rebuild()
+LegacyCompletionCollectionLinks.model_rebuild()
+LegacyCompletionCollectionMeta.model_rebuild()
 ATPAgent.model_rebuild()
 ATPUsage.model_rebuild()
 ATPChatTitleUpdated.model_rebuild()
@@ -1625,6 +2904,9 @@ ATPTaskFailed.model_rebuild()
 ATPTaskCancelled.model_rebuild()
 ATPChatDeliveryQueued.model_rebuild()
 ATPChatDeliveryDelivered.model_rebuild()
+ATPChatCronWakeup.model_rebuild()
+ATPBillingLimit_Reached.model_rebuild()
+ATPBillingCredit_Exhausted.model_rebuild()
 CancelDetachedTaskResponse.model_rebuild()
 HealthCheckResponse.model_rebuild()
 HealthCheckResponseData.model_rebuild()
@@ -1636,3 +2918,8 @@ WithdrawWikiSourceBody.model_rebuild()
 CreateWikiInboxRunBody.model_rebuild()
 CreateWikiOutboxRunBody.model_rebuild()
 CreateWikiSyncRunBody.model_rebuild()
+UserTool = ProjectTool
+UserToolResource = ProjectToolResource
+UserToolCollection = ProjectToolCollection
+UserToolCreateRequest = ProjectToolCreateRequest
+UserToolUpdateRequest = ProjectToolUpdateRequest

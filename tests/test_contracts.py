@@ -89,7 +89,7 @@ def test_derived_operation_inventory_matches_pinned_source():
     ]
     assert len(operations) == 52
     assert operations == expected
-    assert {x["id"] for x in operations} <= set(OPERATIONS)
+    assert {x["id"].replace("UserTool", "ProjectTool") for x in operations} <= set(OPERATIONS)
     current = [
         {
             "id": name,
@@ -109,7 +109,7 @@ def test_derived_operation_inventory_matches_pinned_source():
         }
         for path, methods in OPENAPI["paths"].items()
         for method, op in methods.items()
-        if method in {"get", "post", "put", "patch", "delete"}
+        if method in {"get", "post", "put", "patch", "delete"} and op["operationId"] in OPERATIONS
     ]
 
 

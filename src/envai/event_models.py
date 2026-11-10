@@ -185,7 +185,22 @@ class ChatDeliveryDeliveredEvent(Event):
     type: Literal['chat.delivery.delivered']
     data: models.ATPChatDeliveryDelivered
 
-KnownEvent = Union[PingEvent, ChatTitleUpdatedEvent, TurnStartedEvent, TurnCompletedEvent, TurnCancelledEvent, TurnFailedEvent, TurnSteeredEvent, AgentStartedEvent, AgentPlanEvent, AgentTextDeltaEvent, AgentTextDoneEvent, AgentReasoningDeltaEvent, AgentReasoningDoneEvent, AgentDelegatedEvent, AgentToolStartEvent, AgentToolDeltaEvent, AgentToolCompleteEvent, AgentToolRequestEvent, AgentToolResultEvent, AgentEscalateEvent, AgentEscalationResultEvent, AgentArtifactEvent, AgentContextCompactingEvent, AgentContextCompactedEvent, AgentDoneEvent, AgentFailedEvent, ApprovalRequestEvent, ApprovalResponseEvent, ApprovalExpireEvent, TaskStartedEvent, TaskEventEvent, TaskCompletedEvent, TaskFailedEvent, TaskCancelledEvent, ChatDeliveryQueuedEvent, ChatDeliveryDeliveredEvent]
+@dataclass(frozen=True)
+class ChatCronWakeupEvent(Event):
+    type: Literal['chat.cron.wakeup']
+    data: models.ATPChatCronWakeup
+
+@dataclass(frozen=True)
+class BillingLimit_ReachedEvent(Event):
+    type: Literal['billing.limit_reached']
+    data: models.ATPBillingLimit_Reached
+
+@dataclass(frozen=True)
+class BillingCredit_ExhaustedEvent(Event):
+    type: Literal['billing.credit_exhausted']
+    data: models.ATPBillingCredit_Exhausted
+
+KnownEvent = Union[PingEvent, ChatTitleUpdatedEvent, TurnStartedEvent, TurnCompletedEvent, TurnCancelledEvent, TurnFailedEvent, TurnSteeredEvent, AgentStartedEvent, AgentPlanEvent, AgentTextDeltaEvent, AgentTextDoneEvent, AgentReasoningDeltaEvent, AgentReasoningDoneEvent, AgentDelegatedEvent, AgentToolStartEvent, AgentToolDeltaEvent, AgentToolCompleteEvent, AgentToolRequestEvent, AgentToolResultEvent, AgentEscalateEvent, AgentEscalationResultEvent, AgentArtifactEvent, AgentContextCompactingEvent, AgentContextCompactedEvent, AgentDoneEvent, AgentFailedEvent, ApprovalRequestEvent, ApprovalResponseEvent, ApprovalExpireEvent, TaskStartedEvent, TaskEventEvent, TaskCompletedEvent, TaskFailedEvent, TaskCancelledEvent, ChatDeliveryQueuedEvent, ChatDeliveryDeliveredEvent, ChatCronWakeupEvent, BillingLimit_ReachedEvent, BillingCredit_ExhaustedEvent]
 EVENT_TYPES = {
     'ping': PingEvent,
     'chat.title.updated': ChatTitleUpdatedEvent,
@@ -223,4 +238,7 @@ EVENT_TYPES = {
     'task.cancelled': TaskCancelledEvent,
     'chat.delivery.queued': ChatDeliveryQueuedEvent,
     'chat.delivery.delivered': ChatDeliveryDeliveredEvent,
+    'chat.cron.wakeup': ChatCronWakeupEvent,
+    'billing.limit_reached': BillingLimit_ReachedEvent,
+    'billing.credit_exhausted': BillingCredit_ExhaustedEvent,
 }

@@ -5,7 +5,7 @@
   "$defs": {
     "Envelope": {
       "type": "object",
-      "description": "Envelope wrapping every event on the stream. Positive `seq` values order replayable events while the chat runtime remains resident; wire-only `ping` uses `seq: 0`. `id` is the unique event id within the resident chat runtime, and `type` discriminates `data`. `turn_id` is the orchestrator completion id of the turn the event belongs to, null for `ping`. `agent` is null for `turn.*`, `ping`, and `approval.response` (which echoes the user, not an agent), and for the chat-level `chat.title.updated` event.",
+      "description": "Envelope wrapping every event on the stream. Positive `seq` values order replayable events while the chat runtime remains resident; wire-only `ping` uses `seq: 0`. `id` is the unique event id within the resident chat runtime, and `type` discriminates `data`. `turn_id` is the orchestrator completion id of the turn the event belongs to, null for `ping`. `agent` is null for `turn.*`, `ping`, `approval.response` (which echoes the user, not an agent), and the chat-level `chat.title.updated` and `chat.cron.wakeup` events.",
       "required": [
         "v",
         "id",
@@ -64,12 +64,12 @@
               "type": "null"
             }
           ],
-          "description": "The agent that produced the event. Null for `turn.*`, `ping`, `approval.response`, and the chat-level `chat.title.updated` event."
+          "description": "The agent that produced the event. Null for `turn.*`, `ping`, `approval.response`, and the chat-level `chat.title.updated` and `chat.cron.wakeup` events."
         },
         "type": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9]*([.][a-z][a-z0-9]*)*$",
-          "description": "Dotted event type namespace. Known types are the `$defs` entries of this document; an unknown or future type is valid and ignored by clients (additive compatibility within `v`)."
+          "pattern": "^[a-z][a-z0-9_]*([.][a-z][a-z0-9_]*)*$",
+          "description": "Dotted event type namespace of lowercase segments; each segment starts with a letter and may contain letters, digits and underscores. Known types are the `$defs` entries of this document; an unknown or future type is valid and ignored by clients (additive compatibility within `v`)."
         },
         "data": {
           "type": "object",
@@ -220,6 +220,14 @@
         "input": {
           "type": "string",
           "description": "The user message that triggered the turn. There is no separate input event."
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "user",
+            "cron"
+          ],
+          "description": "Present as `cron` only when a scheduled wakeup opened the turn; absent means a user message."
         },
         "attachments": {
           "type": "array",
@@ -1051,6 +1059,7 @@
                   "turn.failed",
                   "turn.steered",
                   "chat.title.updated",
+                  "chat.cron.wakeup",
                   "agent.started",
                   "agent.plan",
                   "agent.text.delta",
@@ -1835,6 +1844,66 @@
               "$ref": "#/$defs/Envelope"
             },
             {
+              "properties": {
+                "type": {
+                  "const": "chat.cron.wakeup"
+                },
+                "data": {
+                  "$ref": "#/$defs/chat.cron.wakeup"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "billing.limit_reached"
+                },
+                "data": {
+                  "$ref": "#/$defs/billing.limit_reached"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
+              "properties": {
+                "type": {
+                  "const": "billing.credit_exhausted"
+                },
+                "data": {
+                  "$ref": "#/$defs/billing.credit_exhausted"
+                },
+                "agent": {
+                  "type": "null"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Envelope"
+            },
+            {
               "not": {
                 "properties": {
                   "type": {
@@ -1874,7 +1943,10 @@
                       "task.failed",
                       "task.cancelled",
                       "chat.delivery.queued",
-                      "chat.delivery.delivered"
+                      "chat.delivery.delivered",
+                      "chat.cron.wakeup",
+                      "billing.limit_reached",
+                      "billing.credit_exhausted"
                     ]
                   }
                 },
@@ -2279,6 +2351,138 @@
         }
       },
       "additionalProperties": true
+    },
+    "chat.cron.wakeup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cron_id",
+        "occurrence_id",
+        "scheduled_at",
+        "delivered_at",
+        "prompt",
+        "target_mode",
+        "dispatch_mode"
+      ],
+      "properties": {
+        "cron_id": {
+          "type": "string",
+          "pattern": "^cron_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$"
+        },
+        "occurrence_id": {
+          "type": "string",
+          "pattern": "^occ_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "delivered_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16000,
+          "pattern": "\\S"
+        },
+        "target_mode": {
+          "type": "string",
+          "enum": [
+            "same_chat",
+            "new_chat"
+          ]
+        },
+        "dispatch_mode": {
+          "type": "string",
+          "enum": [
+            "turn_started",
+            "turn_injected"
+          ]
+        }
+      }
+    },
+    "billing.limit_reached": {
+      "type": "object",
+      "description": "Payload of `billing.limit_reached`: a project or API key spend cap refused paid work. `amount` and `remaining` describe the refusal's own scope only; sibling scopes are never exposed.",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "scope",
+        "currency"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "limit_reached",
+            "limit_insufficient",
+            "limit_reserved"
+          ],
+          "description": "`limit_reached` when the cap remainder is zero, `limit_insufficient` when the remainder is positive but below the next step cost, `limit_reserved` when the positive remainder is fully held by active reservations."
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "project",
+            "api_key"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "reset_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "When the reached cap resets; null for a lifetime cap."
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Own-scope cap amount as a decimal string."
+        },
+        "remaining": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+          "description": "Own-scope cap remainder as a decimal string."
+        }
+      }
+    },
+    "billing.credit_exhausted": {
+      "type": "object",
+      "description": "Payload of `billing.credit_exhausted`: company credit refused paid work. Carries no amounts: the company balance is never exposed on the chat stream.",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "scope",
+        "currency"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "financial_review_required",
+            "credit_exhausted",
+            "credit_reserved",
+            "credit_insufficient",
+            "credit_unavailable"
+          ],
+          "description": "Distinguishes a company under financial review, a truly exhausted balance, credit fully held by reservations, and credit positive but below the next step cost, without claiming a balance."
+        },
+        "scope": {
+          "type": "string",
+          "const": "company"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
     }
   }
 }

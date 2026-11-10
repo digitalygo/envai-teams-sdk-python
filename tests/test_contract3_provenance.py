@@ -10,15 +10,15 @@ ROOT = Path(__file__).parents[1]
 PINS = {'events-v2.json': (47787,
                     '88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6',
                     '02b13b23cd06eacd81059d1ed99e0027769d75e4'),
- 'events.json': (62064,
-                 'ea5e00c19d5a8cc2d0782530344595943fcd8d9ce572529bbc178d95765d9835',
-                 '2629e12faf723ac7cd9940f979821b0594c82004'),
- 'openapi.yaml': (266248,
-                  'a3fae2bc6faef4c9132ad792a4a13d1aa4c426d5db8e7619cf98f10ebe6a57e7',
-                  'e835fc0d406a78cdc9a203bc9f13090a671fbc55'),
- 'smidja-native.json': (13630,
-                        '8393b2522f854b68c1c536c6913e8719f85f15a7b1c2128fc55a30e9d4685bc4',
-                        '7577f17a4beaaaf821d653fd355b18fb1e1765ca'),
+ 'events.json': (67983,
+                 '3e21302b1e2cbef0269aa293d75d6cd8d8cc82b8832a5dbba409530ed876a460',
+                 '13f60940fbf107e6ee5b1c6e02b051f9403843e5'),
+ 'openapi.yaml': (486780,
+                  'b09f17b6f4f834b4c0abca23e924083caf93be2fb3bfa57878e3bd5a167be7d4',
+                  '8d706e132cd546e440294c08853e73f6ae0a172b'),
+ 'smidja-native.json': (13825,
+                        '035065640fa4946a2e54297b1a22c69ea736827d38765b0cdaa80a28c3058f8b',
+                        '6fd7074e23381d8875fc6e0b3aef4df99ab6297d'),
  'terminal-snapshot.json': (8578,
                             'c132b27031595c94a8b05eaf008545ccc3ac21d4dd170dd800c5e15b7f93e9bf',
                             '77d885bda661800972ed56837e69a57ab613da82'),
@@ -31,7 +31,7 @@ def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "18ce9124604874d8d4bac784b521171d2ff9e064"
+    assert manifest["commit"] == "6fc8463470396faba4aeb6acc29c91f8c529a582"
     assert manifest["contract_version"] == 3 and manifest["operations"] == 78
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():

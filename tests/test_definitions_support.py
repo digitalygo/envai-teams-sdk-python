@@ -45,13 +45,13 @@ def test_cli_validate_plan_sync_status_state_and_redaction(tmp_path, monkeypatch
             assert kwargs["api_key"] == "never-print-secret"
         def list_models(self):
             return {"data": []}
-        def list_user_tools(self):
+        def list_project_tools(self):
             return remote.list("tool")
         def list_agents(self):
             return []
         def list_teams(self):
             return []
-        def create_user_tool(self, *, body):
+        def create_project_tool(self, *, body):
             return remote.create("tool", body)
         def close(self):
             pass

@@ -25,6 +25,7 @@ from .errors import (
     DeadlineExceeded,
     ProtocolError,
     TransportError,
+    UnsupportedOperationError,
     from_response,
 )
 
@@ -250,6 +251,12 @@ class TransportBase:
     ):
         check_cancel(request_options)
         op = dict(OPERATIONS[operation])
+        if op["path"] == "/api-keys" or op["path"].startswith("/api-keys/"):
+            raise UnsupportedOperationError(
+                "API key management requires a human session and CSRF; "
+                "bearer/project-key clients are unsupported",
+                code="session_required",
+            )
         op["path_params"] = dict(path_params)
         if operation == "uploadWikiSource" and data is not None:
             if not isinstance(data, dict):
@@ -549,6 +556,10 @@ class TransportBase:
             from .models import CapabilitiesLegacy
 
             annotation = CapabilitiesLegacy
+        if version == 2 and op.get("operation") in ("getCompletion", "listCompletions"):
+            from .models import LegacyCompletion, LegacyCompletionCollection
+
+            annotation = LegacyCompletionCollection if op["operation"] == "listCompletions" else LegacyCompletion
         try:
             return TypeAdapter(annotation).validate_python(value)
         except ValueError as exc:

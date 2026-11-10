@@ -88,6 +88,10 @@ class CompatibilityError(ProtocolError):
     """The server did not establish the selected wire contract; never downgrade."""
 
 
+class UnsupportedOperationError(EnvaiError):
+    """An operation is unavailable for this client's authentication mode."""
+
+
 class WebhookVerificationError(EnvaiError):
     pass
 

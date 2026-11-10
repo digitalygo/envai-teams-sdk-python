@@ -4,7 +4,7 @@
     "X-Envai-Contract-Version": "3",
     "X-Envai-Extensions": "native-tasks-v1"
   },
-  "authentication": "Existing Envai bearer API key. Current alpha resources are user scoped; PR53 tenancy is not a dependency.",
+  "authentication": "Envai project bearer API key. Resources are project scoped after the PR53 tenancy cutover; human browser session credentials are not execution credentials. Original execution API key attribution is retained across detached work, retries and synthesis; revocation is rechecked before paid work.",
   "base_path": "/api/v1/atp/v3",
   "features": [
     "detached_background",
@@ -61,7 +61,7 @@
         "turn_id": "string identifying only the initial target coordinator turn"
       },
       "success": 202,
-      "semantics": "Same-owner, same-workspace existing target chat determines team. Busy target returns 409. Origin is free while target executes. The job remains running after an initial acknowledgment turn if detached children remain. Envai waits for the coordinator terminal and every pending child in its cohort, then batches all child results into one target synthesis turn. Additional delegation in synthesis creates another cohort. Only a coordinator turn with no pending children or child results completes the job and delivers its full final output natively to origin unless notify_origin is false.",
+      "semantics": "Same-project, same-workspace existing target chat determines team. Busy target returns 409. Origin is free while target executes. The job remains running after an initial acknowledgment turn if detached children remain. Envai waits for the coordinator terminal and every pending child in its cohort, then batches all child results into one target synthesis turn. Additional delegation in synthesis creates another cohort. Only a coordinator turn with no pending children or child results completes the job and delivers its full final output natively to origin unless notify_origin is false.",
       "phase_outcome": "Require delegated_job_lifecycle before enabling workflows that depend on complete-job outcomes. Use origin task.completed or origin GET task terminal status. task.output is the full final job output; optional result_turn_id identifies its final coordinator turn, not receipt turn_id. The initial target turn.completed is not the workflow phase outcome.",
       "tool_stream": "Keep target-chat SSE subscribed through delegated-job terminal. Target coordinator and child tool events stay on that target stream; they are not forwarded as origin task.event wrappers. Post tool outputs to the target chat.",
       "required_workflow_capability": "delegated_job_lifecycle",
@@ -157,7 +157,7 @@
       },
       "success": 202,
       "capability": "independent_jobs",
-      "semantics": "Start a native job in the specified owned workflow chat without a parent turn or synthetic user message. Task lifecycle, child cohorts, tool brokers and full final synthesis are native. Observe task.completed or GET task for authoritative final output and result_turn_id. No automatic origin notification. Subscribe to this chat SSE for coordinator and detached tool calls. Same request_id and payload return the same receipt while resident, changed input returns409; busy returns409. Strict model policy persists across synthesis. Cancel supports subtree. Restart/eviction means unknown outcome, never retry paid work blindly."
+      "semantics": "Start a native job in the specified project workflow chat without a parent turn or synthetic user message. Task lifecycle, child cohorts, tool brokers and full final synthesis are native. Observe task.completed or GET task for authoritative final output and result_turn_id. No automatic origin notification. Subscribe to this chat SSE for coordinator and detached tool calls. Same request_id and payload return the same receipt while resident, changed input returns409; busy returns409. Strict model policy persists across synthesis. Cancel supports subtree. Restart/eviction means unknown outcome, never retry paid work blindly."
     },
     "POST /chats/{chat_id}/classify-choice": {
       "request": {
@@ -197,7 +197,7 @@
   "delegate_task": {
     "background": "boolean; true selects detached execution",
     "scheduling": "parallel|sequential; default parallel; controls same-team detached tasks",
-    "sequential_semantics": "Sequential tasks serialize within a user/chat; parallel tasks may coexist. Admission limits 8 running and 40 admitted. No FIFO workflow ordering guarantee."
+    "sequential_semantics": "Sequential tasks serialize within a project/chat; parallel tasks may coexist. Admission limits 8 running and 40 admitted. No FIFO workflow ordering guarantee."
   },
   "model_observability": {
     "agent.started.model": "Resolved root model selected for provider request.",

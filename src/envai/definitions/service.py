@@ -45,29 +45,29 @@ class ClientRemote:
         return [item["id"] for item in result]
 
     def list(self, kind: str) -> list[dict[str, Any]]:
-        result = _dump(getattr(self.client, "list_" + ("user_tools" if kind == "tool"
+        result = _dump(getattr(self.client, "list_" + ("project_tools" if kind == "tool"
                                                      else kind + "s"))())
         if isinstance(result, dict):
             result = result.get("data", [])
         return result
 
     def create(self, kind: str, payload: dict[str, Any]) -> dict[str, Any]:
-        return _dump(getattr(self.client, "create_" + ("user_tool" if kind == "tool"
+        return _dump(getattr(self.client, "create_" + ("project_tool" if kind == "tool"
                                                       else kind))(body=payload))
 
     def update(self, kind: str, identity: str, payload: dict[str, Any]) -> dict[str, Any]:
         if kind == "tool":
             payload = {key: value for key, value in payload.items() if key not in ("name", "kind")}
-        return _dump(getattr(self.client, "update_" + ("user_tool" if kind == "tool"
+        return _dump(getattr(self.client, "update_" + ("project_tool" if kind == "tool"
                                                       else kind))(identity, body=payload))
 
     def delete(self, kind: str, identity: str) -> None:
-        getattr(self.client, "delete_" + ("user_tool" if kind == "tool" else kind))(identity)
+        getattr(self.client, "delete_" + ("project_tool" if kind == "tool" else kind))(identity)
 
 
 def normalize(kind: str, payload: dict[str, Any], agents: dict[str, str]) -> dict[str, Any]:
     value = deepcopy(payload)
-    for field in ("id", "user_id", "created_at", "updated_at"):
+    for field in ("id", "user_id", "project_id", "created_by_user_id", "created_at", "updated_at"):
         value.pop(field, None)
     if value.get("description") is None:
         value.pop("description", None)

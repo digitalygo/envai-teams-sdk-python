@@ -1,6 +1,6 @@
 # API inventory
 
-All 78 current operation IDs. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
+The reviewed 78 SDK operation IDs (75 callable operations plus 3 unsupported API-key management stubs), selected from the 146-operation server contract. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
 
 | Operation ID | Method | Path |
 | --- | --- | --- |
@@ -26,11 +26,11 @@ All 78 current operation IDs. Canonical ATP operations use contract3; the two ex
 | listWorkspaces | GET | `/workspaces` |
 | getWorkspace | GET | `/workspaces/{workspace_id}` |
 | updateWorkspace | PUT | `/workspaces/{workspace_id}` |
-| createUserTool | POST | `/tools` |
-| listUserTools | GET | `/tools` |
-| getUserTool | GET | `/tools/{name}` |
-| updateUserTool | PUT | `/tools/{name}` |
-| deleteUserTool | DELETE | `/tools/{name}` |
+| createProjectTool | POST | `/tools` |
+| listProjectTools | GET | `/tools` |
+| getProjectTool | GET | `/tools/{name}` |
+| updateProjectTool | PUT | `/tools/{name}` |
+| deleteProjectTool | DELETE | `/tools/{name}` |
 | createChat | POST | `/workspaces/{workspace_id}/chats` |
 | listChats | GET | `/workspaces/{workspace_id}/chats` |
 | getChat | GET | `/workspaces/{workspace_id}/chats/{chat_id}` |
@@ -53,9 +53,9 @@ All 78 current operation IDs. Canonical ATP operations use contract3; the two ex
 | updateTeam | PUT | `/teams/{team_id}` |
 | deleteTeam | DELETE | `/teams/{team_id}` |
 | listModels | GET | `/models` |
-| createApiKey | POST | `/api-keys` |
-| listApiKeys | GET | `/api-keys` |
-| deleteApiKey | DELETE | `/api-keys/{key_id}` |
+| createApiKey | POST | `/api-keys` (unsupported: human session + CSRF) |
+| listApiKeys | GET | `/api-keys` (unsupported: human session + CSRF) |
+| deleteApiKey | DELETE | `/api-keys/{key_id}` (unsupported: human session + CSRF) |
 | testGenerateImage | POST | `/tests/images/generate` |
 | createImageGeneration | POST | `/images/generations` |
 | getImageGeneration | GET | `/images/generations/{record}` |

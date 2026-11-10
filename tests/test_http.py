@@ -22,6 +22,7 @@ from envai.errors import (
     RateLimitError,
     ServerError,
     TransportError,
+    UnsupportedOperationError,
     ValidationError,
 )
 
@@ -173,6 +174,11 @@ def test_full_surface_sync(name, op):
         native_tasks=not name.endswith("Legacy"),
     ) as client:
         method = getattr(client, snake(name))
+        if op["path"].startswith("/api-keys"):
+            with pytest.raises(UnsupportedOperationError):
+                method(**arguments(op))
+            assert seen == []
+            return
         if name == "resolveChatApproval":
             with pytest.raises(ConflictError):
                 method(**arguments(op))
@@ -194,6 +200,7 @@ def test_full_surface_sync(name, op):
 @pytest.mark.parametrize("name,op", OPS, ids=[x[0] for x in OPS])
 async def test_full_surface_async(name, op):
     async def handler(request):
+        assert not op["path"].startswith("/api-keys")
         if request.url.path.endswith("/atp/v3/capabilities"):
             from negotiated_transport import CAPABILITIES
 
@@ -230,6 +237,10 @@ async def test_full_surface_async(name, op):
         contract_version=2 if name.endswith("Legacy") else 3,
         native_tasks=not name.endswith("Legacy"),
     ) as client:
+        if op["path"].startswith("/api-keys"):
+            with pytest.raises(UnsupportedOperationError):
+                await getattr(client, snake(name))(**arguments(op))
+            return
         if name == "resolveChatApproval":
             with pytest.raises(ConflictError):
                 await getattr(client, snake(name))(**arguments(op))
@@ -241,13 +252,13 @@ def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
     assert len(OPERATIONS) == 78
     for op in shared:
-        assert OPERATIONS[op["id"]]["method"] == op["method"]
-        assert OPERATIONS[op["id"]]["path"] == (
+        assert OPERATIONS[op["id"].replace("UserTool", "ProjectTool")]["method"] == op["method"]
+        assert OPERATIONS[op["id"].replace("UserTool", "ProjectTool")]["path"] == (
             "/atp/v3" + op["path"]
             if op["path"].startswith("/chats/") or op["id"] == "getCapabilities"
             else op["path"]
         )
-        assert OPERATIONS[op["id"]]["auth"] == op["authenticated"]
+        assert OPERATIONS[op["id"].replace("UserTool", "ProjectTool")]["auth"] == op["authenticated"]
         assert hasattr(EnvaiClient, snake(op["id"]))
         assert hasattr(AsyncEnvaiClient, snake(op["id"]))
 
@@ -333,20 +344,10 @@ async def test_get_retry(async_):
 
 
 def test_model_omission_and_explicit_never():
-    seen = []
-
-    def handler(req):
-        seen.append(json.loads(req.content))
-        return httpx.Response(422, json={"error": {"type": "validation_error", "message": "test"}})
-
-    with EnvaiClient("x", transport=negotiated_transport(handler)) as c:
-        for body in (
-            models.ApiKeyCreate(name="test"),
-            models.ApiKeyCreate(name="test", expires_at="never"),
-        ):
-            with pytest.raises(ValidationError):
-                c.api_keys.create(body=body)
-    assert "expires_at" not in seen[0] and seen[1]["expires_at"] == "never"
+    # Models remain available for inspecting the session-only contract.
+    omitted = models.ApiKeyCreate(name="test").model_dump(exclude_unset=True)
+    explicit = models.ApiKeyCreate(name="test", expires_at="never").model_dump(exclude_unset=True)
+    assert "expires_at" not in omitted and explicit["expires_at"] == "never"
 
 
 def test_config_encoding_cancel_and_validation():

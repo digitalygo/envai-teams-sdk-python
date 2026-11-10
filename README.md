@@ -6,7 +6,7 @@ Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [all 78 operations](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [reviewed 78-operation subset](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -89,7 +89,7 @@ are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains all **78 operation IDs** in
+The generated primitive layer retains the reviewed **78 operation IDs** in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -266,7 +266,7 @@ See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry a
 ## Native background tasks and delegated jobs
 
 Canonical schemas and byte provenance are pinned to Envai server
-[`18ce9124604874d8d4bac784b521171d2ff9e064`](https://github.com/digitalygo/envai-teams/commit/18ce9124604874d8d4bac784b521171d2ff9e064),
+[`6fc8463470396faba4aeb6acc29c91f8c529a582`](https://github.com/digitalygo/envai-teams/commit/6fc8463470396faba4aeb6acc29c91f8c529a582),
 including the PR 56 compatibility review fixes.
 
 Opt in explicitly with `EnvaiClient(api_key, native_tasks=True)` (or
@@ -425,7 +425,7 @@ run them in a deployment/startup worker for async applications.
 
 ### Independent jobs and finite choices
 
-The native surface is pinned to Envai commit `18ce9124604874d8d4bac784b521171d2ff9e064`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
+The native surface is pinned to Envai commit `6fc8463470396faba4aeb6acc29c91f8c529a582`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
 
 Independent jobs start without a parent turn. Their receipt identifies the initial coordinator; final task `output` and `result_turn_id` identify the completed job. Task snapshots keep the required `origin_turn_id` key with the empty string for independent jobs. Missing origin is invalid. Keep the execution chat’s native SSE subscription and client-tool runner alive while waiting; polling helpers do not execute tools.
 
@@ -447,3 +447,15 @@ selected = client.chats.classify_choice(chat_id, body={
 ```
 
 `AsyncEnvaiClient` exposes the same methods with `await`. Delivery accepts omitted or empty `origin_turn_id` and optional `strict_model`; existing nonempty-origin delivery remains unchanged.
+
+## API key administration
+
+API key list/create/delete methods remain discoverable but are unsupported by this bearer/project-key client. They raise `envai.errors.UnsupportedOperationError` (code `session_required`) before any HTTP request, including capability discovery. The server requires a human browser session and CSRF protection for `/api/v1/api-keys`; manage keys through that authenticated application flow. The SDK does not implement session authentication or bypass these checks.
+
+## Project tenancy migration
+
+Workspaces, chats, agents and teams now expose immutable `project_id` ownership and nullable `created_by_user_id` audit provenance instead of `user_id`. Completions expose `project_id`, `api_key_id` and nullable `user_id`; key activity is never attributed to a key creator. Migrate owner checks to project fields.
+
+Tool registrations are project-wide, not user-wide. Use `create_project_tool`, `list_project_tools`, etc., or `client.tools`. Deprecated UserTool names forward to the same project-scoped operations and do not preserve user-wide visibility. A project key determines the project; an optional project header must match the authenticated project.
+
+The event snapshot defines 39 typed ATP event types. The exact server HTTP snapshot contains 146 operations. This SDK generates only the reviewed 78-operation allowlist in `scripts/sdk-operations.json`: 75 callable operations plus 3 API-key administration stubs that fail locally. New human-session, internal and billing administration methods are not generated. This is not full parity with all 146 server operations.
