@@ -920,6 +920,14 @@ class ProjectLogEntry(Model):
     data: dict[str, Any]
 
 
+class ProjectEventTypeFilters(Model):
+    types: list[str]
+
+
+class ProjectEventTypeFiltersResource(Model):
+    data: ProjectEventTypeFilters
+
+
 class ProjectLogCollection(Model):
     data: list[ProjectLogEntry]
     links: ProjectLogCollectionLinks
@@ -2694,6 +2702,8 @@ UsageReportCollection.model_rebuild()
 UsageReportCollectionLinks.model_rebuild()
 UsageReportCollectionMeta.model_rebuild()
 ProjectLogEntry.model_rebuild()
+ProjectEventTypeFilters.model_rebuild()
+ProjectEventTypeFiltersResource.model_rebuild()
 ProjectLogCollection.model_rebuild()
 ProjectLogCollectionLinks.model_rebuild()
 ProjectLogCollectionMeta.model_rebuild()

@@ -13,9 +13,9 @@ PINS = {'events-v2.json': (47787,
  'events.json': (67983,
                  '3e21302b1e2cbef0269aa293d75d6cd8d8cc82b8832a5dbba409530ed876a460',
                  '13f60940fbf107e6ee5b1c6e02b051f9403843e5'),
- 'openapi.yaml': (486780,
-                  'b09f17b6f4f834b4c0abca23e924083caf93be2fb3bfa57878e3bd5a167be7d4',
-                  '8d706e132cd546e440294c08853e73f6ae0a172b'),
+ 'openapi.yaml': (493110,
+                  '382c85424131410826df59935948b4a9f1aaf6ee8137bec14ebdce26574eec24',
+                  '1d2d7b67677b79e830c05b443f9fb07af0ef65a5'),
  'smidja-native.json': (13825,
                         '035065640fa4946a2e54297b1a22c69ea736827d38765b0cdaa80a28c3058f8b',
                         '6fd7074e23381d8875fc6e0b3aef4df99ab6297d'),
@@ -31,7 +31,7 @@ def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "6fc8463470396faba4aeb6acc29c91f8c529a582"
+    assert manifest["commit"] == "964c11fe72887329e8d06c2afb483442d643b290"
     assert manifest["contract_version"] == 3 and manifest["operations"] == 78
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():

@@ -8385,8 +8385,8 @@
     "/projects/{project_id}/logs": {
       "get": {
         "operationId": "getProjectLogs",
-        "summary": "Project event logs and retained activity analytics",
-        "description": "Metadata-only event log of the project, newest first, paginated and time-bounded by the inclusive `from`/`to` UTC window. Optional `chat_id`, `api_key_id` and event `type` filters; the api key filter matches the turn key and the actor key of an event. Entries carry identifiers, sequence, type, timestamp and sanitized metadata only: no prompts, tool output or attachments. Authorized by project like the usage report. The default view=events preserves the paginated response. Explicit view=analytics returns full-window metadata aggregates over all retained matching rows, never a page sample. Analytics rejects page, per_page and type, supports the same project, chat and origin-or-actor key scope, and is limited to 90 UTC days even if the general report limit is configured higher. Event retention defaults to 30 days and trace persistence is best-effort; complete retained-row aggregation is not complete execution history. Empty days mean no stored matching events, not proof of no application activity. Tool counts are observed opening events, failures are separate recorded event levels, and durations are measured execution durations, never inferred provider latency or time to first token. Aggregate timeout or failure fails the request rather than returning partial analytics.\n",
+        "summary": "Project event logs, filters and retained activity analytics",
+        "description": "Metadata-only event log of the project, newest first, paginated and time-bounded by the inclusive `from`/`to` UTC window. Filters select events only: `chat_id`, scalar `api_key_id` and scalar `type`, plus the indexed arrays `types[]`, `workspace_ids[]` and `api_key_ids[]`. Values inside one array are ORed, different dimensions are ANDed, and the key dimension matches an event when either its turn key or its actor key is in `api_key_ids[]`. A scalar `type` or `api_key_id` is the single-value form and is rejected when combined with its plural array. `chat_id` stays an additional AND for existing bookmarked links. Arrays accept 1 to 50 distinct non-empty entries (`type` up to 80 characters, ids up to 30) and reject scalar, associative, empty, duplicate, malformed or oversized shapes with 422. Every workspace id must be an active workspace of the project; every key id may be active, expired or revoked. Unknown or foreign ids answer 404 without an existence leak. Entries carry identifiers, sequence, type, timestamp and sanitized metadata only: no prompts, tool output or attachments. Authorized by project like the usage report.\nThe default view=events returns the paginated entries above. Explicit view=analytics returns full-window metadata aggregates over all retained matching rows, never a page sample; it keeps the scalar `api_key_id` and `chat_id` scope, does not accept `type`, and rejects page, per_page and every filter array. Explicit view=filters returns the complete distinct event type catalog of the project inside the same requested UTC window: no key or workspace names or identifiers, no tokens or content, no top 50 sampling. It rejects type, api_key_id, chat_id, every filter array, page and per_page. The catalog is bounded to 1000 types and fails the whole response with 422 when a window exceeds the cap or contains an empty or oversized type, rather than returning a partial or unfilterable list. Query cost is bounded with a transaction-local statement timeout, and a query failure fails the whole response. Filters and analytics are limited to 90 UTC days even if the general report limit is configured higher. Event retention defaults to 30 days and trace persistence is best-effort; complete retained-row aggregation is not complete execution history. Empty days mean no stored matching events, not proof of no application activity. Tool counts are observed opening events, failures are separate recorded event levels, and durations are measured execution durations, never inferred provider latency or time to first token.\n",
         "tags": [
           "Reporting"
         ],
@@ -8424,6 +8424,15 @@
             "$ref": "#/components/parameters/ReportType"
           },
           {
+            "$ref": "#/components/parameters/ReportTypes"
+          },
+          {
+            "$ref": "#/components/parameters/ReportWorkspaceIds"
+          },
+          {
+            "$ref": "#/components/parameters/ReportApiKeyIds"
+          },
+          {
             "$ref": "#/components/parameters/PageQuery"
           },
           {
@@ -8432,7 +8441,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Project log page or complete retained-row analytics",
+            "description": "Project log page, complete event type filter catalog or complete retained-row analytics",
             "content": {
               "application/json": {
                 "schema": {
@@ -8442,6 +8451,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ProjectActivityAnalyticsResource"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ProjectEventTypeFiltersResource"
                     }
                   ]
                 }
@@ -9800,12 +9812,13 @@
         "name": "view",
         "in": "query",
         "required": false,
-        "description": "events is the existing paginated log. analytics aggregates all retained matching rows; page, per_page and type must be omitted.",
+        "description": "events is the existing paginated log and the default. analytics aggregates all retained matching rows; page, per_page, type and every filter array must be omitted. filters returns the complete distinct event type catalog of the requested window; type, api_key_id, chat_id, page, per_page and every filter array must be omitted.\n",
         "schema": {
           "type": "string",
           "enum": [
             "events",
-            "analytics"
+            "analytics",
+            "filters"
           ],
           "default": "events"
         }
@@ -9836,7 +9849,7 @@
         "name": "api_key_id",
         "in": "query",
         "required": false,
-        "description": "Optional api key id `key_<ulid>` filter. Project logs match the turn key and the actor key of an event. A project key caller cannot filter by a key of another project; an unknown or foreign key answers 404 without existence leak.\n",
+        "description": "Optional scalar api key id `key_<ulid>` filter for events and analytics. Project logs match the turn key and the actor key of an event. The events view rejects it when `api_key_ids[]` is present and view=filters prohibits it. A project key caller cannot filter by a key of another project; an unknown or foreign key answers 404 without existence leak. Revoked and expired project keys remain filterable.\n",
         "schema": {
           "type": "string",
           "pattern": "^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
@@ -9847,7 +9860,7 @@
         "name": "chat_id",
         "in": "query",
         "required": false,
-        "description": "Optional chat id `cht_<ulid>` filter",
+        "description": "Optional chat id `cht_<ulid>` filter, an additional AND on top of the other event filters. view=filters prohibits it.\n",
         "schema": {
           "type": "string",
           "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
@@ -9858,10 +9871,67 @@
         "name": "type",
         "in": "query",
         "required": false,
-        "description": "Optional event type filter, for example `agent.tool.request`",
+        "description": "Optional scalar event type filter, for example `agent.tool.request`. The events view rejects it when `types[]` is present; analytics and filters prohibit it.\n",
         "schema": {
           "type": "string",
           "maxLength": 80
+        }
+      },
+      "ReportTypes": {
+        "name": "types[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of event type filters, serialized in form style as repeated `types[]=value` entries. Accepts 1 to 50 distinct non-empty values of at most 80 characters. Values are ORed inside the array and ANDed with the other dimensions. Scalar `types=value`, associative, empty, duplicate, malformed or oversized arrays answer 422, and combining it with scalar `type` answers 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      "ReportWorkspaceIds": {
+        "name": "workspace_ids[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of workspace filters, serialized in form style as repeated `workspace_ids[]=value` entries. Accepts 1 to 50 distinct non-empty workspace ids of at most 30 characters. Values are ORed inside the array and ANDed with the other dimensions. Every id must identify an active workspace of the project: deleted, unknown or foreign workspaces answer 404 without an existence leak, consistent with workspace deletion and chat access cuts. Scalar, associative, empty, duplicate, malformed or oversized arrays answer 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      "ReportApiKeyIds": {
+        "name": "api_key_ids[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of api key filters, serialized in form style as repeated `api_key_ids[]=value` entries. Accepts 1 to 50 distinct non-empty key ids of at most 30 characters. Values are ORed inside the array and ANDed with the other dimensions; an event matches when either its turn key or its actor key is included. Active, expired and revoked project keys remain filterable, while unknown or foreign keys answer 404 without an existence leak. Scalar, associative, empty, duplicate, malformed or oversized arrays answer 422, and combining it with scalar `api_key_id` answers 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
         }
       },
       "IdempotencyKeyHeader": {
@@ -13822,6 +13892,39 @@
           "data": {
             "type": "object",
             "description": "Sanitized event metadata subset limited to safe keys such as usage, cost, status, duration and identifiers"
+          }
+        }
+      },
+      "ProjectEventTypeFilters": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "types"
+        ],
+        "properties": {
+          "types": {
+            "type": "array",
+            "description": "Complete sorted distinct event type list of the project inside the requested UTC window.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": 1000,
+            "uniqueItems": true
+          }
+        },
+        "description": "Type-only filter catalog for the existing log endpoint. It contains the complete distinct type list of the project and window, with no key or workspace names or identifiers, no tokens or content and no top 50 sampling. A window with more than 1000 types or with an empty or oversized type fails the whole response with 422 instead of returning a partial or unfilterable catalog. Reads under the unchanged project log permissions; display names come from the existing api key and workspace session endpoints.\n"
+      },
+      "ProjectEventTypeFiltersResource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectEventTypeFilters"
           }
         }
       },

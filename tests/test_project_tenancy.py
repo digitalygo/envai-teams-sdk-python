@@ -105,6 +105,16 @@ def test_only_reviewed_operations_have_client_methods():
     source = {op["operationId"] for item in OPENAPI["paths"].values()
               for op in item.values() if isinstance(op, dict) and "operationId" in op}
     assert set(OPERATIONS) == allowed and len(source) == 146 and len(allowed) == 78
+    # The administrative logs schema is embedded for provenance, not callable.
+    catalog = models.ProjectEventTypeFiltersResource.model_validate(
+        {"data": {"types": ["chat.created", "completion.finished"]}}
+    )
+    assert catalog.model_dump() == {"data": {"types": ["chat.created", "completion.finished"]}}
+    assert "getProjectLogs" in source
+    assert "getProjectLogs" not in allowed
+    assert "getProjectLogs" not in OPERATIONS
+    assert not hasattr(EnvaiClient, "get_project_logs")
+    assert not hasattr(AsyncEnvaiClient, "get_project_logs")
     for operation in source - allowed:
         assert not hasattr(EnvaiClient, snake(operation))
         assert not hasattr(AsyncEnvaiClient, snake(operation))
