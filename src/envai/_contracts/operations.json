@@ -1,4 +1,256 @@
 {
+  "deliverWorkflowResult": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/deliveries",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/NativeDeliveryRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/NativeDeliveryReceipt"
+    },
+    "response_type": "NativeDeliveryReceipt",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "delegateToTeam": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/delegations",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/TeamDelegationRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/TeamDelegationReceipt"
+    },
+    "response_type": "TeamDelegationReceipt",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getDetachedTask": {
+    "method": "GET",
+    "path": "/atp/v3/chats/{chat_id}/tasks/{task_id}",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "task_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/DetachedTaskSnapshot"
+    },
+    "response_type": "DetachedTaskSnapshot",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "cancelDetachedTask": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/tasks/{task_id}/cancel",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "task_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    ],
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "subtree": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "status",
+        "subtree"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "const": "cancelled"
+        },
+        "subtree": {
+          "type": "boolean"
+        }
+      }
+    },
+    "response_type": "CancelDetachedTaskResponse",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "classifyPhase": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/classify-phase",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/PhaseClassificationRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/PhaseClassificationResult"
+    },
+    "response_type": "PhaseClassificationResult",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "classifyChoice": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/classify-choice",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChoiceClassificationRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChoiceClassificationResult"
+    },
+    "response_type": "ChoiceClassificationResult",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "startIndependentJob": {
+    "method": "POST",
+    "path": "/atp/v3/chats/{chat_id}/jobs",
+    "params": [
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/IndependentJobRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/IndependentJobReceipt"
+    },
+    "response_type": "IndependentJobReceipt",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
   "sendChatMessage": {
     "method": "POST",
     "path": "/atp/v3/chats/{chat_id}/messages",
@@ -330,7 +582,19 @@
   "createWorkspace": {
     "method": "POST",
     "path": "/workspaces",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/WorkspaceCreateRequest"
     },
@@ -348,7 +612,19 @@
   "listWorkspaces": {
     "method": "GET",
     "path": "/workspaces",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,
@@ -419,52 +695,49 @@
     "stream": false,
     "public": true
   },
-  "createUserTool": {
+  "createProjectTool": {
     "method": "POST",
     "path": "/tools",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
-      "$ref": "#/components/schemas/UserToolCreateRequest"
+      "$ref": "#/components/schemas/ProjectToolCreateRequest"
     },
     "media": "application/json",
     "request_required": true,
     "response": {
-      "$ref": "#/components/schemas/UserToolResource"
+      "$ref": "#/components/schemas/ProjectToolResource"
     },
-    "response_type": "UserTool",
+    "response_type": "ProjectTool",
     "unwrap": true,
     "auth": true,
     "stream": false,
     "public": true
   },
-  "listUserTools": {
+  "listProjectTools": {
     "method": "GET",
     "path": "/tools",
-    "params": [],
-    "request": null,
-    "media": null,
-    "request_required": false,
-    "response": {
-      "$ref": "#/components/schemas/UserToolCollection"
-    },
-    "response_type": "list[UserTool]",
-    "unwrap": true,
-    "auth": true,
-    "stream": false,
-    "public": true
-  },
-  "getUserTool": {
-    "method": "GET",
-    "path": "/tools/{name}",
     "params": [
       {
-        "name": "name",
-        "in": "path",
-        "required": true,
-        "description": "Client tool name within the caller's user registry, unique per user",
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
         "schema": {
           "type": "string",
-          "example": "send_email"
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
         }
       }
     ],
@@ -472,15 +745,53 @@
     "media": null,
     "request_required": false,
     "response": {
-      "$ref": "#/components/schemas/UserToolResource"
+      "$ref": "#/components/schemas/ProjectToolCollection"
     },
-    "response_type": "UserTool",
+    "response_type": "list[ProjectTool]",
     "unwrap": true,
     "auth": true,
     "stream": false,
     "public": true
   },
-  "updateUserTool": {
+  "getProjectTool": {
+    "method": "GET",
+    "path": "/tools/{name}",
+    "params": [
+      {
+        "name": "name",
+        "in": "path",
+        "required": true,
+        "description": "Client tool name within the project registry, unique per project",
+        "schema": {
+          "type": "string",
+          "example": "send_email"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ProjectToolResource"
+    },
+    "response_type": "ProjectTool",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateProjectTool": {
     "method": "PUT",
     "path": "/tools/{name}",
     "params": [
@@ -488,28 +799,39 @@
         "name": "name",
         "in": "path",
         "required": true,
-        "description": "Client tool name within the caller's user registry, unique per user",
+        "description": "Client tool name within the project registry, unique per project",
         "schema": {
           "type": "string",
           "example": "send_email"
         }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
       }
     ],
     "request": {
-      "$ref": "#/components/schemas/UserToolUpdateRequest"
+      "$ref": "#/components/schemas/ProjectToolUpdateRequest"
     },
     "media": "application/json",
     "request_required": true,
     "response": {
-      "$ref": "#/components/schemas/UserToolResource"
+      "$ref": "#/components/schemas/ProjectToolResource"
     },
-    "response_type": "UserTool",
+    "response_type": "ProjectTool",
     "unwrap": true,
     "auth": true,
     "stream": false,
     "public": true
   },
-  "deleteUserTool": {
+  "deleteProjectTool": {
     "method": "DELETE",
     "path": "/tools/{name}",
     "params": [
@@ -517,10 +839,21 @@
         "name": "name",
         "in": "path",
         "required": true,
-        "description": "Client tool name within the caller's user registry, unique per user",
+        "description": "Client tool name within the project registry, unique per project",
         "schema": {
           "type": "string",
           "example": "send_email"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
         }
       }
     ],
@@ -699,6 +1032,17 @@
         "schema": {
           "type": "string",
           "format": "date-time"
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "description": "One-based page number. Omitted, invalid or non-positive values resolve to page 1.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
         }
       },
       {
@@ -996,7 +1340,19 @@
   "createAgent": {
     "method": "POST",
     "path": "/agents",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/AgentCreateRequest"
     },
@@ -1014,7 +1370,19 @@
   "listAgents": {
     "method": "GET",
     "path": "/agents",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,
@@ -1114,7 +1482,19 @@
   "createTeam": {
     "method": "POST",
     "path": "/teams",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/TeamCreateRequest"
     },
@@ -1132,7 +1512,19 @@
   "listTeams": {
     "method": "GET",
     "path": "/teams",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,
@@ -1232,7 +1624,19 @@
   "listModels": {
     "method": "GET",
     "path": "/models",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,
@@ -1248,7 +1652,19 @@
   "createApiKey": {
     "method": "POST",
     "path": "/api-keys",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/ApiKeyCreate"
     },
@@ -1266,7 +1682,19 @@
   "listApiKeys": {
     "method": "GET",
     "path": "/api-keys",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,
@@ -1292,6 +1720,17 @@
           "type": "string",
           "pattern": "^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
           "example": "key_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
         }
       }
     ],
@@ -1326,7 +1765,20 @@
   "createImageGeneration": {
     "method": "POST",
     "path": "/images/generations",
-    "params": [],
+    "params": [
+      {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Optional opaque client idempotency key for image generation `POST`, a non-empty printable ASCII string of at most 255 bytes. The live generation graph stores only the sha256 hash of the header, unique per project; the hash is never returned. A matching payload inside the live graph lifetime replays the original generation with its original origin api key without a new provider dispatch or charge, a different payload answers 409, and the guarantee is bounded to the live graph: at expiry or purge the identifier is forgotten and the same header starts a new operation.\n",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/ImageGenerationRequest"
     },
@@ -1355,6 +1807,17 @@
           "pattern": "^[iI][gG][rR]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
           "example": "igr_01j5abcdefghjkmnpqrstvwxyz"
         }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
       }
     ],
     "request": null,
@@ -1372,7 +1835,19 @@
   "uploadImage": {
     "method": "POST",
     "path": "/images/uploads",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": {
       "$ref": "#/components/schemas/ImageUploadRequest"
     },
@@ -1390,7 +1865,19 @@
   "listImageModels": {
     "method": "GET",
     "path": "/images/models",
-    "params": [],
+    "params": [
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
     "request": null,
     "media": null,
     "request_required": false,

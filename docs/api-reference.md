@@ -1,6 +1,6 @@
 # Python API reference
 
-[README](../README.md) · [All 71 operations](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
+[README](../README.md) · [Reviewed 78-operation subset](api-inventory.md) · [Streaming](streaming.md) · [Client tools](client-tools.md)
 
 ## Services and primitives
 
@@ -32,4 +32,16 @@ Typed event classes live in `envai.event_models`. Known events are checked again
 
 ## Wiki and contract selection
 
-See [Wiki V1](wiki.md) for typed upload-first sources, conversion diagnostics, runs, catalog GETs, exact-byte webhooks and durable application outbox. See [contract3 migration](migration-contract3.md) before upgrading. Both sync and async expose all 71 documented operations, including explicit legacy read helpers.
+See [Wiki V1](wiki.md) for typed upload-first sources, conversion diagnostics, runs, catalog GETs, exact-byte webhooks and durable application outbox. See [contract3 migration](migration-contract3.md) before upgrading. Both sync and async expose the reviewed 78-operation subset (75 callable operations plus 3 unsupported API-key stubs), including explicit legacy read helpers.
+
+## API key administration
+
+API key list/create/delete methods remain discoverable but are unsupported by this bearer/project-key client. They raise `envai.errors.UnsupportedOperationError` (code `session_required`) before any HTTP request, including capability discovery. The server requires a human browser session and CSRF protection for `/api/v1/api-keys`; manage keys through that authenticated application flow. The SDK does not implement session authentication or bypass these checks.
+
+## Project tenancy migration
+
+Workspaces, chats, agents and teams now expose immutable `project_id` ownership and nullable `created_by_user_id` audit provenance instead of `user_id`. Completions expose `project_id`, `api_key_id` and nullable `user_id`; key activity is never attributed to a key creator. Migrate owner checks to project fields.
+
+Tool registrations are project-wide, not user-wide. Use `create_project_tool`, `list_project_tools`, etc., or `client.tools`. Deprecated UserTool names forward to the same project-scoped operations and do not preserve user-wide visibility. A project key determines the project; an optional project header must match the authenticated project.
+
+The exact server snapshot contains 146 operations. This SDK generates only the reviewed 78-operation allowlist in `scripts/sdk-operations.json`: 75 callable operations plus 3 API-key administration stubs that fail locally. New human-session, internal and billing administration methods are not generated. This is not full parity with all 146 server operations.

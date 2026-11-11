@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import _generated as generated
-from ._transport import RequestOptions, check_cancel
+from ._transport import RequestOptions, check_cancel, poll_sleep
 from .models import ChatAttachment
 from .wiki import _upload
 
@@ -71,6 +71,8 @@ class AttachmentsService(generated.AttachmentsService):
     ) -> ChatAttachment:
         _bounds(timeout, interval)
         deadline = time.monotonic() + timeout
+        if request_options and request_options.deadline is not None:
+            deadline = min(deadline, request_options.deadline)
         while True:
             check_cancel(request_options)
             remaining = deadline - time.monotonic()
@@ -81,6 +83,7 @@ class AttachmentsService(generated.AttachmentsService):
                 if request_options
                 else remaining,
                 cancel=request_options.cancel if request_options else None,
+                deadline=deadline,
             )
             value = self.get(workspace_id, chat_id, attachment_id, request_options=bounded)
             if _done(value):
@@ -123,12 +126,17 @@ class AsyncAttachmentsService(generated.AsyncAttachmentsService):
         request_options: RequestOptions | None = None,
     ) -> ChatAttachment:
         _bounds(timeout, interval)
+        deadline = time.monotonic()+timeout
+        if request_options and request_options.deadline is not None:
+            deadline = min(deadline, request_options.deadline)
+        options = RequestOptions(timeout=request_options.timeout if request_options else None,
+            cancel=request_options.cancel if request_options else None, deadline=deadline)
         async with asyncio.timeout(timeout):
             while True:
-                check_cancel(request_options)
+                check_cancel(options)
                 value = await self.get(
-                    workspace_id, chat_id, attachment_id, request_options=request_options
+                    workspace_id, chat_id, attachment_id, request_options=options
                 )
                 if _done(value):
                     return value
-                await asyncio.sleep(interval)
+                await poll_sleep(interval, options)

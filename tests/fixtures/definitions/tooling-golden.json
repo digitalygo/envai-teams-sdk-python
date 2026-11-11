@@ -1,0 +1,1665 @@
+{
+    "fixture_version": 1,
+    "origin": "Synthetic local vectors executed against PHP SDK f4117c35fa75e93709ce36cbe0aca86727ece9b3; not server traffic or canonical server contract.",
+    "hash_vectors": [
+        {
+            "id": "baseline",
+            "document": {
+                "format_version": "1",
+                "tools": {
+                    "echo": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                },
+                "agents": {},
+                "teams": {}
+            },
+            "sha256": "sha256:5b5296758d436c1f552d720e6a8adcc1c6a661c53492c10facdc44e12c2b0a00"
+        },
+        {
+            "id": "changed",
+            "document": {
+                "format_version": "1",
+                "tools": {
+                    "echo": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "after",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                },
+                "agents": {},
+                "teams": {}
+            },
+            "sha256": "sha256:7ef882319328a2294e89ac18cea760e3604342299639f50f014a0b0c1b894a24"
+        }
+    ],
+    "planner_reconciler_cases": [
+        {
+            "id": "empty",
+            "desired": null,
+            "last_applied": null,
+            "remote": null,
+            "options": [],
+            "expected": {
+                "operations": [],
+                "mutation_calls": [],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [],
+                "stored": null
+            }
+        },
+        {
+            "id": "create",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": null,
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "create",
+                        "action": "create",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": null,
+                        "remote_name": null,
+                        "remote_marker": null,
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "name",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "kind",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "description",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "parameters",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "timeout_seconds",
+                                "kind": "added"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "createTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "before",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "unchanged",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "unchanged",
+                        "action": "none",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": []
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "update",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "after",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "update",
+                        "action": "update",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "updateTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "after",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "after",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "drift",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "remote edit",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "drift",
+                        "action": "none",
+                        "blocking": true,
+                        "reason_code": "drift",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "blocked",
+                "manifest_ready": false,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "drift_overwrite",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "remote edit",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": {
+                "overwriteDrift": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "drift",
+                        "action": "update",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "updateTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "before",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "conflict",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "after",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "remote edit",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "conflict",
+                        "action": "none",
+                        "blocking": true,
+                        "reason_code": "conflict",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "blocked",
+                "manifest_ready": false,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "conflict_all_overrides",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "after",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "remote edit",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": {
+                "adopt": true,
+                "overwriteDrift": true,
+                "recreateMissing": true,
+                "prune": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "conflict",
+                        "action": "none",
+                        "blocking": true,
+                        "reason_code": "conflict",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "blocked",
+                "manifest_ready": false,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "adoption_required",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "adoption_required",
+                        "action": "none",
+                        "blocking": true,
+                        "reason_code": "adoption_required",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": []
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "blocked",
+                "manifest_ready": false,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": null
+            }
+        },
+        {
+            "id": "adopt_different",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "after",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": {
+                "adopt": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "adoption_required",
+                        "action": "adopt",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "adopt_overwrite",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "after",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": {
+                "adopt": true,
+                "overwriteDrift": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "adoption_required",
+                        "action": "adopt",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "description",
+                                "kind": "changed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "updateTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "after",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "after",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "missing_remote",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": null,
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "missing_remote",
+                        "action": "none",
+                        "blocking": true,
+                        "reason_code": "missing_remote",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": []
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "blocked",
+                "manifest_ready": false,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "recreate_missing",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": null,
+            "options": {
+                "recreateMissing": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "missing_remote",
+                        "action": "recreate",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": []
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "createTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "before",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "orphan_skip",
+            "desired": null,
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": [],
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "orphan_managed",
+                        "action": "none",
+                        "blocking": false,
+                        "reason_code": "prune_disabled",
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "name",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "kind",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "description",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "parameters",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "timeout_seconds",
+                                "kind": "removed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "skipped"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        },
+        {
+            "id": "orphan_prune",
+            "desired": null,
+            "last_applied": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "remote": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "options": {
+                "prune": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "orphan_managed",
+                        "action": "delete",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": "twl_echo",
+                        "remote_name": "echo",
+                        "remote_marker": "2026-01-01T00:00:00Z",
+                        "destructive": true,
+                        "changes": [
+                            {
+                                "path": "name",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "kind",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "description",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "parameters",
+                                "kind": "removed"
+                            },
+                            {
+                                "path": "timeout_seconds",
+                                "kind": "removed"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "deleteTool",
+                        "target": "tool:echo",
+                        "payload": null
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": true,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": null
+            }
+        },
+        {
+            "id": "dry_run",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": null,
+            "options": {
+                "dryRun": true
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "create",
+                        "action": "create",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": null,
+                        "remote_name": null,
+                        "remote_marker": null,
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "name",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "kind",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "description",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "parameters",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "timeout_seconds",
+                                "kind": "added"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [],
+                "report_status": "dry_run",
+                "manifest_ready": false,
+                "outcomes": [
+                    "pending"
+                ],
+                "stored": null
+            }
+        },
+        {
+            "id": "partial_scope",
+            "desired": {
+                "name": "echo",
+                "kind": "client",
+                "description": "before",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timeout_seconds": 30
+            },
+            "last_applied": null,
+            "remote": null,
+            "options": {
+                "scope": "tools"
+            },
+            "expected": {
+                "operations": [
+                    {
+                        "id": "tool:echo",
+                        "type": "tool",
+                        "local_key": "echo",
+                        "classification": "create",
+                        "action": "create",
+                        "blocking": false,
+                        "reason_code": null,
+                        "remote_id": null,
+                        "remote_name": null,
+                        "remote_marker": null,
+                        "destructive": false,
+                        "changes": [
+                            {
+                                "path": "name",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "kind",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "description",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "parameters",
+                                "kind": "added"
+                            },
+                            {
+                                "path": "timeout_seconds",
+                                "kind": "added"
+                            }
+                        ]
+                    }
+                ],
+                "mutation_calls": [
+                    {
+                        "method": "createTool",
+                        "target": "tool:echo",
+                        "payload": {
+                            "name": "echo",
+                            "kind": "client",
+                            "description": "before",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "timeout_seconds": 30
+                        }
+                    }
+                ],
+                "report_status": "succeeded",
+                "manifest_ready": false,
+                "outcomes": [
+                    "succeeded"
+                ],
+                "stored": {
+                    "remote_id": "twl_echo",
+                    "remote_name": "echo",
+                    "status": "applied",
+                    "last_applied": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                }
+            }
+        }
+    ],
+    "dependency_order": {
+        "id": "dependency_order",
+        "manifest": {
+            "format_version": "1",
+            "tools": {
+                "echo": {
+                    "name": "echo",
+                    "kind": "client",
+                    "description": "before",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "timeout_seconds": 30
+                }
+            },
+            "agents": {
+                "coordinator": {
+                    "name": "Coordinator",
+                    "system_prompt": "Coordinate.",
+                    "mode": "primary",
+                    "can_write_knowledge": false,
+                    "can_write_skills": false
+                },
+                "worker": {
+                    "name": "Worker",
+                    "system_prompt": "Work.",
+                    "mode": "subagent",
+                    "can_write_knowledge": false,
+                    "can_write_skills": false
+                }
+            },
+            "teams": {
+                "team": {
+                    "name": "Example team",
+                    "orchestrator_id": "coordinator",
+                    "members": [
+                        {
+                            "agent_definition_id": "worker",
+                            "role": "research"
+                        }
+                    ]
+                }
+            }
+        },
+        "expected": {
+            "manifest_hash": "sha256:11d0d355b27a03bd61a74888ae30f27d0f07f1b1331503781d2257019d25cda3",
+            "mutation_calls": [
+                {
+                    "method": "createTool",
+                    "target": "tool:echo",
+                    "payload": {
+                        "name": "echo",
+                        "kind": "client",
+                        "description": "before",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "timeout_seconds": 30
+                    }
+                },
+                {
+                    "method": "createAgent",
+                    "target": "agent:Coordinator",
+                    "payload": {
+                        "name": "Coordinator",
+                        "system_prompt": "Coordinate.",
+                        "mode": "primary",
+                        "can_write_knowledge": false,
+                        "can_write_skills": false
+                    }
+                },
+                {
+                    "method": "createAgent",
+                    "target": "agent:Worker",
+                    "payload": {
+                        "name": "Worker",
+                        "system_prompt": "Work.",
+                        "mode": "subagent",
+                        "can_write_knowledge": false,
+                        "can_write_skills": false
+                    }
+                },
+                {
+                    "method": "createTeam",
+                    "target": "team:Example team",
+                    "payload": {
+                        "name": "Example team",
+                        "orchestrator_id": "agt_Coordinator",
+                        "members": [
+                            {
+                                "agent_definition_id": "agt_Worker",
+                                "role": "research"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "status": "succeeded",
+            "manifest_ready": true
+        }
+    }
+}

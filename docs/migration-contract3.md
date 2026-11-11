@@ -18,3 +18,9 @@ The source tree retains immutable original OpenAPI2 and strict numeric ATP2 sche
 ## Chat attachments and deferred Wiki outcomes
 
 Update to the matching backend before enabling attachment sends. Contract 3 remains selected, and `chat_attachments` is an additional capability requirement. Preserve message idempotency keys and ordered IDs; verify acceptance. Handle the new `deferred` Wiki file outcome. See [attachment integration](chat-attachments.md).
+
+## Project-owned resources
+
+Current resources require project ownership fields. Historical completion reads hydrate `models.LegacyCompletion` or `models.LegacyCompletionCollection` under explicit contract2; get/list return annotations include those shapes, keeping v3 requirements strict. Current completions require `project_id` and `api_key_id`, with nullable `user_id` audit provenance. For workspace/chat/agent/team ownership, replace `user_id` with `project_id`; nullable `created_by_user_id` is audit provenance only. Workspace metadata accepts objects and lists, including the server default `[]`.
+
+Tool registrations and deprecated UserTool aliases now use project scope. API-key management is session-only and fails locally in bearer clients. See the [API reference](api-reference.md).

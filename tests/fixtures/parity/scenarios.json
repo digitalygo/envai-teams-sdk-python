@@ -1,0 +1,464 @@
+{
+  "synthetic": true,
+  "description": "Synthetic transport sequences. pre_ping is buffered historical replay, after_receipt is live input. Counters mean local effects and mocked output submissions only.",
+  "origin_chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "execution_chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "message_receipt": {
+    "status": "accepted",
+    "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV"
+  },
+  "delegation_receipt": {
+    "task_id": "job_parity_1",
+    "target_chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV"
+  },
+  "cases": {
+    "REPLAY-01": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "agent.tool.request",
+          "data": {
+            "kind": "client",
+            "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+            "tool_name": "fixture_echo",
+            "args": {},
+            "signature": {
+              "alg": "EdDSA",
+              "kid": "sdk-fixture-only",
+              "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+            }
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA5",
+          "seq": 2,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "agent.tool.result",
+          "data": {
+            "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+            "output": "{\"ok\":true}",
+            "is_error": false
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        }
+      ],
+      "expected_effects": 0,
+      "expected_submissions": 0
+    },
+    "REPLAY-02": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "agent.tool.request",
+          "data": {
+            "kind": "client",
+            "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+            "tool_name": "fixture_echo",
+            "args": {},
+            "signature": {
+              "alg": "EdDSA",
+              "kid": "sdk-fixture-only",
+              "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+            }
+          }
+        },
+        {
+          "v": 2,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA7",
+          "seq": 2,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": null,
+          "type": "turn.completed",
+          "data": {
+            "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "usage": {
+              "input_tokens": 1,
+              "output_tokens": 2,
+              "cost_usd": 0.001,
+              "duration_ms": 10
+            },
+            "cost": 0.001,
+            "chat_usage": {
+              "input_tokens": 1,
+              "output_tokens": 2,
+              "cost_usd": 0.001,
+              "duration_ms": 10
+            },
+            "chat_cost": 0.001,
+            "finish_reason": "completed"
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        }
+      ],
+      "expected_effects": 0,
+      "expected_submissions": 0
+    },
+    "REPLAY-03": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "agent.tool.request",
+          "data": {
+            "kind": "client",
+            "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+            "tool_name": "fixture_echo",
+            "args": {},
+            "signature": {
+              "alg": "EdDSA",
+              "kid": "sdk-fixture-only",
+              "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+            }
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        }
+      ],
+      "expected_effects": 1,
+      "expected_submissions": 1
+    },
+    "TASK-01": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        },
+        {
+          "v": 2,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA7",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "agent": null,
+          "type": "turn.completed",
+          "data": {
+            "turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "usage": {
+              "input_tokens": 1,
+              "output_tokens": 2,
+              "cost_usd": 0.001,
+              "duration_ms": 10
+            },
+            "cost": 0.001,
+            "chat_usage": {
+              "input_tokens": 1,
+              "output_tokens": 2,
+              "cost_usd": 0.001,
+              "duration_ms": 10
+            },
+            "chat_cost": 0.001,
+            "finish_reason": "completed"
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 2,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "task.event",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "event_type": "agent.tool.request",
+            "event_payload": {
+              "kind": "client",
+              "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+              "tool_name": "fixture_echo",
+              "args": {},
+              "signature": {
+                "alg": "EdDSA",
+                "kid": "sdk-fixture-only",
+                "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+              }
+            }
+          }
+        }
+      ],
+      "expected_effects": 1,
+      "expected_submissions": 1
+    },
+    "SIGN-01": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "task.event",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "event_type": "agent.tool.request",
+            "event_payload": {
+              "kind": "client",
+              "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+              "tool_name": "fixture_echo",
+              "args": {
+                "tampered": true
+              },
+              "signature": {
+                "alg": "EdDSA",
+                "kid": "sdk-fixture-only",
+                "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+              }
+            }
+          }
+        }
+      ],
+      "expected_effects": 0,
+      "expected_submissions": 0
+    },
+    "DEDUP-01": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "task.event",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "event_type": "agent.tool.request",
+            "event_payload": {
+              "kind": "client",
+              "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+              "tool_name": "fixture_echo",
+              "args": {},
+              "signature": {
+                "alg": "EdDSA",
+                "kid": "sdk-fixture-only",
+                "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+              }
+            }
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 2,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "task.event",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "event_type": "agent.tool.request",
+            "event_payload": {
+              "kind": "client",
+              "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+              "tool_name": "fixture_echo",
+              "args": {},
+              "signature": {
+                "alg": "EdDSA",
+                "kid": "sdk-fixture-only",
+                "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+              }
+            }
+          }
+        }
+      ],
+      "expected_effects": 1,
+      "expected_submissions": 1
+    },
+    "CANCEL-01": {
+      "events": [
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+          "seq": 0,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "ping",
+          "data": {}
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 1,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": {
+            "instance_id": "ag_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "name": "orchestrator",
+            "role": "orchestrator",
+            "parent_id": null
+          },
+          "type": "task.event",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "event_type": "agent.tool.request",
+            "event_payload": {
+              "kind": "client",
+              "call_id": "tc_01ARZ3NDEKTSV4RRFFQ69G5FA0",
+              "tool_name": "fixture_echo",
+              "args": {},
+              "signature": {
+                "alg": "EdDSA",
+                "kid": "sdk-fixture-only",
+                "sig": "DSTOmYxNwtR0cGmunXNdQNMV-7fjsXK4gZdjM5zmN4xoMR3wtgC286xo2rkGSApw5yTvDUfHuzJRyRZLdu3yAw"
+              }
+            }
+          }
+        },
+        {
+          "v": 3,
+          "id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FA4",
+          "seq": 2,
+          "ts": "2026-10-12T22:00:00Z",
+          "chat_id": "cht_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "turn_id": null,
+          "agent": null,
+          "type": "task.cancelled",
+          "data": {
+            "task_id": "task_parity_1",
+            "origin_turn_id": "cmpl_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "status": "cancelled",
+            "output": "",
+            "error": ""
+          }
+        }
+      ],
+      "expected_effects": 0,
+      "expected_submissions": 0
+    }
+  }
+}

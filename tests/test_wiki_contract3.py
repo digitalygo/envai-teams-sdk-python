@@ -417,7 +417,7 @@ def test_new_generator_preserves_conditional_fields_and_inline_requests():
     assert models.UsageCost.model_fields["revision"].is_required()
     assert models.CreateWikiInboxRunBody(webhook_url="https://receiver.test").webhook_url
     assert models.WithdrawWikiSourceBody(file_id="source").file_id == "source"
-    assert len(OPERATIONS) == 71
+    assert len(OPERATIONS) == 78
 
 
 @pytest.mark.parametrize("async_", [False, True])
@@ -672,6 +672,13 @@ def test_required_legacy_terminal_fields_remain_required(version, path, valid_ev
 async def test_actual_control_plane_http_responses(async_, name, version):
     fixture_dir = F.parent / "contract3-http"
     body = (fixture_dir / (name + ".json")).read_bytes()
+    if version == 3 and name == "completion-pending":
+        # Preserve the historical capture; explicitly migrate ownership fields
+        # when testing the current contract rather than relabeling its provenance.
+        migrated = json.loads(body)
+        migrated["data"].update(project_id="prj_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                                api_key_id="key_01ARZ3NDEKTSV4RRFFQ69G5FAV", user_id=None)
+        body = json.dumps(migrated).encode()
     if version == 3:
         h = json.loads(
             (

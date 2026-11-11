@@ -77,12 +77,14 @@ def annotation(schema, name):
         return NAMES[("event:" if "/$defs/" in schema["$ref"] else "") + key]
     if "const" in schema:
         return f"Literal[{schema['const']!r}]"
-    if name == "CapabilitiesFeaturesItem":
+    if name in ("CapabilitiesFeaturesItem", "CapabilitiesFamiliesItem"):
         return "str"
     if "enum" in schema:
         return "Literal[" + ", ".join(repr(x) for x in schema["enum"]) + "]"
     for union in ("anyOf", "oneOf"):
-        if union in schema:
+        if union in schema and not (schema.get("properties") and all(
+            set(branch) <= {"required"} for branch in schema[union]
+        )):
             return (
                 "Union["
                 + ", ".join(annotation(x, name + str(i)) for i, x in enumerate(schema[union]))
@@ -160,6 +162,16 @@ for key, schema in SCHEMAS.items():
     ann = annotation(schema, key)
     if ann != key:
         ALIASES[key] = ann
+# Historical completion reads retain their frozen shape; do not relax v3 hydration.
+legacy_completion = json.loads((DEST / "_contracts/openapi-v2.json").read_text())["components"]["schemas"]["Completion"]
+# Preserve optional attribute access without admitting missing v3 tenancy fields.
+for optional in ("billing", "usage_cost", "terminal_snapshot"):
+    legacy_completion["properties"][optional] = SCHEMAS["Completion"]["properties"][optional]
+annotation(legacy_completion, "LegacyCompletion")
+NAMES["LegacyCompletion"] = "LegacyCompletion"
+legacy_collection = json.loads((DEST / "_contracts/openapi-v2.json").read_text())["components"]["schemas"]["CompletionCollection"]
+legacy_collection = json.loads(json.dumps(legacy_collection).replace("#/components/schemas/Completion", "#/components/schemas/LegacyCompletion"))
+annotation(legacy_collection, "LegacyCompletionCollection")
 for key, schema in EVENTS["$defs"].items():
     if key in ("Event", "Envelope"):
         continue
@@ -181,16 +193,17 @@ models = header + "\n\n" + "\n\n\n".join(MODELS.values()) + "\n\n"
 models += "\n".join(k + " = " + v for k, v in ALIASES.items()) + "\n\n"
 models += "\n".join(k + ".model_rebuild()" for k in MODELS) + "\n"
 
+ALLOWED_OPERATIONS = set(json.loads((ROOT / "scripts/sdk-operations.json").read_text()))
 ops = {}
 for path, entry in API["paths"].items():
     for method, op in entry.items():
-        if method not in ("get", "post", "put", "delete", "patch"):
+        if method not in ("get", "post", "put", "delete", "patch") or op.get("operationId") not in ALLOWED_OPERATIONS:
             continue
         params = []
         for p in op.get("parameters", []):
             if "$ref" in p:
                 p = API["components"]["parameters"][p["$ref"].rsplit("/", 1)[1]]
-            if p["name"] != "X-Envai-Contract-Version":
+            if p["name"] not in ("X-Envai-Contract-Version", "X-Envai-Extensions"):
                 params.append(p)
         request = op.get("requestBody", {})
         request_content = request.get("content", {})
@@ -232,6 +245,8 @@ for path, entry in API["paths"].items():
             public=path not in ("/tests/images/generate", "/webhooks/providers/{provider}"),
         )
 
+assert set(ops) == ALLOWED_OPERATIONS, "Reviewed SDK operation missing from canonical source"
+
 # Inline endpoint response models may have been created above.
 models = header + "\n\n" + "\n\n\n".join(MODELS.values()) + "\n\n"
 models += "\n".join(k + " = " + v for k, v in ALIASES.items()) + "\n\n"
@@ -253,11 +268,11 @@ GROUPS = {
         "update": "updateWorkspace",
     },
     "tools": {
-        "create": "createUserTool",
-        "list": "listUserTools",
-        "get": "getUserTool",
-        "update": "updateUserTool",
-        "delete": "deleteUserTool",
+        "create": "createProjectTool",
+        "list": "listProjectTools",
+        "get": "getProjectTool",
+        "update": "updateProjectTool",
+        "delete": "deleteProjectTool",
     },
     "chats": {
         "create": "createChat",
@@ -270,6 +285,13 @@ GROUPS = {
         "submit_approval": "resolveChatApproval",
         "fork": "forkChat",
         "restore": "restoreChat",
+        "deliver": "deliverWorkflowResult",
+        "delegate": "delegateToTeam",
+        "get_task": "getDetachedTask",
+        "cancel_task": "cancelDetachedTask",
+        "classify_phase": "classifyPhase",
+        "classify_choice": "classifyChoice",
+        "start_job": "startIndependentJob",
     },
     "completions": {"list": "listCompletions", "get": "getCompletion"},
     "wiki": {
@@ -352,6 +374,10 @@ def method_code(operation, alias, async_, target):
             (query if p["in"] == "query" else headers).append(repr(p["name"]) + ": " + name)
     params.append("request_options: RequestOptions | None = None")
     typ = op["response_type"]
+    if operation == "getCompletion":
+        typ = "Union[Completion, LegacyCompletion]"
+    elif operation == "listCompletions":
+        typ = "Union[CompletionCollection, LegacyCompletionCollection]"
     # Qualify generated names without touching builtin types.
     typ = re.sub(
         r"\b[A-Z][A-Za-z0-9]*\b",
@@ -393,6 +419,9 @@ for async_ in (False, True):
     for operation, op in ops.items():
         if not op["stream"]:
             runtime += method_code(operation, snake(operation), async_, "self") + "\n"
+            if "ProjectTool" in operation:
+                runtime += "    # Deprecated: project-scoped alias, never user-wide.\n"
+                runtime += method_code(operation, snake(operation.replace("ProjectTool", "UserTool")), async_, "self") + "\n"
     for group, aliases in GROUPS.items():
         runtime += f"\nclass {prefix}{pascal(group)}Service:\n    def __init__(self, client: Any):\n        self._client = client\n\n"
         for alias, operation in aliases.items():
@@ -424,6 +453,8 @@ event_models += (
 models = header + "\n\n" + "\n\n\n".join(MODELS.values()) + "\n\n"
 models += "\n".join(k + " = " + v for k, v in ALIASES.items()) + "\n\n"
 models += "\n".join(k + ".model_rebuild()" for k in MODELS) + "\n"
+
+models += "\n".join(name.replace("ProjectTool", "UserTool") + " = " + name for name in SCHEMAS if name.startswith("ProjectTool")) + "\n"
 
 outputs = {
     "event_models.py": event_models,

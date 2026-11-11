@@ -6,6 +6,7 @@ from ._transport import RequestOptions
 
 RESPONSE_TYPES = {
     'Agent': models.Agent,
+    'CancelDetachedTaskResponse': models.CancelDetachedTaskResponse,
     'Capabilities': models.Capabilities,
     'CapabilitiesLegacy': models.CapabilitiesLegacy,
     'Categories': models.Categories,
@@ -14,22 +15,28 @@ RESPONSE_TYPES = {
     'ChatAttachment': models.ChatAttachment,
     'ChatForked': models.ChatForked,
     'ChatMessageAccepted': models.ChatMessageAccepted,
+    'ChoiceClassificationResult': models.ChoiceClassificationResult,
     'Completion': models.Completion,
     'CompletionCollection': models.CompletionCollection,
     'CreateApiKeyResponse': models.CreateApiKeyResponse,
+    'DetachedTaskSnapshot': models.DetachedTaskSnapshot,
     'HealthCheckResponse': models.HealthCheckResponse,
     'ImageGenerationAcceptedRecord': models.ImageGenerationAcceptedRecord,
     'ImageGenerationStatusRecord': models.ImageGenerationStatusRecord,
     'ImageUploadRecord': models.ImageUploadRecord,
+    'IndependentJobReceipt': models.IndependentJobReceipt,
     'JwksDocument': models.JwksDocument,
     'ListChatAttachmentsResponse': models.ListChatAttachmentsResponse,
     'ModelList': models.ModelList,
+    'NativeDeliveryReceipt': models.NativeDeliveryReceipt,
     'None': None,
+    'PhaseClassificationResult': models.PhaseClassificationResult,
+    'ProjectTool': models.ProjectTool,
     'RestoreChatAccepted': models.RestoreChatAccepted,
     'Team': models.Team,
+    'TeamDelegationReceipt': models.TeamDelegationReceipt,
     'TestGenerateImageResponse': models.TestGenerateImageResponse,
     'TurnAccepted': models.TurnAccepted,
-    'UserTool': models.UserTool,
     'WebhookOk': models.WebhookOk,
     'WikiOperation': models.WikiOperation,
     'WikiSource': models.WikiSource,
@@ -40,13 +47,41 @@ RESPONSE_TYPES = {
     'list[ApiKey]': list[models.ApiKey],
     'list[Chat]': list[models.Chat],
     'list[ModelCatalogEntry]': list[models.ModelCatalogEntry],
+    'list[ProjectTool]': list[models.ProjectTool],
     'list[Team]': list[models.Team],
-    'list[UserTool]': list[models.UserTool],
     'list[Workspace]': list[models.Workspace],
 }
 
 class Operations:
     _request: Any
+    def deliver_workflow_result(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return self._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delegate_to_team(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return self._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get_detached_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return self._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    def cancel_detached_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return self._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return self._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def start_independent_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return self._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
     def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
@@ -87,13 +122,13 @@ class Operations:
         """getJwks: GET /.well-known/jwks.json."""
         return self._request('getJwks', path_params={}, query={}, headers={}, request_options=request_options)
 
-    def create_workspace(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Workspace:
+    def create_workspace(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Workspace:
         """createWorkspace: POST /workspaces."""
-        return self._request('createWorkspace', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('createWorkspace', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list_workspaces(self, *, request_options: RequestOptions | None = None) -> list[models.Workspace]:
+    def list_workspaces(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Workspace]:
         """listWorkspaces: GET /workspaces."""
-        return self._request('listWorkspaces', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listWorkspaces', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get_workspace(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Workspace:
         """getWorkspace: GET /workspaces/{workspace_id}."""
@@ -103,25 +138,50 @@ class Operations:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return self._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
-    def create_user_tool(self, *, body: models.UserToolCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """createUserTool: POST /tools."""
-        return self._request('createUserTool', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+    def create_project_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list_user_tools(self, *, request_options: RequestOptions | None = None) -> list[models.UserTool]:
-        """listUserTools: GET /tools."""
-        return self._request('listUserTools', path_params={}, query={}, headers={}, request_options=request_options)
+    # Deprecated: project-scoped alias, never user-wide.
+    def create_user_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def get_user_tool(self, name: str, *, request_options: RequestOptions | None = None) -> models.UserTool:
-        """getUserTool: GET /tools/{name}."""
-        return self._request('getUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    def list_project_tools(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return self._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def update_user_tool(self, name: str, *, body: models.UserToolUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """updateUserTool: PUT /tools/{name}."""
-        return self._request('updateUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options, body=body)
+    # Deprecated: project-scoped alias, never user-wide.
+    def list_user_tools(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return self._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def delete_user_tool(self, name: str, *, request_options: RequestOptions | None = None) -> None:
-        """deleteUserTool: DELETE /tools/{name}."""
-        return self._request('deleteUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    def get_project_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return self._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    def get_user_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return self._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def update_project_tool(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return self._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    def update_user_tool(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return self._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    def delete_project_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return self._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    def delete_user_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return self._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def create_chat(self, workspace_id: str, *, body: models.ChatCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
         """createChat: POST /workspaces/{workspace_id}/chats."""
@@ -135,11 +195,11 @@ class Operations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
-    def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
+    def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return self._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
 
@@ -167,13 +227,13 @@ class Operations:
         """convertWorkspaceFileToPdf: POST /workspaces/{workspace_id}/files/convert-to-pdf."""
         return self._request('convertWorkspaceFileToPdf', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
-    def create_agent(self, *, body: models.AgentCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Agent:
+    def create_agent(self, *, body: models.AgentCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Agent:
         """createAgent: POST /agents."""
-        return self._request('createAgent', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('createAgent', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list_agents(self, *, request_options: RequestOptions | None = None) -> list[models.Agent]:
+    def list_agents(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Agent]:
         """listAgents: GET /agents."""
-        return self._request('listAgents', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listAgents', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get_agent(self, agent_id: str, *, request_options: RequestOptions | None = None) -> models.Agent:
         """getAgent: GET /agents/{agent_id}."""
@@ -187,13 +247,13 @@ class Operations:
         """deleteAgent: DELETE /agents/{agent_id}."""
         return self._request('deleteAgent', path_params={'agent_id': agent_id}, query={}, headers={}, request_options=request_options)
 
-    def create_team(self, *, body: models.TeamCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Team:
+    def create_team(self, *, body: models.TeamCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Team:
         """createTeam: POST /teams."""
-        return self._request('createTeam', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('createTeam', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list_teams(self, *, request_options: RequestOptions | None = None) -> list[models.Team]:
+    def list_teams(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Team]:
         """listTeams: GET /teams."""
-        return self._request('listTeams', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listTeams', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get_team(self, team_id: str, *, request_options: RequestOptions | None = None) -> models.Team:
         """getTeam: GET /teams/{team_id}."""
@@ -207,41 +267,41 @@ class Operations:
         """deleteTeam: DELETE /teams/{team_id}."""
         return self._request('deleteTeam', path_params={'team_id': team_id}, query={}, headers={}, request_options=request_options)
 
-    def list_models(self, *, request_options: RequestOptions | None = None) -> models.ModelList:
+    def list_models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ModelList:
         """listModels: GET /models."""
-        return self._request('listModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def create_api_key(self, *, body: models.ApiKeyCreate | dict[str, Any], request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
+    def create_api_key(self, *, body: models.ApiKeyCreate | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
         """createApiKey: POST /api-keys."""
-        return self._request('createApiKey', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('createApiKey', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list_api_keys(self, *, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
+    def list_api_keys(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
         """listApiKeys: GET /api-keys."""
-        return self._request('listApiKeys', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listApiKeys', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def delete_api_key(self, key_id: str, *, request_options: RequestOptions | None = None) -> None:
+    def delete_api_key(self, key_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
         """deleteApiKey: DELETE /api-keys/{key_id}."""
-        return self._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={}, request_options=request_options)
+        return self._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def test_generate_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.TestGenerateImageResponse:
         """testGenerateImage: POST /tests/images/generate."""
         return self._request('testGenerateImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
 
-    def create_image_generation(self, *, body: models.ImageGenerationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
+    def create_image_generation(self, *, body: models.ImageGenerationRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
         """createImageGeneration: POST /images/generations."""
-        return self._request('createImageGeneration', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._request('createImageGeneration', path_params={}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
-    def get_image_generation(self, record: str, *, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
+    def get_image_generation(self, record: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
         """getImageGeneration: GET /images/generations/{record}."""
-        return self._request('getImageGeneration', path_params={'record': record}, query={}, headers={}, request_options=request_options)
+        return self._request('getImageGeneration', path_params={'record': record}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def upload_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
+    def upload_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
         """uploadImage: POST /images/uploads."""
-        return self._request('uploadImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
+        return self._request('uploadImage', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, files=files, data=data)
 
-    def list_image_models(self, *, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
+    def list_image_models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
         """listImageModels: GET /images/models."""
-        return self._request('listImageModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._request('listImageModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def download_artifact(self, *, generation: str, artifact: str, expires: int | None = None, signature: str, request_options: RequestOptions | None = None) -> bytes:
         """downloadArtifact: GET /artifacts/download."""
@@ -357,13 +417,13 @@ class WorkspacesService:
     def __init__(self, client: Any):
         self._client = client
 
-    def create(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Workspace:
+    def create(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Workspace:
         """createWorkspace: POST /workspaces."""
-        return self._client._request('createWorkspace', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('createWorkspace', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list(self, *, request_options: RequestOptions | None = None) -> list[models.Workspace]:
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Workspace]:
         """listWorkspaces: GET /workspaces."""
-        return self._client._request('listWorkspaces', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listWorkspaces', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Workspace:
         """getWorkspace: GET /workspaces/{workspace_id}."""
@@ -378,25 +438,25 @@ class ToolsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def create(self, *, body: models.UserToolCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """createUserTool: POST /tools."""
-        return self._client._request('createUserTool', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+    def create(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return self._client._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list(self, *, request_options: RequestOptions | None = None) -> list[models.UserTool]:
-        """listUserTools: GET /tools."""
-        return self._client._request('listUserTools', path_params={}, query={}, headers={}, request_options=request_options)
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return self._client._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def get(self, name: str, *, request_options: RequestOptions | None = None) -> models.UserTool:
-        """getUserTool: GET /tools/{name}."""
-        return self._client._request('getUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    def get(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return self._client._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def update(self, name: str, *, body: models.UserToolUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """updateUserTool: PUT /tools/{name}."""
-        return self._client._request('updateUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options, body=body)
+    def update(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return self._client._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def delete(self, name: str, *, request_options: RequestOptions | None = None) -> None:
-        """deleteUserTool: DELETE /tools/{name}."""
-        return self._client._request('deleteUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    def delete(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return self._client._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class ChatsService:
@@ -443,16 +503,44 @@ class ChatsService:
         """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    def deliver(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return self._client._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delegate(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return self._client._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return self._client._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    def cancel_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return self._client._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return self._client._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
 
 class CompletionsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
-    def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
+    def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return self._client._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
 
@@ -539,13 +627,13 @@ class AgentsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def create(self, *, body: models.AgentCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Agent:
+    def create(self, *, body: models.AgentCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Agent:
         """createAgent: POST /agents."""
-        return self._client._request('createAgent', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('createAgent', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list(self, *, request_options: RequestOptions | None = None) -> list[models.Agent]:
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Agent]:
         """listAgents: GET /agents."""
-        return self._client._request('listAgents', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listAgents', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get(self, agent_id: str, *, request_options: RequestOptions | None = None) -> models.Agent:
         """getAgent: GET /agents/{agent_id}."""
@@ -564,13 +652,13 @@ class TeamsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def create(self, *, body: models.TeamCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Team:
+    def create(self, *, body: models.TeamCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Team:
         """createTeam: POST /teams."""
-        return self._client._request('createTeam', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('createTeam', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list(self, *, request_options: RequestOptions | None = None) -> list[models.Team]:
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Team]:
         """listTeams: GET /teams."""
-        return self._client._request('listTeams', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listTeams', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def get(self, team_id: str, *, request_options: RequestOptions | None = None) -> models.Team:
         """getTeam: GET /teams/{team_id}."""
@@ -589,38 +677,38 @@ class ApiKeysService:
     def __init__(self, client: Any):
         self._client = client
 
-    def create(self, *, body: models.ApiKeyCreate | dict[str, Any], request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
+    def create(self, *, body: models.ApiKeyCreate | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
         """createApiKey: POST /api-keys."""
-        return self._client._request('createApiKey', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('createApiKey', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    def list(self, *, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
         """listApiKeys: GET /api-keys."""
-        return self._client._request('listApiKeys', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listApiKeys', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def delete(self, key_id: str, *, request_options: RequestOptions | None = None) -> None:
+    def delete(self, key_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
         """deleteApiKey: DELETE /api-keys/{key_id}."""
-        return self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={}, request_options=request_options)
+        return self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class ImagesService:
     def __init__(self, client: Any):
         self._client = client
 
-    def generate(self, *, body: models.ImageGenerationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
+    def generate(self, *, body: models.ImageGenerationRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
         """createImageGeneration: POST /images/generations."""
-        return self._client._request('createImageGeneration', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return self._client._request('createImageGeneration', path_params={}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
-    def get(self, record: str, *, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
+    def get(self, record: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
         """getImageGeneration: GET /images/generations/{record}."""
-        return self._client._request('getImageGeneration', path_params={'record': record}, query={}, headers={}, request_options=request_options)
+        return self._client._request('getImageGeneration', path_params={'record': record}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    def upload(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
+    def upload(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
         """uploadImage: POST /images/uploads."""
-        return self._client._request('uploadImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
+        return self._client._request('uploadImage', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, files=files, data=data)
 
-    def models(self, *, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
+    def models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
         """listImageModels: GET /images/models."""
-        return self._client._request('listImageModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listImageModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def download_artifact(self, *, generation: str, artifact: str, expires: int | None = None, signature: str, request_options: RequestOptions | None = None) -> bytes:
         """downloadArtifact: GET /artifacts/download."""
@@ -631,9 +719,9 @@ class ModelsService:
     def __init__(self, client: Any):
         self._client = client
 
-    def list(self, *, request_options: RequestOptions | None = None) -> models.ModelList:
+    def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ModelList:
         """listModels: GET /models."""
-        return self._client._request('listModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return self._client._request('listModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class CapabilitiesService:
@@ -647,6 +735,34 @@ class CapabilitiesService:
 
 class AsyncOperations:
     _request: Any
+    async def deliver_workflow_result(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return await self._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delegate_to_team(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return await self._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get_detached_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return await self._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    async def cancel_detached_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return await self._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return await self._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return await self._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def start_independent_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return await self._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
     async def send_chat_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
         return await self._request('sendChatMessage', path_params={'chat_id': chat_id}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
@@ -687,13 +803,13 @@ class AsyncOperations:
         """getJwks: GET /.well-known/jwks.json."""
         return await self._request('getJwks', path_params={}, query={}, headers={}, request_options=request_options)
 
-    async def create_workspace(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Workspace:
+    async def create_workspace(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Workspace:
         """createWorkspace: POST /workspaces."""
-        return await self._request('createWorkspace', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('createWorkspace', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list_workspaces(self, *, request_options: RequestOptions | None = None) -> list[models.Workspace]:
+    async def list_workspaces(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Workspace]:
         """listWorkspaces: GET /workspaces."""
-        return await self._request('listWorkspaces', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listWorkspaces', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get_workspace(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Workspace:
         """getWorkspace: GET /workspaces/{workspace_id}."""
@@ -703,25 +819,50 @@ class AsyncOperations:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return await self._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
-    async def create_user_tool(self, *, body: models.UserToolCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """createUserTool: POST /tools."""
-        return await self._request('createUserTool', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+    async def create_project_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return await self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list_user_tools(self, *, request_options: RequestOptions | None = None) -> list[models.UserTool]:
-        """listUserTools: GET /tools."""
-        return await self._request('listUserTools', path_params={}, query={}, headers={}, request_options=request_options)
+    # Deprecated: project-scoped alias, never user-wide.
+    async def create_user_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return await self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def get_user_tool(self, name: str, *, request_options: RequestOptions | None = None) -> models.UserTool:
-        """getUserTool: GET /tools/{name}."""
-        return await self._request('getUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    async def list_project_tools(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return await self._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def update_user_tool(self, name: str, *, body: models.UserToolUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """updateUserTool: PUT /tools/{name}."""
-        return await self._request('updateUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options, body=body)
+    # Deprecated: project-scoped alias, never user-wide.
+    async def list_user_tools(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return await self._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def delete_user_tool(self, name: str, *, request_options: RequestOptions | None = None) -> None:
-        """deleteUserTool: DELETE /tools/{name}."""
-        return await self._request('deleteUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    async def get_project_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return await self._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    async def get_user_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return await self._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def update_project_tool(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return await self._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    async def update_user_tool(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return await self._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    async def delete_project_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return await self._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    # Deprecated: project-scoped alias, never user-wide.
+    async def delete_user_tool(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return await self._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def create_chat(self, workspace_id: str, *, body: models.ChatCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
         """createChat: POST /workspaces/{workspace_id}/chats."""
@@ -735,11 +876,11 @@ class AsyncOperations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return await self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
-    async def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    async def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return await self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return await self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
-    async def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
+    async def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return await self._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
 
@@ -767,13 +908,13 @@ class AsyncOperations:
         """convertWorkspaceFileToPdf: POST /workspaces/{workspace_id}/files/convert-to-pdf."""
         return await self._request('convertWorkspaceFileToPdf', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
-    async def create_agent(self, *, body: models.AgentCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Agent:
+    async def create_agent(self, *, body: models.AgentCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Agent:
         """createAgent: POST /agents."""
-        return await self._request('createAgent', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('createAgent', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list_agents(self, *, request_options: RequestOptions | None = None) -> list[models.Agent]:
+    async def list_agents(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Agent]:
         """listAgents: GET /agents."""
-        return await self._request('listAgents', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listAgents', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get_agent(self, agent_id: str, *, request_options: RequestOptions | None = None) -> models.Agent:
         """getAgent: GET /agents/{agent_id}."""
@@ -787,13 +928,13 @@ class AsyncOperations:
         """deleteAgent: DELETE /agents/{agent_id}."""
         return await self._request('deleteAgent', path_params={'agent_id': agent_id}, query={}, headers={}, request_options=request_options)
 
-    async def create_team(self, *, body: models.TeamCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Team:
+    async def create_team(self, *, body: models.TeamCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Team:
         """createTeam: POST /teams."""
-        return await self._request('createTeam', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('createTeam', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list_teams(self, *, request_options: RequestOptions | None = None) -> list[models.Team]:
+    async def list_teams(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Team]:
         """listTeams: GET /teams."""
-        return await self._request('listTeams', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listTeams', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get_team(self, team_id: str, *, request_options: RequestOptions | None = None) -> models.Team:
         """getTeam: GET /teams/{team_id}."""
@@ -807,41 +948,41 @@ class AsyncOperations:
         """deleteTeam: DELETE /teams/{team_id}."""
         return await self._request('deleteTeam', path_params={'team_id': team_id}, query={}, headers={}, request_options=request_options)
 
-    async def list_models(self, *, request_options: RequestOptions | None = None) -> models.ModelList:
+    async def list_models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ModelList:
         """listModels: GET /models."""
-        return await self._request('listModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def create_api_key(self, *, body: models.ApiKeyCreate | dict[str, Any], request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
+    async def create_api_key(self, *, body: models.ApiKeyCreate | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
         """createApiKey: POST /api-keys."""
-        return await self._request('createApiKey', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('createApiKey', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list_api_keys(self, *, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
+    async def list_api_keys(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
         """listApiKeys: GET /api-keys."""
-        return await self._request('listApiKeys', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listApiKeys', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def delete_api_key(self, key_id: str, *, request_options: RequestOptions | None = None) -> None:
+    async def delete_api_key(self, key_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
         """deleteApiKey: DELETE /api-keys/{key_id}."""
-        return await self._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={}, request_options=request_options)
+        return await self._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def test_generate_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.TestGenerateImageResponse:
         """testGenerateImage: POST /tests/images/generate."""
         return await self._request('testGenerateImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
 
-    async def create_image_generation(self, *, body: models.ImageGenerationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
+    async def create_image_generation(self, *, body: models.ImageGenerationRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
         """createImageGeneration: POST /images/generations."""
-        return await self._request('createImageGeneration', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._request('createImageGeneration', path_params={}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
-    async def get_image_generation(self, record: str, *, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
+    async def get_image_generation(self, record: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
         """getImageGeneration: GET /images/generations/{record}."""
-        return await self._request('getImageGeneration', path_params={'record': record}, query={}, headers={}, request_options=request_options)
+        return await self._request('getImageGeneration', path_params={'record': record}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def upload_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
+    async def upload_image(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
         """uploadImage: POST /images/uploads."""
-        return await self._request('uploadImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
+        return await self._request('uploadImage', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, files=files, data=data)
 
-    async def list_image_models(self, *, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
+    async def list_image_models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
         """listImageModels: GET /images/models."""
-        return await self._request('listImageModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._request('listImageModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def download_artifact(self, *, generation: str, artifact: str, expires: int | None = None, signature: str, request_options: RequestOptions | None = None) -> bytes:
         """downloadArtifact: GET /artifacts/download."""
@@ -957,13 +1098,13 @@ class AsyncWorkspacesService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def create(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Workspace:
+    async def create(self, *, body: models.WorkspaceCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Workspace:
         """createWorkspace: POST /workspaces."""
-        return await self._client._request('createWorkspace', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('createWorkspace', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> list[models.Workspace]:
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Workspace]:
         """listWorkspaces: GET /workspaces."""
-        return await self._client._request('listWorkspaces', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listWorkspaces', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.Workspace:
         """getWorkspace: GET /workspaces/{workspace_id}."""
@@ -978,25 +1119,25 @@ class AsyncToolsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def create(self, *, body: models.UserToolCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """createUserTool: POST /tools."""
-        return await self._client._request('createUserTool', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+    async def create(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """createProjectTool: POST /tools."""
+        return await self._client._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> list[models.UserTool]:
-        """listUserTools: GET /tools."""
-        return await self._client._request('listUserTools', path_params={}, query={}, headers={}, request_options=request_options)
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ProjectTool]:
+        """listProjectTools: GET /tools."""
+        return await self._client._request('listProjectTools', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def get(self, name: str, *, request_options: RequestOptions | None = None) -> models.UserTool:
-        """getUserTool: GET /tools/{name}."""
-        return await self._client._request('getUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    async def get(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """getProjectTool: GET /tools/{name}."""
+        return await self._client._request('getProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def update(self, name: str, *, body: models.UserToolUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.UserTool:
-        """updateUserTool: PUT /tools/{name}."""
-        return await self._client._request('updateUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options, body=body)
+    async def update(self, name: str, *, body: models.ProjectToolUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
+        """updateProjectTool: PUT /tools/{name}."""
+        return await self._client._request('updateProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def delete(self, name: str, *, request_options: RequestOptions | None = None) -> None:
-        """deleteUserTool: DELETE /tools/{name}."""
-        return await self._client._request('deleteUserTool', path_params={'name': name}, query={}, headers={}, request_options=request_options)
+    async def delete(self, name: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectTool: DELETE /tools/{name}."""
+        return await self._client._request('deleteProjectTool', path_params={'name': name}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class AsyncChatsService:
@@ -1043,16 +1184,44 @@ class AsyncChatsService:
         """restoreChat: POST /atp/v3/chats/{chat_id}/restore."""
         return await self._client._request('restoreChat', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    async def deliver(self, chat_id: str, *, body: models.NativeDeliveryRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.NativeDeliveryReceipt:
+        """deliverWorkflowResult: POST /atp/v3/chats/{chat_id}/deliveries."""
+        return await self._client._request('deliverWorkflowResult', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delegate(self, chat_id: str, *, body: models.TeamDelegationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.TeamDelegationReceipt:
+        """delegateToTeam: POST /atp/v3/chats/{chat_id}/delegations."""
+        return await self._client._request('delegateToTeam', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get_task(self, chat_id: str, task_id: str, *, request_options: RequestOptions | None = None) -> models.DetachedTaskSnapshot:
+        """getDetachedTask: GET /atp/v3/chats/{chat_id}/tasks/{task_id}."""
+        return await self._client._request('getDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options)
+
+    async def cancel_task(self, chat_id: str, task_id: str, *, body: models.CancelDetachedTaskBody | dict[str, Any], request_options: RequestOptions | None = None) -> models.CancelDetachedTaskResponse:
+        """cancelDetachedTask: POST /atp/v3/chats/{chat_id}/tasks/{task_id}/cancel."""
+        return await self._client._request('cancelDetachedTask', path_params={'chat_id': chat_id, 'task_id': task_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_phase(self, chat_id: str, *, body: models.PhaseClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.PhaseClassificationResult:
+        """classifyPhase: POST /atp/v3/chats/{chat_id}/classify-phase."""
+        return await self._client._request('classifyPhase', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def classify_choice(self, chat_id: str, *, body: models.ChoiceClassificationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ChoiceClassificationResult:
+        """classifyChoice: POST /atp/v3/chats/{chat_id}/classify-choice."""
+        return await self._client._request('classifyChoice', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
+        """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
+        return await self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
 
 class AsyncCompletionsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.CompletionCollection:
+    async def list(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
-        return await self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'per_page': per_page}, headers={}, request_options=request_options)
+        return await self._client._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
 
-    async def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> models.Completion:
+    async def get(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return await self._client._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
 
@@ -1139,13 +1308,13 @@ class AsyncAgentsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def create(self, *, body: models.AgentCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Agent:
+    async def create(self, *, body: models.AgentCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Agent:
         """createAgent: POST /agents."""
-        return await self._client._request('createAgent', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('createAgent', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> list[models.Agent]:
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Agent]:
         """listAgents: GET /agents."""
-        return await self._client._request('listAgents', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listAgents', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get(self, agent_id: str, *, request_options: RequestOptions | None = None) -> models.Agent:
         """getAgent: GET /agents/{agent_id}."""
@@ -1164,13 +1333,13 @@ class AsyncTeamsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def create(self, *, body: models.TeamCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Team:
+    async def create(self, *, body: models.TeamCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.Team:
         """createTeam: POST /teams."""
-        return await self._client._request('createTeam', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('createTeam', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> list[models.Team]:
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.Team]:
         """listTeams: GET /teams."""
-        return await self._client._request('listTeams', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listTeams', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def get(self, team_id: str, *, request_options: RequestOptions | None = None) -> models.Team:
         """getTeam: GET /teams/{team_id}."""
@@ -1189,38 +1358,38 @@ class AsyncApiKeysService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def create(self, *, body: models.ApiKeyCreate | dict[str, Any], request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
+    async def create(self, *, body: models.ApiKeyCreate | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.CreateApiKeyResponse:
         """createApiKey: POST /api-keys."""
-        return await self._client._request('createApiKey', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('createApiKey', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ApiKey]:
         """listApiKeys: GET /api-keys."""
-        return await self._client._request('listApiKeys', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listApiKeys', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def delete(self, key_id: str, *, request_options: RequestOptions | None = None) -> None:
+    async def delete(self, key_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
         """deleteApiKey: DELETE /api-keys/{key_id}."""
-        return await self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class AsyncImagesService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def generate(self, *, body: models.ImageGenerationRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
+    async def generate(self, *, body: models.ImageGenerationRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationAcceptedRecord:
         """createImageGeneration: POST /images/generations."""
-        return await self._client._request('createImageGeneration', path_params={}, query={}, headers={}, request_options=request_options, body=body)
+        return await self._client._request('createImageGeneration', path_params={}, query={}, headers={'Idempotency-Key': idempotency_key}, request_options=request_options, body=body)
 
-    async def get(self, record: str, *, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
+    async def get(self, record: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageGenerationStatusRecord:
         """getImageGeneration: GET /images/generations/{record}."""
-        return await self._client._request('getImageGeneration', path_params={'record': record}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('getImageGeneration', path_params={'record': record}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
-    async def upload(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
+    async def upload(self, *, files: dict[str, Any] | list[tuple[str, Any]], data: dict[str, Any] | None = None, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ImageUploadRecord:
         """uploadImage: POST /images/uploads."""
-        return await self._client._request('uploadImage', path_params={}, query={}, headers={}, request_options=request_options, files=files, data=data)
+        return await self._client._request('uploadImage', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, files=files, data=data)
 
-    async def models(self, *, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
+    async def models(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> list[models.ModelCatalogEntry]:
         """listImageModels: GET /images/models."""
-        return await self._client._request('listImageModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listImageModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def download_artifact(self, *, generation: str, artifact: str, expires: int | None = None, signature: str, request_options: RequestOptions | None = None) -> bytes:
         """downloadArtifact: GET /artifacts/download."""
@@ -1231,9 +1400,9 @@ class AsyncModelsService:
     def __init__(self, client: Any):
         self._client = client
 
-    async def list(self, *, request_options: RequestOptions | None = None) -> models.ModelList:
+    async def list(self, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ModelList:
         """listModels: GET /models."""
-        return await self._client._request('listModels', path_params={}, query={}, headers={}, request_options=request_options)
+        return await self._client._request('listModels', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class AsyncCapabilitiesService:

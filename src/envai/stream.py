@@ -178,7 +178,7 @@ class StreamState:
             except (ValueError, UnicodeError):
                 payload = None
             raise from_response(response.status_code, payload, response.headers.get("x-request-id"))
-        self.client._acknowledge(response, self.contract_version)
+        self.client._acknowledge(response, self.contract_version, native=self.client.native_tasks)
         if (
             response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
             != "text/event-stream"
