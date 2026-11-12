@@ -101,23 +101,60 @@ async def test_deprecated_tool_aliases_use_project_operations(async_, verb):
 def test_only_reviewed_operations_have_client_methods():
     from test_http import snake
 
+    from envai import _generated as generated
+
     allowed = set(json.loads((Path(__file__).parents[1] / "scripts/sdk-operations.json").read_text()))
     source = {op["operationId"] for item in OPENAPI["paths"].values()
               for op in item.values() if isinstance(op, dict) and "operationId" in op}
-    assert set(OPERATIONS) == allowed and len(source) == 146 and len(allowed) == 78
-    # The administrative logs schema is embedded for provenance, not callable.
+    assert set(OPERATIONS) == allowed and len(source) == 146 and len(allowed) == 92
+    reviewed_additions = {
+        "deleteWorkspace", "updateChat", "deleteChat", "listChatCrons",
+        "getChatCron", "updateChatCron", "deleteChatCron", "listProjectSkills",
+        "createProjectSkill", "getProjectSkill", "updateProjectSkill",
+        "deleteProjectSkill", "getProjectUsage", "getProjectLogs",
+    }
+    assert len(reviewed_additions) == 14 and reviewed_additions <= allowed
     catalog = models.ProjectEventTypeFiltersResource.model_validate(
         {"data": {"types": ["chat.created", "completion.finished"]}}
     )
     assert catalog.model_dump() == {"data": {"types": ["chat.created", "completion.finished"]}}
-    assert "getProjectLogs" in source
-    assert "getProjectLogs" not in allowed
-    assert "getProjectLogs" not in OPERATIONS
-    assert not hasattr(EnvaiClient, "get_project_logs")
-    assert not hasattr(AsyncEnvaiClient, "get_project_logs")
-    for operation in source - allowed:
+    assert "getProjectLogs" in source and "getProjectLogs" in allowed
+    assert "getProjectLogs" in OPERATIONS
+    assert hasattr(EnvaiClient, "get_project_logs")
+    assert hasattr(AsyncEnvaiClient, "get_project_logs")
+    session_stubs = {"createApiKey", "listApiKeys", "deleteApiKey"}
+    assert session_stubs <= allowed
+    human_operations = {
+        "login", "createCompany", "getCompanyUsage", "getCompanyBillingWallet",
+        "listCompanyBillingTransactions", "createCompanyBillingTopup",
+        "setupCompanyBillingPaymentMethod", "updateCompanyAutoRecharge",
+        "getProjectSpendLimit", "updateProjectSpendLimit",
+        "getApiKeySpendLimit", "updateApiKeySpendLimit", "deleteProject",
+        "listUsers", "updateUserPlatformRole", "reserveBilling",
+        "settleBilling", "releaseBilling", "internalWikiDispatch",
+    }
+    assert human_operations <= source and not human_operations & allowed
+    human_only = {
+        op["operationId"] for item in OPENAPI["paths"].values()
+        for op in item.values()
+        if isinstance(op, dict) and "operationId" in op and op.get("security")
+        and not any("bearerAuth" in scheme for scheme in op["security"])
+    }
+    assert session_stubs <= human_only
+    assert human_only - session_stubs <= source - allowed
+    for operation in human_operations | (source - allowed):
+        assert operation not in OPERATIONS
         assert not hasattr(EnvaiClient, snake(operation))
         assert not hasattr(AsyncEnvaiClient, snake(operation))
+    assert "createChatCron" not in source and "createChatCron" not in allowed
+    assert not hasattr(EnvaiClient, "create_chat_cron")
+    assert not hasattr(AsyncEnvaiClient, "create_chat_cron")
+    assert not hasattr(generated.ChatCronsService, "create")
+    assert not hasattr(generated.AsyncChatCronsService, "create")
+    assert not any(
+        method == "post" and "crons" in path
+        for path, item in OPENAPI["paths"].items() for method in item
+    )
 
 
 @pytest.mark.parametrize("metadata", [{"environment": "staging"}, [], ["one", 2]])

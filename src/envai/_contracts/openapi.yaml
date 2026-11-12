@@ -2644,6 +2644,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequestsError'
+        '503':
+          $ref: '#/components/responses/ProviderConfigurationError'
         '500':
           $ref: '#/components/responses/ServerError'
   /images/generations/{record}:
@@ -10571,6 +10573,7 @@ components:
               - validation_error
               - access_denied
               - provider_error
+              - provider_configuration_error
               - server_error
               - internal_error
               - file_not_found
@@ -14802,6 +14805,18 @@ components:
             error:
               type: file_service_unavailable
               message: The file service is temporarily unavailable.
+              details: null
+    ProviderConfigurationError:
+      description: A provider in the authorized image routing chain is not configured
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              type: provider_configuration_error
+              code: provider_configuration_error
+              message: Image generation is temporarily unavailable because its provider is not configured.
               details: null
     ProviderAuthError:
       description: Provider webhook authentication failed

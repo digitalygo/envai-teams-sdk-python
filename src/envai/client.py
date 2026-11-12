@@ -25,6 +25,7 @@ from ._transport import (
 from .attachments import AsyncAttachmentsService, AttachmentsService
 from .errors import CompatibilityError, ProtocolError, TransportError
 from .events import Event, TurnAccumulator, TurnResult
+from .project_reports import AsyncProjectReportsService, ProjectReportsService
 from .stream import AsyncEventStream, EventStream
 from .tool_state import ToolStateStore
 from .tool_verification import AsyncJwksVerifier, JwksVerifier
@@ -508,6 +509,9 @@ class EnvaiClient(SyncTransport, generated.Operations):
         self.workspaces = generated.WorkspacesService(self)
         self.tools = generated.ToolsService(self)
         self.chats = ChatsService(self)
+        self.chat_crons = generated.ChatCronsService(self)
+        self.project_skills = generated.ProjectSkillsService(self)
+        self.project_reports = ProjectReportsService(self)
         self.completions = CompletionsService(self)
         self.files = generated.FilesService(self)
         self.agents = generated.AgentsService(self)
@@ -571,6 +575,9 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         self.workspaces = generated.AsyncWorkspacesService(self)
         self.tools = generated.AsyncToolsService(self)
         self.chats = AsyncChatsService(self)
+        self.chat_crons = generated.AsyncChatCronsService(self)
+        self.project_skills = generated.AsyncProjectSkillsService(self)
+        self.project_reports = AsyncProjectReportsService(self)
         self.completions = AsyncCompletionsService(self)
         self.files = generated.AsyncFilesService(self)
         self.agents = generated.AsyncAgentsService(self)

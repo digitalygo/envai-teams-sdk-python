@@ -1,6 +1,6 @@
 # API inventory
 
-The reviewed 78 SDK operation IDs (75 callable operations plus 3 unsupported API-key management stubs), selected from the 146-operation server contract. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
+The reviewed 92 SDK operation IDs (89 callable operations plus 3 unsupported API-key management stubs), selected from the 146-operation server contract pinned at backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e` (`digitalygo/1-1-5-envai-aaas`). This source is unreleased; the `1.0.0a6` baseline contains 78 operations. The 14 operations added by this source are marked **new**. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
 
 | Operation ID | Method | Path |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ The reviewed 78 SDK operation IDs (75 callable operations plus 3 unsupported API
 | listWorkspaces | GET | `/workspaces` |
 | getWorkspace | GET | `/workspaces/{workspace_id}` |
 | updateWorkspace | PUT | `/workspaces/{workspace_id}` |
+| deleteWorkspace | DELETE | `/workspaces/{workspace_id}` (**new**, 200 cleanup result) |
 | createProjectTool | POST | `/tools` |
 | listProjectTools | GET | `/tools` |
 | getProjectTool | GET | `/tools/{name}` |
@@ -34,6 +35,12 @@ The reviewed 78 SDK operation IDs (75 callable operations plus 3 unsupported API
 | createChat | POST | `/workspaces/{workspace_id}/chats` |
 | listChats | GET | `/workspaces/{workspace_id}/chats` |
 | getChat | GET | `/workspaces/{workspace_id}/chats/{chat_id}` |
+| updateChat | PUT | `/workspaces/{workspace_id}/chats/{chat_id}` (**new**, title only) |
+| deleteChat | DELETE | `/workspaces/{workspace_id}/chats/{chat_id}` (**new**, 200 cleanup result) |
+| listChatCrons | GET | `/workspaces/{workspace_id}/crons` (**new**) |
+| getChatCron | GET | `/workspaces/{workspace_id}/crons/{cron_id}` (**new**) |
+| updateChatCron | PATCH | `/workspaces/{workspace_id}/crons/{cron_id}` (**new**) |
+| deleteChatCron | DELETE | `/workspaces/{workspace_id}/crons/{cron_id}` (**new**, 204) |
 | listCompletions | GET | `/workspaces/{workspace_id}/chats/{chat_id}/completions` |
 | getCompletion | GET | `/workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}` |
 | indexWorkspaceFiles | GET | `/workspaces/{workspace_id}/files` |
@@ -80,5 +87,37 @@ The reviewed 78 SDK operation IDs (75 callable operations plus 3 unsupported API
 | listWikiCategories | GET | `/workspaces/{workspace_id}/wiki/categories` |
 | getWikiCategoryIndex | GET | `/workspaces/{workspace_id}/wiki/categories/{category_id}/index` |
 | getWikiWebhookJwks | GET | `/.well-known/wiki-webhook-jwks.json` |
+| listProjectSkills | GET | `/projects/{project_id}/skills` (**new**) |
+| createProjectSkill | POST | `/projects/{project_id}/skills` (**new**) |
+| getProjectSkill | GET | `/projects/{project_id}/skills/{skill_id}` (**new**) |
+| updateProjectSkill | PUT | `/projects/{project_id}/skills/{skill_id}` (**new**) |
+| deleteProjectSkill | DELETE | `/projects/{project_id}/skills/{skill_id}` (**new**, 204) |
+| getProjectUsage | GET | `/projects/{project_id}/usage` (**new**) |
+| getProjectLogs | GET | `/projects/{project_id}/logs` (**new**, `view` selects events, analytics or filters) |
 | streamChatEventsLegacy | GET | `/chats/{chat_id}/events` |
 | getCapabilitiesLegacy | GET | `/capabilities` |
+
+## Method names for the new operations
+
+| Operation ID | Primitive (both clients) | Service group method |
+| --- | --- | --- |
+| deleteWorkspace | `delete_workspace` | `workspaces.delete` |
+| updateChat | `update_chat` | `chats.update` |
+| deleteChat | `delete_chat` | `chats.delete` |
+| listChatCrons | `list_chat_crons` | `chat_crons.list` |
+| getChatCron | `get_chat_cron` | `chat_crons.get` |
+| updateChatCron | `update_chat_cron` | `chat_crons.update` |
+| deleteChatCron | `delete_chat_cron` | `chat_crons.delete` |
+| listProjectSkills | `list_project_skills` | `project_skills.list` |
+| createProjectSkill | `create_project_skill` | `project_skills.create` |
+| getProjectSkill | `get_project_skill` | `project_skills.get` |
+| updateProjectSkill | `update_project_skill` | `project_skills.update` |
+| deleteProjectSkill | `delete_project_skill` | `project_skills.delete` |
+| getProjectUsage | `get_project_usage` | `project_reports.usage` (handwritten helper) |
+| getProjectLogs | `get_project_logs` | `project_reports.logs`, `.analytics`, `.filters` (handwritten helpers) |
+
+The generated `ProjectReportsService` in `_generated.py` is replaced on the client by the handwritten helper described in the [API reference](api-reference.md#project-reports). Use `get_project_usage` and `get_project_logs` for the raw operations. `get_project_logs` returns the wrapped union `ProjectLogCollection | ProjectActivityAnalyticsResource | ProjectEventTypeFiltersResource` without unwrapping `data`.
+
+## Event catalog
+
+The pinned event snapshot defines 39 typed ATP event types. `chat.title.updated`, `chat.cron.wakeup`, `billing.limit_reached` and `billing.credit_exhausted` were already typed in `envai.event_models` before this source; they are not new classes. Only `chat.title.updated` exists in the frozen ATP2 catalog.

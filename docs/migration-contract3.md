@@ -24,3 +24,12 @@ Update to the matching backend before enabling attachment sends. Contract 3 rema
 Current resources require project ownership fields. Historical completion reads hydrate `models.LegacyCompletion` or `models.LegacyCompletionCollection` under explicit contract2; get/list return annotations include those shapes, keeping v3 requirements strict. Current completions require `project_id` and `api_key_id`, with nullable `user_id` audit provenance. For workspace/chat/agent/team ownership, replace `user_id` with `project_id`; nullable `created_by_user_id` is audit provenance only. Workspace metadata accepts objects and lists, including the server default `[]`.
 
 Tool registrations and deprecated UserTool aliases now use project scope. API-key management is session-only and fails locally in bearer clients. See the [API reference](api-reference.md).
+
+## Project resources, crons, skills and reports (unreleased)
+
+This source adds 14 operations on top of the `1.0.0a6` baseline (78 to 92 operations; 89 callable plus 3 unsupported API-key stubs), pinned to backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e`. They are additive and need no negotiation change, but they are not in any published package until a release is cut from this source.
+
+- HTTP 402 now raises `PaymentRequiredError` instead of a generic `EnvaiError`. It is a subclass, so broad `except EnvaiError` handlers keep working; narrow `except` clauses on other classes may need an update. Other mappings are unchanged: 503 `provider_error` is `ProviderError`, 503 `file_*` is `FileError`, and 503 `provider_configuration_error` is `ServerError`.
+- `chats.update` sends only `title`; other keys fail locally with `ValidationError`.
+- `workspaces.delete` and `chats.delete` return `CleanupResult` with pending cleanup (HTTP 200), not a purge confirmation.
+- Use `client.project_reports`, `client.chat_crons` and `client.project_skills` for the new groups. See the [API reference](api-reference.md#project-resources).

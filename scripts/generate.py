@@ -266,6 +266,7 @@ GROUPS = {
         "list": "listWorkspaces",
         "get": "getWorkspace",
         "update": "updateWorkspace",
+        "delete": "deleteWorkspace",
     },
     "tools": {
         "create": "createProjectTool",
@@ -278,6 +279,8 @@ GROUPS = {
         "create": "createChat",
         "list": "listChats",
         "get": "getChat",
+        "update": "updateChat",
+        "delete": "deleteChat",
         "send_message": "sendChatMessage",
         "cancel": "cancelChatTurn",
         "steer": "steerChatTurn",
@@ -292,6 +295,12 @@ GROUPS = {
         "classify_phase": "classifyPhase",
         "classify_choice": "classifyChoice",
         "start_job": "startIndependentJob",
+    },
+    "chat_crons": {
+        "list": "listChatCrons",
+        "get": "getChatCron",
+        "update": "updateChatCron",
+        "delete": "deleteChatCron",
     },
     "completions": {"list": "listCompletions", "get": "getCompletion"},
     "wiki": {
@@ -330,6 +339,14 @@ GROUPS = {
         "delete": "deleteTeam",
     },
     "api_keys": {"create": "createApiKey", "list": "listApiKeys", "delete": "deleteApiKey"},
+    "project_skills": {
+        "list": "listProjectSkills",
+        "create": "createProjectSkill",
+        "get": "getProjectSkill",
+        "update": "updateProjectSkill",
+        "delete": "deleteProjectSkill",
+    },
+    "project_reports": {"usage": "getProjectUsage", "logs": "getProjectLogs"},
     "images": {
         "generate": "createImageGeneration",
         "get": "getImageGeneration",
