@@ -33,6 +33,7 @@ from .tools import ClientToolRegistry
 from .wiki import AsyncWikiService, WikiService
 
 TASK_TERMINAL_STATES = frozenset(("completed", "failed", "cancelled"))
+_MISSING = object()
 
 
 def _poll_bounds(timeout: float, poll_interval: float) -> None:
@@ -151,6 +152,7 @@ class ChatsService(generated.ChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> Generator[Event, None, None]:
@@ -173,7 +175,8 @@ class ChatsService(generated.ChatsService):
                     accepted = self.send_message(
                         chat_id,
                         body={"message": message, "attachment_ids": attachment_ids or [],
-                              **({"strict_model": strict_model} if strict_model is not False else {})},
+                              **({"strict_model": strict_model} if strict_model is not False else {}),
+                              **({"model": model} if model is not _MISSING else {})},
                         idempotency_key=idempotency_key, request_options=options,
                     )
                     for previous in _safe_replay(replay, accepted.turn_id):
@@ -197,6 +200,7 @@ class ChatsService(generated.ChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -207,6 +211,7 @@ class ChatsService(generated.ChatsService):
             timeout=timeout,
             attachment_ids=attachment_ids,
             strict_model=strict_model,
+            model=model,
             idempotency_key=idempotency_key,
             **stream_options,
         )
@@ -297,6 +302,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> AsyncGenerator[Event, None]:
@@ -319,7 +325,8 @@ class AsyncChatsService(generated.AsyncChatsService):
                         accepted = await self.send_message(
                             chat_id,
                             body={"message": message, "attachment_ids": attachment_ids or [],
-                              **({"strict_model": strict_model} if strict_model is not False else {})},
+                              **({"strict_model": strict_model} if strict_model is not False else {}),
+                              **({"model": model} if model is not _MISSING else {})},
                             idempotency_key=idempotency_key, request_options=options,
                         )
                         for previous in _safe_replay(replay, accepted.turn_id):
@@ -343,6 +350,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -353,6 +361,7 @@ class AsyncChatsService(generated.AsyncChatsService):
             timeout=timeout,
             attachment_ids=attachment_ids,
             strict_model=strict_model,
+            model=model,
             idempotency_key=idempotency_key,
             **stream_options,
         )

@@ -24,7 +24,7 @@ Multipart inputs use HTTPX-style file tuples. Opening local files is an applicat
 
 ## Project resources
 
-New in this unreleased source (backend contract `ba021aa61e30e379880f809d45f90e5d3564d43e`). Every method below exists on both `EnvaiClient` and `AsyncEnvaiClient` with identical names; async methods are awaited. Bodies accept the typed model or a dictionary. Omitted optional body fields are not sent; explicit `None` is sent only for nullable fields.
+New in this unreleased source (backend contract `7f4085dbfdd3f208b82716119cff1860fbd502bb`). Every method below exists on both `EnvaiClient` and `AsyncEnvaiClient` with identical names; async methods are awaited. Bodies accept the typed model or a dictionary. Omitted optional body fields are not sent; explicit `None` is sent only for nullable fields.
 
 | Group | Methods | Result |
 | --- | --- | --- |
@@ -123,4 +123,4 @@ Workspaces, chats, agents and teams now expose immutable `project_id` ownership 
 
 Tool registrations are project-wide, not user-wide. Use `create_project_tool`, `list_project_tools`, etc., or `client.tools`. Deprecated UserTool names forward to the same project-scoped operations and do not preserve user-wide visibility. A project key determines the project; an optional project header must match the authenticated project.
 
-The exact server snapshot (backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e`) contains 146 operations. This SDK generates only the reviewed 92-operation allowlist in `scripts/sdk-operations.json`: 89 callable operations plus 3 API-key administration stubs that fail locally. Human-session, internal, financial and billing administration methods are not generated. This is not full parity with all 146 server operations.
+The exact server snapshot (backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb`) contains 146 operations. This SDK generates only the reviewed 92-operation allowlist in `scripts/sdk-operations.json`: 89 callable operations plus 3 API-key administration stubs that fail locally. Human-session, internal, financial and billing administration methods are not generated. This is not full parity with all 146 server operations.

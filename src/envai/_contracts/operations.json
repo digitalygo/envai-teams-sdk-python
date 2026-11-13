@@ -276,7 +276,7 @@
           "maxLength": 255,
           "pattern": "^[!-~]+$"
         },
-        "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn."
+        "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn. The exact model, strict_model and native-task policy are bound to the durable admission and replay before fresh catalog selection."
       }
     ],
     "request": {

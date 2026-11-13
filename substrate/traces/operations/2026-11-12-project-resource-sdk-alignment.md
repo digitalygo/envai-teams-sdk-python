@@ -1,7 +1,11 @@
 ---
 status: completed
 created_at: 2026-11-12
+updated_at: 2026-11-13
 files_edited:
+  - docs/model-selection.md
+  - src/envai/_contracts/events.json
+  - tests/test_turn_model.py
   - .github/workflows/ci.yml
   - README.md
   - docs/api-inventory.md
@@ -31,7 +35,10 @@ files_edited:
 rationale:
   - Align synchronous and asynchronous project-key clients with the existing backend resources.
   - Preserve strict wire validation, error compatibility and safe local report pagination.
+  - Carry an exact model override through synchronous and asynchronous turn helpers.
 supporting_docs:
+  - https://github.com/digitalygo/envai-teams/tree/7f4085dbfdd3f208b82716119cff1860fbd502bb
+  - ../../../docs/model-selection.md
   - ../../../AGENTS.md
   - ../../../docs/api-reference.md
   - ../../../docs/api-inventory.md
@@ -140,3 +147,51 @@ The backend advanced independently during verification without changes to the
 pinned contracts, request/resource definitions or routes. Temporary test
 databases were isolated by SDK; their containers and private connection files
 are removed at task closure.
+
+## Update: 2026-11-13 per-turn model selection
+
+### Summary and reasoning
+
+Starting from SDK `195c576` on `feature/user-company-projects`, refreshed the
+current contracts to backend `7f4085dbfdd3f208b82716119cff1860fbd502bb`. The
+backend pull already contained the `alpha` merge, and its remote PR 58 was
+current. Verified GitHub metadata now names it `digitalygo/envai-teams`;
+historical source and capture records above are not rewritten.
+
+Added generated message `model` and catalog `selectable` fields. All four
+synchronous and asynchronous stream/wait helpers forward a call-local model
+into the message body rather than stream options. A missing-value sentinel
+preserves omission versus explicit `None`, which request validation rejects.
+The SDK neither changes model spelling nor prefetches a catalog, imposes an
+allowlist, alters defaults, retries paid mutations or substitutes a model.
+Existing strict-model gates and attachment idempotency remain unchanged.
+
+### Impact and verification
+
+No dependency, workflow, version, endpoint or backend source change was made
+in this update. All six source contracts match the new backend pin, with v2
+and historical captures preserved. The new guide documents input conventions,
+error codes and the distinction between selected and observed models.
+
+Independent generation checks, Ruff and mypy passed. The final full run passed
+1,662 tests without skips on Python 3.13.5 with isolated SQL databases and
+96.11% combined coverage. All five changed executable statements, including
+the enclosing calls whose new keyword lines lack separate instrumentation,
+were covered. Source and wheel builds passed; the wheel was installed into a
+fresh environment and imported outside the source tree with 92 operations.
+
+The initial concurrent run exposed an unchanged test's 5 ms deadline: it
+observed one request rather than two. The isolated 31-test polling suite and
+a complete sequential rerun passed without source changes or relaxed tests.
+This remains a timing signal, not a claimed baseline reproduction.
+
+Quality judgment and security review returned PASS for non-trace snapshot
+`baaf2245901907cfc292cba74c5108292b6681b34453f3a4e9ed55e217a6c493`.
+The quality reviewer noted that the helper annotation includes `object`, so
+non-string model values are rejected at runtime rather than by static type
+checking. Python 3.11/3.12 and actionlint were not run locally. No live backend,
+provider, release or deployment verification is claimed.
+
+Evidence remains under `/tmp/envai-model-sdk-verify/leader-python-*`. Task
+containers, database volumes, private connection files and the wheel test
+environment were removed after verification, leaving unrelated resources intact.

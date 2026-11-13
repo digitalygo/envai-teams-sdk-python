@@ -1228,6 +1228,7 @@ class ChatAttachmentUploadRequest(Model):
 class ChatMessageRequest(Model):
     message: str
     attachment_ids: Union[list[str], None] = Field(default=None)
+    model: Union[str, None] = Field(default=None)
     strict_model: Union[bool, None] = Field(default=None)
 
 
@@ -1725,6 +1726,7 @@ class LlmModelEntry(Model):
     owned_by: str
     type: Literal['llm']
     deprecated: bool
+    selectable: bool
     sunset_at: Union[str, None]
     display_name: Union[Union[str, None], None] = Field(default=None)
     description: Union[Union[str, None], None] = Field(default=None)

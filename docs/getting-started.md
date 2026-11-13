@@ -84,4 +84,4 @@ Reuse clients and close them with `with` / `async with`. Async clients must use 
 
 ## Verification scope
 
-The bundled contract is pinned to backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e` (92 operations). Tests use HTTP mocks, signed fixture data, and temporary local stores. They do not require Envai credentials or contact a production API. Passing tests proves the client's bundled-contract behavior; verify your deployment URL, access, team configuration, and available capabilities separately.
+The bundled contract is pinned to backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb` (92 operations). Tests use HTTP mocks, signed fixture data, and temporary local stores. They do not require Envai credentials or contact a production API. Passing tests proves the client's bundled-contract behavior; verify your deployment URL, access, team configuration, and available capabilities separately.

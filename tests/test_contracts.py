@@ -35,7 +35,7 @@ def test_exact_source_provenance_and_schema_validity():
     assert provenance["repository"] == "digitalygo/envai-teams"
     assert provenance["commit"] == "55275860c9a950eaad8e39e9d2b728149084779c"
     assert provenance["commit"] != current["commit"]
-    assert provenance["repository"] != current["repository"]
+    assert provenance["repository"] == current["repository"]
     assert provenance["protocol_version"] == 2
     assert provenance["operations"] == 52
     assert set(provenance["sources"]) == set(PINNED_SOURCES)

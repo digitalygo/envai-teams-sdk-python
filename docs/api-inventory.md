@@ -1,6 +1,6 @@
 # API inventory
 
-The reviewed 92 SDK operation IDs (89 callable operations plus 3 unsupported API-key management stubs), selected from the 146-operation server contract pinned at backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e` (`digitalygo/1-1-5-envai-aaas`). This source is unreleased; the `1.0.0a6` baseline contains 78 operations. The 14 operations added by this source are marked **new**. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
+The reviewed 92 SDK operation IDs (89 callable operations plus 3 unsupported API-key management stubs), selected from the 146-operation server contract pinned at backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb` (`digitalygo/envai-teams`). This source is unreleased; the `1.0.0a6` baseline contains 78 operations. The 14 operations added by this source are marked **new**. Canonical ATP operations use contract3; the two explicit legacy reads require read-only contract2. Public Wiki methods are negotiated; Wiki JWKS is public. No internal Decisions QUERY, artifact-write, or CAS endpoint is invented.
 
 | Operation ID | Method | Path |
 | --- | --- | --- |

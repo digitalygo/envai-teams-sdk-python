@@ -7,6 +7,7 @@ Prerelease APIs may change; pin the version and review upgrades before productio
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
 - [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [reviewed 92-operation subset](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [Per-turn model selection](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/model-selection.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
@@ -143,6 +144,14 @@ exceptions are isolated from delivery behavior. Typed HTTP exceptions expose
 `http_status`, `type`, `code`, `message`, `details`, and `request_id`; their string
 representation deliberately omits potentially sensitive server messages/details.
 
+## Per-turn model selection
+
+Pass `model="<id>"` to sync or async `send_and_stream` and `send_and_wait` (or put `model` in the `send_message` body) to pin the root model for that turn only. Use an exact, case-sensitive `id` from `GET /models`; omit it for the normal cascade. `selectable=False` is guidance, not a client-side gate. See [per-turn model selection](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/model-selection.md) for errors, idempotency and limits.
+
+```python
+result = client.chats.send_and_wait(chat_id, "Summarize the project", model="vendor/model-id")
+```
+
 ## Opt-in client tools
 
 No local tools, filesystem access, shell commands, or handlers are installed by
@@ -236,7 +245,7 @@ turn; it does not infer permission to execute unrelated turns.
 ## Development and contract provenance
 
 The bundled contract3 HTTP and ATP contracts include strict immutable numeric ATP2 replay schemas. Default clients select contract3 and fail closed against older servers. See [migration](docs/migration-contract3.md) and [Wiki V1](docs/wiki.md).
-`tests/fixtures/contract3-provenance.json` records the six current shared contract snapshots, pinned to backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e` of `digitalygo/1-1-5-envai-aaas`. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
+`tests/fixtures/contract3-provenance.json` records the six current shared contract snapshots, pinned to backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb` of `digitalygo/envai-teams`. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
 from five SDK-authored fixtures. Guards verify the source commit/path, byte count,
 SHA-256, and Git blob identity. Public guides are SDK documentation rather than
 copied contract files. Building or reading the SDK does not require access to a
@@ -266,7 +275,7 @@ See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry a
 ## Native background tasks and delegated jobs
 
 Canonical schemas and byte provenance are pinned to backend commit
-`ba021aa61e30e379880f809d45f90e5d3564d43e` of `digitalygo/1-1-5-envai-aaas`. Earlier
+`7f4085dbfdd3f208b82716119cff1860fbd502bb` of `digitalygo/envai-teams`. Earlier
 native-task reviews targeted Envai server `964c11fe72887329e8d06c2afb483442d643b290`;
 that commit is historical and no longer the pin.
 
@@ -424,7 +433,7 @@ run them in a deployment/startup worker for async applications.
 
 ### Independent jobs and finite choices
 
-The native surface is pinned to backend commit `ba021aa61e30e379880f809d45f90e5d3564d43e`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
+The native surface is pinned to backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
 
 Independent jobs start without a parent turn. Their receipt identifies the initial coordinator; final task `output` and `result_turn_id` identify the completed job. Task snapshots keep the required `origin_turn_id` key with the empty string for independent jobs. Missing origin is invalid. Keep the execution chat’s native SSE subscription and client-tool runner alive while waiting; polling helpers do not execute tools.
 

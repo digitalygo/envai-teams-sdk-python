@@ -848,7 +848,7 @@
       "post": {
         "operationId": "sendChatMessage",
         "summary": "Send a message and start a turn",
-        "description": "Sends a user message to the chat. The message opens a turn: the gateway resolves the team from `chat.team_id` and starts the orchestrator loop, and the turn is identified by the orchestrator completion id `cmpl_<ulid>` returned as `turn_id`. The server emits `turn.started` with the message as the turn input. The request is rejected with 409 when a turn is already in progress for the chat, with 503 `server_error`/`gateway_draining` while the gateway is draining, and with 404 when the chat does not exist.\n",
+        "description": "Sends a user message to the chat. The message opens a turn: the gateway resolves the team from `chat.team_id` and starts the orchestrator loop, and the turn is identified by the orchestrator completion id `cmpl_<ulid>` returned as `turn_id`. The server emits `turn.started` with the message as the turn input. The request is rejected with 409 when a turn is already in progress for the chat, with 503 `server_error`/`gateway_draining` while the gateway is draining, and with 404 when the chat does not exist.\nOptional `model` is an exact, case-sensitive, nonempty catalog `id` copied from an llm entry of `GET /models`. The gateway never trims, coerces, lowercases, strips a prefix or accepts a provider, host, route or candidate list. It pins the root for every ordinary orchestrator call of the admitted turn, including tool continuations and synthesis. Omitted `model` keeps the configured or default cascade. With `strict_model: true` and no `model`, the exact configured root is required and an unavailable or unverifiable configuration returns 422 `strict_model_unavailable`. An explicit `model` is exact with `strict_model` omitted, false or true and does not require the configured root. Children keep their availability-aware cascade and the override never mutates a cached default or a later turn.\nExisting `Idempotency-Key` lookup and policy comparison happen before fresh catalog or model checks. The exact `model`, `strict_model` and native-task policy participate in idempotency; a different or omitted model returns 409. New admissions check catalog health, then known id, availability and compatibility. 422 validation errors use `invalid_model`, `unknown_model`, `model_unavailable` and `model_incompatible`; an unreadable Teams catalog returns 503 `server_error`/`model_catalog_unavailable`. There is no `model_not_selectable` error and no client-list gate.\n",
         "tags": [
           "Chat execution"
         ],
@@ -872,7 +872,7 @@
               "maxLength": 255,
               "pattern": "^[!-~]+$"
             },
-            "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn."
+            "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn. The exact model, strict_model and native-task policy are bound to the durable admission and replay before fresh catalog selection."
           }
         ],
         "requestBody": {
@@ -911,7 +911,42 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/UnsupportedContractVersion"
+            "description": "Malformed JSON body or unsupported contract selector",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_request": {
+                    "value": {
+                      "error": {
+                        "type": "invalid_request",
+                        "code": "invalid_request",
+                        "message": "invalid request"
+                      }
+                    }
+                  },
+                  "unsupported_contract_version": {
+                    "value": {
+                      "error": {
+                        "type": "invalid_request",
+                        "code": "unsupported_contract_version",
+                        "message": "unsupported contract version"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Envai-Required-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "3"
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/UnauthenticatedError"
@@ -938,10 +973,91 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "Invalid message or exact model selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "invalid_model": {
+                    "value": {
+                      "error": {
+                        "type": "validation_error",
+                        "code": "invalid_model",
+                        "message": "model is invalid"
+                      }
+                    }
+                  },
+                  "unknown_model": {
+                    "value": {
+                      "error": {
+                        "type": "validation_error",
+                        "code": "unknown_model",
+                        "message": "model is unknown"
+                      }
+                    }
+                  },
+                  "model_unavailable": {
+                    "value": {
+                      "error": {
+                        "type": "validation_error",
+                        "code": "model_unavailable",
+                        "message": "model unavailable"
+                      }
+                    }
+                  },
+                  "model_incompatible": {
+                    "value": {
+                      "error": {
+                        "type": "validation_error",
+                        "code": "model_incompatible",
+                        "message": "model incompatible"
+                      }
+                    }
+                  },
+                  "strict_model_unavailable": {
+                    "value": {
+                      "error": {
+                        "type": "validation_error",
+                        "code": "strict_model_unavailable",
+                        "message": "configured model is unavailable for strict execution"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "503": {
-            "$ref": "#/components/responses/GatewayDrainingError"
+            "description": "Gateway draining or Teams model catalog unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "gateway_draining": {
+                    "value": {
+                      "error": {
+                        "type": "server_error",
+                        "code": "gateway_draining",
+                        "message": "gateway draining"
+                      }
+                    }
+                  },
+                  "model_catalog_unavailable": {
+                    "value": {
+                      "error": {
+                        "type": "server_error",
+                        "code": "model_catalog_unavailable",
+                        "message": "model catalog unavailable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "426": {
             "$ref": "#/components/responses/ContractUpgradeRequired"
@@ -3692,7 +3808,7 @@
       "get": {
         "operationId": "listModels",
         "summary": "List the LLM model catalog",
-        "description": "Returns the global LLM model catalog with team entries and the platform defaults per role. LLM entries report `deprecated` and `sunset_at` and carry the informational OpenRouter metadata synchronized from the upstream catalog; models unavailable upstream and models past sunset never appear, deprecated models appear with `deprecated: true`. The catalog itself is platform level and never project scoped; team entries are filtered to the teams of the caller project when the request carries a project context. The optional project header is accepted here and nowhere else changes the catalog rows. The response is a top-level `{object, data, defaults}` object without a data wrapper.\n",
+        "description": "Returns the global LLM model catalog with team entries and the platform defaults per role. LLM entries report `deprecated`, `selectable` and `sunset_at` and carry the informational OpenRouter metadata synchronized from the upstream catalog; models unavailable upstream and models past sunset never appear, deprecated models appear with `deprecated: true`. The catalog itself is platform level and never project scoped; team entries are filtered to the teams of the caller project when the request carries a project context. The optional project header is accepted here and nowhere else changes the catalog rows. `selectable` is technical guidance for llm entries only, never permission, filtering or client-list membership; `owned_by` remains the model vendor, not the execution adapter. The response is a top-level `{object, data, defaults}` object without a data wrapper.\n",
         "tags": [
           "Models"
         ],
@@ -9038,7 +9154,7 @@
       "post": {
         "operationId": "reserveBilling",
         "summary": "Reserve a billing hold",
-        "description": "Internal service-to-service reservation of the quoted maximum for one source-bound paid step. The request carries the source provenance and, when the caller holds one, the journal claim pair captured from the active lease. An LLM reservation answers with canonical per-million rates and a positive token bound; a tool reservation answers `max_tokens` 0 and an empty `max_price` object, and only a Sprite reservation carries `tool_limits`. `max_amount` is the EUR hold, never a budget total. The claim pair is stored on the reservation and must be repeated exactly at settlement and release, even after the lease expires or the key is revoked. A quote or budget refusal creates no reservation and invents no amount. The route is marked `x-internal`, is not part of the public `/api/v1` surface, and is never authorized by a public project key or a human session. Runtime use is controlled by a deployment boolean flag that is disabled by default.\n",
+        "description": "Internal service-to-service reservation of the quoted maximum for one source-bound paid step. The request carries the source provenance and, when the caller holds one, the journal claim pair captured from the active lease. An LLM reservation answers with canonical per-million rates and the required legacy `max_tokens` field; a tool reservation answers `max_tokens` 0 and an empty `max_price` object, and only a Sprite reservation carries `tool_limits`. Current Go OpenRouter Chat, ChatStream, and wiki Decisions clients decode but ignore the legacy field and send no automatic output cap or replacement token parameter. PHP quote producer rules remain unchanged for older peers. `max_amount` is the EUR hold, never a budget total. The claim pair is stored on the reservation and must be repeated exactly at settlement and release, even after the lease expires or the key is revoked. A quote or budget refusal creates no reservation and invents no amount. The route is marked `x-internal`, is not part of the public `/api/v1` surface, and is never authorized by a public project key or a human session. Runtime use is controlled by a deployment boolean flag that is disabled by default.\n",
         "tags": [
           "Internal billing"
         ],
@@ -14300,7 +14416,7 @@
       },
       "InternalBillingReservation": {
         "type": "object",
-        "description": "Successful reserve response data for one source-bound paid step. An LLM reservation carries the canonical per-million rates and a positive token bound. A tool reservation, including Exa and Sprite, carries `max_tokens` 0 and an empty `max_price` object; only a Sprite reservation also carries `tool_limits`. The EUR `max_amount` is the hold, not a customer budget total.\n",
+        "description": "Successful reserve response data for one source-bound paid step. An LLM reservation carries the canonical per-million rates and the required legacy `max_tokens` field. A tool reservation, including Exa and Sprite, carries `max_tokens` 0 and an empty `max_price` object; only a Sprite reservation also carries `tool_limits`. Current Go OpenRouter Chat, ChatStream, and wiki Decisions clients decode but ignore `max_tokens`; the field is retained for older peers and is not sent to the provider by current Go, which adds no replacement token parameter. PHP quote producer rules remain unchanged. The EUR `max_amount` is the hold, not a customer budget total.\n",
         "additionalProperties": false,
         "required": [
           "reservation_id",
@@ -14328,7 +14444,7 @@
           "max_tokens": {
             "type": "integer",
             "minimum": 0,
-            "description": "LLM completion token bound. Tool reservations return 0 and use unit prices instead.\n"
+            "description": "Legacy LLM completion token bound retained for older peers. Tool reservations return 0 and use unit prices instead. Current Go OpenRouter clients decode but ignore this value and do not send it or a replacement token parameter to the provider.\n"
           },
           "max_price": {
             "oneOf": [
@@ -15284,7 +15400,7 @@
       },
       "ChatMessageRequest": {
         "type": "object",
-        "description": "User text and IDs of ready native original attachments from this chat. Requires chat_attachments capability and Idempotency-Key when IDs are supplied. Native originals are delivered to compatible models as private content parts; no conversion, OCR or transcription is requested and no file is silently omitted.",
+        "description": "User text and IDs of ready native original attachments from this chat. Requires chat_attachments capability and Idempotency-Key when IDs are supplied. Native originals are delivered to compatible models as private content parts; no conversion, OCR or transcription is requested and no file is silently omitted. Optional `model` is an exact catalog id and never a provider selector.",
         "required": [
           "message"
         ],
@@ -15304,10 +15420,17 @@
               "type": "string"
             }
           },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S(?:.*\\S)?$",
+            "description": "Exact case-sensitive nonempty llm catalog id that pins this turn. Omitted keeps the configured or default cascade. No trimming, coercion, normalization, prefix stripping, provider, host or route selection is applied.",
+            "example": "vendor/not-in-client-list"
+          },
           "strict_model": {
             "type": "boolean",
             "default": false,
-            "description": "Requires strict_model capability. True requires the explicitly configured root orchestrator model to be available without resolver fallback before inference or tools. Unavailable or unverifiable configuration returns 422 strict_model_unavailable. Child model selection is unchanged. The effective flag participates in idempotency; omitted and false are equivalent, and changed policy returns 409."
+            "description": "Requires strict_model capability. True without model requires the explicitly configured root orchestrator model without resolver fallback and returns 422 strict_model_unavailable when missing, unavailable or unverifiable. An explicit model is exact with strict_model omitted, false or true, does not require the configured root and pins the root without fallback. Children keep their existing cascade. The effective flag participates in idempotency; omitted and false are equivalent, and a changed policy returns 409."
           }
         }
       },
@@ -18034,7 +18157,7 @@
       },
       "LlmModelEntry": {
         "type": "object",
-        "description": "LLM entry of the catalog. `owned_by` is the model provider. Models that are unavailable upstream or past sunset are removed from the catalog and never appear; deprecated models appear with `deprecated: true` until sunset. The OpenRouter metadata fields are informational copies of the upstream catalog: `pricing` never drives billing, which uses the provider `usage.cost`.\n",
+        "description": "LLM entry of the catalog. `owned_by` is the model provider. Models that are unavailable upstream or past sunset are removed from the catalog and never appear; deprecated models appear with `deprecated: true` until sunset. `owned_by` is the model vendor, not the execution adapter. The OpenRouter metadata fields are informational copies of the upstream catalog: `pricing` never drives billing, which uses the provider `usage.cost`.\n",
         "required": [
           "id",
           "object",
@@ -18042,6 +18165,7 @@
           "owned_by",
           "type",
           "deprecated",
+          "selectable",
           "sunset_at"
         ],
         "properties": {
@@ -18076,6 +18200,11 @@
             "type": "boolean",
             "description": "Whether the model is in the deprecation period before sunset",
             "example": false
+          },
+          "selectable": {
+            "type": "boolean",
+            "description": "Technical guidance for llm entries only. True when the runtime entry is available, not past sunset, has a known positive context window and known base text input, text output and tool support. It never filters the catalog, grants permission, requires client-list membership or requires price data.",
+            "example": true
           },
           "sunset_at": {
             "type": [
