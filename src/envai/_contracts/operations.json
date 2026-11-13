@@ -276,7 +276,7 @@
           "maxLength": 255,
           "pattern": "^[!-~]+$"
         },
-        "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn."
+        "description": "Required with attachment_ids; reuse on deliberate retry to recover the same accepted turn. The exact model, strict_model and native-task policy are bound to the durable admission and replay before fresh catalog selection."
       }
     ],
     "request": {
@@ -695,6 +695,34 @@
     "stream": false,
     "public": true
   },
+  "deleteWorkspace": {
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/CleanupResource"
+    },
+    "response_type": "CleanupResult",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
   "createProjectTool": {
     "method": "POST",
     "path": "/tools",
@@ -964,6 +992,86 @@
     "stream": false,
     "public": true
   },
+  "updateChat": {
+    "method": "PUT",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChatUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatResource"
+    },
+    "response_type": "Chat",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteChat": {
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}/chats/{chat_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "path",
+        "required": true,
+        "description": "Chat id `cht_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/CleanupResource"
+    },
+    "response_type": "CleanupResult",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
   "listCompletions": {
     "method": "GET",
     "path": "/workspaces/{workspace_id}/chats/{chat_id}/completions",
@@ -1116,6 +1224,218 @@
     },
     "response_type": "Completion",
     "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listChatCrons": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/crons",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "origin_chat_id",
+        "in": "query",
+        "required": false,
+        "description": "Only return crons whose origin chat has this id",
+        "schema": {
+          "type": "string",
+          "maxLength": 30
+        }
+      },
+      {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "description": "Only return crons with this scheduling status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "active",
+            "completed"
+          ]
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatCronCollection"
+    },
+    "response_type": "list[ChatCron]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getChatCron": {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}/crons/{cron_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "cron_id",
+        "in": "path",
+        "required": true,
+        "description": "Cron id `cron_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][rR][oO][nN]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cron_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ChatCronResource"
+    },
+    "response_type": "ChatCron",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateChatCron": {
+    "method": "PATCH",
+    "path": "/workspaces/{workspace_id}/crons/{cron_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "cron_id",
+        "in": "path",
+        "required": true,
+        "description": "Cron id `cron_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][rR][oO][nN]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cron_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ChatCronUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ChatCronResource"
+    },
+    "response_type": "ChatCron",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteChatCron": {
+    "method": "DELETE",
+    "path": "/workspaces/{workspace_id}/crons/{cron_id}",
+    "params": [
+      {
+        "name": "workspace_id",
+        "in": "path",
+        "required": true,
+        "description": "Workspace id `wsp_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[wW][sS][pP]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "wsp_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "cron_id",
+        "in": "path",
+        "required": true,
+        "description": "Cron id `cron_<ulid>`, 31 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][rR][oO][nN]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cron_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
     "auth": true,
     "stream": false,
     "public": true
@@ -2920,6 +3240,474 @@
       "$ref": "#/components/schemas/CapabilitiesLegacy"
     },
     "response_type": "CapabilitiesLegacy",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "listProjectSkills": {
+    "method": "GET",
+    "path": "/projects/{project_id}/skills",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ProjectSkillCollection"
+    },
+    "response_type": "list[ProjectSkill]",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "createProjectSkill": {
+    "method": "POST",
+    "path": "/projects/{project_id}/skills",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ProjectSkillCreateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ProjectSkillResource"
+    },
+    "response_type": "ProjectSkill",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getProjectSkill": {
+    "method": "GET",
+    "path": "/projects/{project_id}/skills/{skill_id}",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "skill_id",
+        "in": "path",
+        "required": true,
+        "description": "Project skill id `psk_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][sS][kK]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "psk_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/ProjectSkillResource"
+    },
+    "response_type": "ProjectSkill",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "updateProjectSkill": {
+    "method": "PUT",
+    "path": "/projects/{project_id}/skills/{skill_id}",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "skill_id",
+        "in": "path",
+        "required": true,
+        "description": "Project skill id `psk_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][sS][kK]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "psk_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": {
+      "$ref": "#/components/schemas/ProjectSkillUpdateRequest"
+    },
+    "media": "application/json",
+    "request_required": true,
+    "response": {
+      "$ref": "#/components/schemas/ProjectSkillResource"
+    },
+    "response_type": "ProjectSkill",
+    "unwrap": true,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "deleteProjectSkill": {
+    "method": "DELETE",
+    "path": "/projects/{project_id}/skills/{skill_id}",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "skill_id",
+        "in": "path",
+        "required": true,
+        "description": "Project skill id `psk_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][sS][kK]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "psk_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": null,
+    "response_type": "None",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getProjectUsage": {
+    "method": "GET",
+    "path": "/projects/{project_id}/usage",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "from",
+        "in": "query",
+        "required": false,
+        "description": "Inclusive range start as a UTC calendar date `YYYY-MM-DD`, default 29 days before `to`. A start after the end or a range beyond the maximum window of 90 days is rejected with 422.\n",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-01"
+        }
+      },
+      {
+        "name": "to",
+        "in": "query",
+        "required": false,
+        "description": "Inclusive range end as a UTC calendar date `YYYY-MM-DD`, default today in UTC.\n",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-30"
+        }
+      },
+      {
+        "name": "api_key_id",
+        "in": "query",
+        "required": false,
+        "description": "Optional scalar api key id `key_<ulid>` filter for events and analytics. Project logs match the turn key and the actor key of an event. The events view rejects it when `api_key_ids[]` is present and view=filters prohibits it. A project key caller cannot filter by a key of another project; an unknown or foreign key answers 404 without existence leak. Revoked and expired project keys remain filterable.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "key_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "description": "One-based page number, default 1",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "description": "Items per page, default 25, maximum 100",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "$ref": "#/components/schemas/UsageReportCollection"
+    },
+    "response_type": "UsageReportCollection",
+    "unwrap": false,
+    "auth": true,
+    "stream": false,
+    "public": true
+  },
+  "getProjectLogs": {
+    "method": "GET",
+    "path": "/projects/{project_id}/logs",
+    "params": [
+      {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Project id `prj_<ulid>`, 30 characters",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "X-Envai-Project-Id",
+        "in": "header",
+        "required": false,
+        "description": "Project id `prj_<ulid>` naming the project a human session works on. Mandatory for human callers on root project collections (`/agents`, `/teams`, `/workspaces`, `/tools`, `/api-keys`, project usage and logs); optional on the global model catalog and unnecessary under a path that already names a parent resource of the project. A project api key derives its project from the credential and presents no header: a presented header that differs from the key project is rejected with 403 and a bearer never overrides the project scope. Requests without a resolvable project are rejected with 401 for anonymous callers and 403 when the named project is outside the caller scope.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[pP][rR][jJ]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "prj_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "view",
+        "in": "query",
+        "required": false,
+        "description": "events is the existing paginated log and the default. analytics aggregates all retained matching rows; page, per_page, type and every filter array must be omitted. filters returns the complete distinct event type catalog of the requested window; type, api_key_id, chat_id, page, per_page and every filter array must be omitted.\n",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "events",
+            "analytics",
+            "filters"
+          ],
+          "default": "events"
+        }
+      },
+      {
+        "name": "from",
+        "in": "query",
+        "required": false,
+        "description": "Inclusive range start as a UTC calendar date `YYYY-MM-DD`, default 29 days before `to`. A start after the end or a range beyond the maximum window of 90 days is rejected with 422.\n",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-01"
+        }
+      },
+      {
+        "name": "to",
+        "in": "query",
+        "required": false,
+        "description": "Inclusive range end as a UTC calendar date `YYYY-MM-DD`, default today in UTC.\n",
+        "schema": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-30"
+        }
+      },
+      {
+        "name": "api_key_id",
+        "in": "query",
+        "required": false,
+        "description": "Optional scalar api key id `key_<ulid>` filter for events and analytics. Project logs match the turn key and the actor key of an event. The events view rejects it when `api_key_ids[]` is present and view=filters prohibits it. A project key caller cannot filter by a key of another project; an unknown or foreign key answers 404 without existence leak. Revoked and expired project keys remain filterable.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[kK][eE][yY]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "key_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "chat_id",
+        "in": "query",
+        "required": false,
+        "description": "Optional chat id `cht_<ulid>` filter, an additional AND on top of the other event filters. view=filters prohibits it.\n",
+        "schema": {
+          "type": "string",
+          "pattern": "^[cC][hH][tT]_[0-7][0-9a-hjkmnp-tv-zA-HJKMNP-TV-Z]{25}$",
+          "example": "cht_01j5abcdefghjkmnpqrstvwxyz"
+        }
+      },
+      {
+        "name": "type",
+        "in": "query",
+        "required": false,
+        "description": "Optional scalar event type filter, for example `agent.tool.request`. The events view rejects it when `types[]` is present; analytics and filters prohibit it.\n",
+        "schema": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      {
+        "name": "types[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of event type filters, serialized in form style as repeated `types[]=value` entries. Accepts 1 to 50 distinct non-empty values of at most 80 characters. Values are ORed inside the array and ANDed with the other dimensions. Scalar `types=value`, associative, empty, duplicate, malformed or oversized arrays answer 422, and combining it with scalar `type` answers 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "workspace_ids[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of workspace filters, serialized in form style as repeated `workspace_ids[]=value` entries. Accepts 1 to 50 distinct non-empty workspace ids of at most 30 characters. Values are ORed inside the array and ANDed with the other dimensions. Every id must identify an active workspace of the project: deleted, unknown or foreign workspaces answer 404 without an existence leak, consistent with workspace deletion and chat access cuts. Scalar, associative, empty, duplicate, malformed or oversized arrays answer 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "api_key_ids[]",
+        "in": "query",
+        "required": false,
+        "description": "Events-only indexed array of api key filters, serialized in form style as repeated `api_key_ids[]=value` entries. Accepts 1 to 50 distinct non-empty key ids of at most 30 characters. Values are ORed inside the array and ANDed with the other dimensions; an event matches when either its turn key or its actor key is included. Active, expired and revoked project keys remain filterable, while unknown or foreign keys answer 404 without an existence leak. Scalar, associative, empty, duplicate, malformed or oversized arrays answer 422, and combining it with scalar `api_key_id` answers 422. Prohibited under view=analytics and view=filters.\n",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "description": "One-based page number, default 1",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "description": "Items per page, default 25, maximum 100",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 25
+        }
+      }
+    ],
+    "request": null,
+    "media": null,
+    "request_required": false,
+    "response": {
+      "oneOf": [
+        {
+          "$ref": "#/components/schemas/ProjectLogCollection"
+        },
+        {
+          "$ref": "#/components/schemas/ProjectActivityAnalyticsResource"
+        },
+        {
+          "$ref": "#/components/schemas/ProjectEventTypeFiltersResource"
+        }
+      ]
+    },
+    "response_type": "Union[ProjectLogCollection, ProjectActivityAnalyticsResource, ProjectEventTypeFiltersResource]",
     "unwrap": false,
     "auth": true,
     "stream": false,

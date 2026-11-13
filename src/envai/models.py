@@ -1152,7 +1152,7 @@ class Error(Model):
 
 
 class ErrorError(Model):
-    type: Literal['unauthenticated', 'invalid_request', 'not_found', 'conflict', 'validation_error', 'access_denied', 'provider_error', 'server_error', 'internal_error', 'file_not_found', 'file_conflict', 'invalid_path', 'file_too_large', 'file_service_error', 'file_service_unavailable', 'too_many_requests']
+    type: Literal['unauthenticated', 'invalid_request', 'not_found', 'conflict', 'validation_error', 'access_denied', 'provider_error', 'provider_configuration_error', 'server_error', 'internal_error', 'file_not_found', 'file_conflict', 'invalid_path', 'file_too_large', 'file_service_error', 'file_service_unavailable', 'too_many_requests']
     code: Union[Union[str, None], None] = Field(default=None)
     message: str
     details: Union[Union[dict[str, Any], None], None] = Field(default=None)
@@ -1228,6 +1228,7 @@ class ChatAttachmentUploadRequest(Model):
 class ChatMessageRequest(Model):
     message: str
     attachment_ids: Union[list[str], None] = Field(default=None)
+    model: Union[str, None] = Field(default=None, strict=True)
     strict_model: Union[bool, None] = Field(default=None)
 
 
@@ -1725,6 +1726,7 @@ class LlmModelEntry(Model):
     owned_by: str
     type: Literal['llm']
     deprecated: bool
+    selectable: bool
     sunset_at: Union[str, None]
     display_name: Union[Union[str, None], None] = Field(default=None)
     description: Union[Union[str, None], None] = Field(default=None)

@@ -30,6 +30,10 @@ class AccessDeniedError(EnvaiError):
     pass
 
 
+class PaymentRequiredError(EnvaiError):
+    pass
+
+
 class NotFoundError(EnvaiError):
     pass
 
@@ -113,6 +117,7 @@ def from_response(status: int, payload: Any, request_id: str | None) -> EnvaiErr
     kind = error.get("type", "http_error")
     cls = {
         401: AuthenticationError,
+        402: PaymentRequiredError,
         403: AccessDeniedError,
         404: NotFoundError,
         409: ConflictError,

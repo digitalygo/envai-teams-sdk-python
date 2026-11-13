@@ -13,9 +13,11 @@ RESPONSE_TYPES = {
     'CategoryIndex': models.CategoryIndex,
     'Chat': models.Chat,
     'ChatAttachment': models.ChatAttachment,
+    'ChatCron': models.ChatCron,
     'ChatForked': models.ChatForked,
     'ChatMessageAccepted': models.ChatMessageAccepted,
     'ChoiceClassificationResult': models.ChoiceClassificationResult,
+    'CleanupResult': models.CleanupResult,
     'Completion': models.Completion,
     'CompletionCollection': models.CompletionCollection,
     'CreateApiKeyResponse': models.CreateApiKeyResponse,
@@ -31,12 +33,15 @@ RESPONSE_TYPES = {
     'NativeDeliveryReceipt': models.NativeDeliveryReceipt,
     'None': None,
     'PhaseClassificationResult': models.PhaseClassificationResult,
+    'ProjectSkill': models.ProjectSkill,
     'ProjectTool': models.ProjectTool,
     'RestoreChatAccepted': models.RestoreChatAccepted,
     'Team': models.Team,
     'TeamDelegationReceipt': models.TeamDelegationReceipt,
     'TestGenerateImageResponse': models.TestGenerateImageResponse,
     'TurnAccepted': models.TurnAccepted,
+    'Union[ProjectLogCollection, ProjectActivityAnalyticsResource, ProjectEventTypeFiltersResource]': Union[models.ProjectLogCollection, models.ProjectActivityAnalyticsResource, models.ProjectEventTypeFiltersResource],
+    'UsageReportCollection': models.UsageReportCollection,
     'WebhookOk': models.WebhookOk,
     'WikiOperation': models.WikiOperation,
     'WikiSource': models.WikiSource,
@@ -45,8 +50,10 @@ RESPONSE_TYPES = {
     'bytes': bytes,
     'list[Agent]': list[models.Agent],
     'list[ApiKey]': list[models.ApiKey],
+    'list[ChatCron]': list[models.ChatCron],
     'list[Chat]': list[models.Chat],
     'list[ModelCatalogEntry]': list[models.ModelCatalogEntry],
+    'list[ProjectSkill]': list[models.ProjectSkill],
     'list[ProjectTool]': list[models.ProjectTool],
     'list[Team]': list[models.Team],
     'list[Workspace]': list[models.Workspace],
@@ -138,6 +145,10 @@ class Operations:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return self._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    def delete_workspace(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteWorkspace: DELETE /workspaces/{workspace_id}."""
+        return self._request('deleteWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
     def create_project_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
         """createProjectTool: POST /tools."""
         return self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
@@ -195,6 +206,14 @@ class Operations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
+    def update_chat(self, workspace_id: str, chat_id: str, *, body: models.ChatUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
+        """updateChat: PUT /workspaces/{workspace_id}/chats/{chat_id}."""
+        return self._request('updateChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delete_chat(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteChat: DELETE /workspaces/{workspace_id}/chats/{chat_id}."""
+        return self._request('deleteChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
     def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
         return self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
@@ -202,6 +221,22 @@ class Operations:
     def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return self._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
+
+    def list_chat_crons(self, workspace_id: str, *, x_envai_project_id: str | None = None, origin_chat_id: str | None = None, status: Literal['active', 'completed'] | None = None, request_options: RequestOptions | None = None) -> list[models.ChatCron]:
+        """listChatCrons: GET /workspaces/{workspace_id}/crons."""
+        return self._request('listChatCrons', path_params={'workspace_id': workspace_id}, query={'origin_chat_id': origin_chat_id, 'status': status}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def get_chat_cron(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """getChatCron: GET /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._request('getChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def update_chat_cron(self, workspace_id: str, cron_id: str, *, body: models.ChatCronUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """updateChatCron: PATCH /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._request('updateChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    def delete_chat_cron(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteChatCron: DELETE /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._request('deleteChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     def index_workspace_files(self, workspace_id: str, *, path: str, request_options: RequestOptions | None = None) -> models.WorkspaceFile:
         """indexWorkspaceFiles: GET /workspaces/{workspace_id}/files."""
@@ -383,6 +418,34 @@ class Operations:
         """getCapabilitiesLegacy: GET /capabilities."""
         return self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
 
+    def list_project_skills(self, project_id: str, *, request_options: RequestOptions | None = None) -> list[models.ProjectSkill]:
+        """listProjectSkills: GET /projects/{project_id}/skills."""
+        return self._request('listProjectSkills', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options)
+
+    def create_project_skill(self, project_id: str, *, body: models.ProjectSkillCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """createProjectSkill: POST /projects/{project_id}/skills."""
+        return self._request('createProjectSkill', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get_project_skill(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """getProjectSkill: GET /projects/{project_id}/skills/{skill_id}."""
+        return self._request('getProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    def update_project_skill(self, project_id: str, skill_id: str, *, body: models.ProjectSkillUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """updateProjectSkill: PUT /projects/{project_id}/skills/{skill_id}."""
+        return self._request('updateProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delete_project_skill(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectSkill: DELETE /projects/{project_id}/skills/{skill_id}."""
+        return self._request('deleteProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    def get_project_usage(self, project_id: str, *, x_envai_project_id: str | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.UsageReportCollection:
+        """getProjectUsage: GET /projects/{project_id}/usage."""
+        return self._request('getProjectUsage', path_params={'project_id': project_id}, query={'from': from_, 'to': to, 'api_key_id': api_key_id, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def get_project_logs(self, project_id: str, *, x_envai_project_id: str | None = None, view: Literal['events', 'analytics', 'filters'] | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, chat_id: str | None = None, type: str | None = None, types: list[str] | None = None, workspace_ids: list[str] | None = None, api_key_ids: list[str] | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.ProjectLogCollection, models.ProjectActivityAnalyticsResource, models.ProjectEventTypeFiltersResource]:
+        """getProjectLogs: GET /projects/{project_id}/logs."""
+        return self._request('getProjectLogs', path_params={'project_id': project_id}, query={'view': view, 'from': from_, 'to': to, 'api_key_id': api_key_id, 'chat_id': chat_id, 'type': type, 'types[]': types, 'workspace_ids[]': workspace_ids, 'api_key_ids[]': api_key_ids, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
 
 class AttachmentsService:
     def __init__(self, client: Any):
@@ -433,6 +496,10 @@ class WorkspacesService:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return self._client._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    def delete(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteWorkspace: DELETE /workspaces/{workspace_id}."""
+        return self._client._request('deleteWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
 
 class ToolsService:
     def __init__(self, client: Any):
@@ -474,6 +541,14 @@ class ChatsService:
     def get(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.Chat:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    def update(self, workspace_id: str, chat_id: str, *, body: models.ChatUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
+        """updateChat: PUT /workspaces/{workspace_id}/chats/{chat_id}."""
+        return self._client._request('updateChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delete(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteChat: DELETE /workspaces/{workspace_id}/chats/{chat_id}."""
+        return self._client._request('deleteChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
@@ -530,6 +605,27 @@ class ChatsService:
     def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
         """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
         return self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+
+class ChatCronsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    def list(self, workspace_id: str, *, x_envai_project_id: str | None = None, origin_chat_id: str | None = None, status: Literal['active', 'completed'] | None = None, request_options: RequestOptions | None = None) -> list[models.ChatCron]:
+        """listChatCrons: GET /workspaces/{workspace_id}/crons."""
+        return self._client._request('listChatCrons', path_params={'workspace_id': workspace_id}, query={'origin_chat_id': origin_chat_id, 'status': status}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def get(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """getChatCron: GET /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._client._request('getChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def update(self, workspace_id: str, cron_id: str, *, body: models.ChatCronUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """updateChatCron: PATCH /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._client._request('updateChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    def delete(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteChatCron: DELETE /workspaces/{workspace_id}/crons/{cron_id}."""
+        return self._client._request('deleteChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class CompletionsService:
@@ -690,6 +786,44 @@ class ApiKeysService:
         return self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
+class ProjectSkillsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    def list(self, project_id: str, *, request_options: RequestOptions | None = None) -> list[models.ProjectSkill]:
+        """listProjectSkills: GET /projects/{project_id}/skills."""
+        return self._client._request('listProjectSkills', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options)
+
+    def create(self, project_id: str, *, body: models.ProjectSkillCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """createProjectSkill: POST /projects/{project_id}/skills."""
+        return self._client._request('createProjectSkill', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def get(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """getProjectSkill: GET /projects/{project_id}/skills/{skill_id}."""
+        return self._client._request('getProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    def update(self, project_id: str, skill_id: str, *, body: models.ProjectSkillUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """updateProjectSkill: PUT /projects/{project_id}/skills/{skill_id}."""
+        return self._client._request('updateProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    def delete(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectSkill: DELETE /projects/{project_id}/skills/{skill_id}."""
+        return self._client._request('deleteProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+
+class ProjectReportsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    def usage(self, project_id: str, *, x_envai_project_id: str | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.UsageReportCollection:
+        """getProjectUsage: GET /projects/{project_id}/usage."""
+        return self._client._request('getProjectUsage', path_params={'project_id': project_id}, query={'from': from_, 'to': to, 'api_key_id': api_key_id, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    def logs(self, project_id: str, *, x_envai_project_id: str | None = None, view: Literal['events', 'analytics', 'filters'] | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, chat_id: str | None = None, type: str | None = None, types: list[str] | None = None, workspace_ids: list[str] | None = None, api_key_ids: list[str] | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.ProjectLogCollection, models.ProjectActivityAnalyticsResource, models.ProjectEventTypeFiltersResource]:
+        """getProjectLogs: GET /projects/{project_id}/logs."""
+        return self._client._request('getProjectLogs', path_params={'project_id': project_id}, query={'view': view, 'from': from_, 'to': to, 'api_key_id': api_key_id, 'chat_id': chat_id, 'type': type, 'types[]': types, 'workspace_ids[]': workspace_ids, 'api_key_ids[]': api_key_ids, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+
 class ImagesService:
     def __init__(self, client: Any):
         self._client = client
@@ -819,6 +953,10 @@ class AsyncOperations:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return await self._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    async def delete_workspace(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteWorkspace: DELETE /workspaces/{workspace_id}."""
+        return await self._request('deleteWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
     async def create_project_tool(self, *, body: models.ProjectToolCreateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ProjectTool:
         """createProjectTool: POST /tools."""
         return await self._request('createProjectTool', path_params={}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
@@ -876,6 +1014,14 @@ class AsyncOperations:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return await self._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
+    async def update_chat(self, workspace_id: str, chat_id: str, *, body: models.ChatUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
+        """updateChat: PUT /workspaces/{workspace_id}/chats/{chat_id}."""
+        return await self._request('updateChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delete_chat(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteChat: DELETE /workspaces/{workspace_id}/chats/{chat_id}."""
+        return await self._request('deleteChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
     async def list_completions(self, workspace_id: str, chat_id: str, *, status: Literal['running', 'succeeded', 'failed', 'canceled'] | None = None, model_orchestrator: str | None = None, started_at_from: str | None = None, started_at_to: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.CompletionCollection, models.LegacyCompletionCollection]:
         """listCompletions: GET /workspaces/{workspace_id}/chats/{chat_id}/completions."""
         return await self._request('listCompletions', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={'status': status, 'model_orchestrator': model_orchestrator, 'started_at[from]': started_at_from, 'started_at[to]': started_at_to, 'page': page, 'per_page': per_page}, headers={}, request_options=request_options)
@@ -883,6 +1029,22 @@ class AsyncOperations:
     async def get_completion(self, workspace_id: str, chat_id: str, completion_id: str, *, request_options: RequestOptions | None = None) -> Union[models.Completion, models.LegacyCompletion]:
         """getCompletion: GET /workspaces/{workspace_id}/chats/{chat_id}/completions/{completion_id}."""
         return await self._request('getCompletion', path_params={'workspace_id': workspace_id, 'chat_id': chat_id, 'completion_id': completion_id}, query={}, headers={}, request_options=request_options)
+
+    async def list_chat_crons(self, workspace_id: str, *, x_envai_project_id: str | None = None, origin_chat_id: str | None = None, status: Literal['active', 'completed'] | None = None, request_options: RequestOptions | None = None) -> list[models.ChatCron]:
+        """listChatCrons: GET /workspaces/{workspace_id}/crons."""
+        return await self._request('listChatCrons', path_params={'workspace_id': workspace_id}, query={'origin_chat_id': origin_chat_id, 'status': status}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def get_chat_cron(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """getChatCron: GET /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._request('getChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def update_chat_cron(self, workspace_id: str, cron_id: str, *, body: models.ChatCronUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """updateChatCron: PATCH /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._request('updateChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    async def delete_chat_cron(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteChatCron: DELETE /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._request('deleteChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
     async def index_workspace_files(self, workspace_id: str, *, path: str, request_options: RequestOptions | None = None) -> models.WorkspaceFile:
         """indexWorkspaceFiles: GET /workspaces/{workspace_id}/files."""
@@ -1064,6 +1226,34 @@ class AsyncOperations:
         """getCapabilitiesLegacy: GET /capabilities."""
         return await self._request('getCapabilitiesLegacy', path_params={}, query={}, headers={}, request_options=request_options)
 
+    async def list_project_skills(self, project_id: str, *, request_options: RequestOptions | None = None) -> list[models.ProjectSkill]:
+        """listProjectSkills: GET /projects/{project_id}/skills."""
+        return await self._request('listProjectSkills', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options)
+
+    async def create_project_skill(self, project_id: str, *, body: models.ProjectSkillCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """createProjectSkill: POST /projects/{project_id}/skills."""
+        return await self._request('createProjectSkill', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get_project_skill(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """getProjectSkill: GET /projects/{project_id}/skills/{skill_id}."""
+        return await self._request('getProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    async def update_project_skill(self, project_id: str, skill_id: str, *, body: models.ProjectSkillUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """updateProjectSkill: PUT /projects/{project_id}/skills/{skill_id}."""
+        return await self._request('updateProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delete_project_skill(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectSkill: DELETE /projects/{project_id}/skills/{skill_id}."""
+        return await self._request('deleteProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    async def get_project_usage(self, project_id: str, *, x_envai_project_id: str | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.UsageReportCollection:
+        """getProjectUsage: GET /projects/{project_id}/usage."""
+        return await self._request('getProjectUsage', path_params={'project_id': project_id}, query={'from': from_, 'to': to, 'api_key_id': api_key_id, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def get_project_logs(self, project_id: str, *, x_envai_project_id: str | None = None, view: Literal['events', 'analytics', 'filters'] | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, chat_id: str | None = None, type: str | None = None, types: list[str] | None = None, workspace_ids: list[str] | None = None, api_key_ids: list[str] | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.ProjectLogCollection, models.ProjectActivityAnalyticsResource, models.ProjectEventTypeFiltersResource]:
+        """getProjectLogs: GET /projects/{project_id}/logs."""
+        return await self._request('getProjectLogs', path_params={'project_id': project_id}, query={'view': view, 'from': from_, 'to': to, 'api_key_id': api_key_id, 'chat_id': chat_id, 'type': type, 'types[]': types, 'workspace_ids[]': workspace_ids, 'api_key_ids[]': api_key_ids, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
 
 class AsyncAttachmentsService:
     def __init__(self, client: Any):
@@ -1114,6 +1304,10 @@ class AsyncWorkspacesService:
         """updateWorkspace: PUT /workspaces/{workspace_id}."""
         return await self._client._request('updateWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options, body=body)
 
+    async def delete(self, workspace_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteWorkspace: DELETE /workspaces/{workspace_id}."""
+        return await self._client._request('deleteWorkspace', path_params={'workspace_id': workspace_id}, query={}, headers={}, request_options=request_options)
+
 
 class AsyncToolsService:
     def __init__(self, client: Any):
@@ -1155,6 +1349,14 @@ class AsyncChatsService:
     async def get(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.Chat:
         """getChat: GET /workspaces/{workspace_id}/chats/{chat_id}."""
         return await self._client._request('getChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
+
+    async def update(self, workspace_id: str, chat_id: str, *, body: models.ChatUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.Chat:
+        """updateChat: PUT /workspaces/{workspace_id}/chats/{chat_id}."""
+        return await self._client._request('updateChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delete(self, workspace_id: str, chat_id: str, *, request_options: RequestOptions | None = None) -> models.CleanupResult:
+        """deleteChat: DELETE /workspaces/{workspace_id}/chats/{chat_id}."""
+        return await self._client._request('deleteChat', path_params={'workspace_id': workspace_id, 'chat_id': chat_id}, query={}, headers={}, request_options=request_options)
 
     async def send_message(self, chat_id: str, *, body: models.ChatMessageRequest | dict[str, Any], idempotency_key: str | None = None, request_options: RequestOptions | None = None) -> models.ChatMessageAccepted:
         """sendChatMessage: POST /atp/v3/chats/{chat_id}/messages."""
@@ -1211,6 +1413,27 @@ class AsyncChatsService:
     async def start_job(self, chat_id: str, *, body: models.IndependentJobRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.IndependentJobReceipt:
         """startIndependentJob: POST /atp/v3/chats/{chat_id}/jobs."""
         return await self._client._request('startIndependentJob', path_params={'chat_id': chat_id}, query={}, headers={}, request_options=request_options, body=body)
+
+
+class AsyncChatCronsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def list(self, workspace_id: str, *, x_envai_project_id: str | None = None, origin_chat_id: str | None = None, status: Literal['active', 'completed'] | None = None, request_options: RequestOptions | None = None) -> list[models.ChatCron]:
+        """listChatCrons: GET /workspaces/{workspace_id}/crons."""
+        return await self._client._request('listChatCrons', path_params={'workspace_id': workspace_id}, query={'origin_chat_id': origin_chat_id, 'status': status}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def get(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """getChatCron: GET /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._client._request('getChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def update(self, workspace_id: str, cron_id: str, *, body: models.ChatCronUpdateRequest | dict[str, Any], x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> models.ChatCron:
+        """updateChatCron: PATCH /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._client._request('updateChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options, body=body)
+
+    async def delete(self, workspace_id: str, cron_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
+        """deleteChatCron: DELETE /workspaces/{workspace_id}/crons/{cron_id}."""
+        return await self._client._request('deleteChatCron', path_params={'workspace_id': workspace_id, 'cron_id': cron_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class AsyncCompletionsService:
@@ -1369,6 +1592,44 @@ class AsyncApiKeysService:
     async def delete(self, key_id: str, *, x_envai_project_id: str | None = None, request_options: RequestOptions | None = None) -> None:
         """deleteApiKey: DELETE /api-keys/{key_id}."""
         return await self._client._request('deleteApiKey', path_params={'key_id': key_id}, query={}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+
+class AsyncProjectSkillsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def list(self, project_id: str, *, request_options: RequestOptions | None = None) -> list[models.ProjectSkill]:
+        """listProjectSkills: GET /projects/{project_id}/skills."""
+        return await self._client._request('listProjectSkills', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options)
+
+    async def create(self, project_id: str, *, body: models.ProjectSkillCreateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """createProjectSkill: POST /projects/{project_id}/skills."""
+        return await self._client._request('createProjectSkill', path_params={'project_id': project_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def get(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """getProjectSkill: GET /projects/{project_id}/skills/{skill_id}."""
+        return await self._client._request('getProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+    async def update(self, project_id: str, skill_id: str, *, body: models.ProjectSkillUpdateRequest | dict[str, Any], request_options: RequestOptions | None = None) -> models.ProjectSkill:
+        """updateProjectSkill: PUT /projects/{project_id}/skills/{skill_id}."""
+        return await self._client._request('updateProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options, body=body)
+
+    async def delete(self, project_id: str, skill_id: str, *, request_options: RequestOptions | None = None) -> None:
+        """deleteProjectSkill: DELETE /projects/{project_id}/skills/{skill_id}."""
+        return await self._client._request('deleteProjectSkill', path_params={'project_id': project_id, 'skill_id': skill_id}, query={}, headers={}, request_options=request_options)
+
+
+class AsyncProjectReportsService:
+    def __init__(self, client: Any):
+        self._client = client
+
+    async def usage(self, project_id: str, *, x_envai_project_id: str | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> models.UsageReportCollection:
+        """getProjectUsage: GET /projects/{project_id}/usage."""
+        return await self._client._request('getProjectUsage', path_params={'project_id': project_id}, query={'from': from_, 'to': to, 'api_key_id': api_key_id, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
+
+    async def logs(self, project_id: str, *, x_envai_project_id: str | None = None, view: Literal['events', 'analytics', 'filters'] | None = None, from_: str | None = None, to: str | None = None, api_key_id: str | None = None, chat_id: str | None = None, type: str | None = None, types: list[str] | None = None, workspace_ids: list[str] | None = None, api_key_ids: list[str] | None = None, page: int | None = None, per_page: int | None = None, request_options: RequestOptions | None = None) -> Union[models.ProjectLogCollection, models.ProjectActivityAnalyticsResource, models.ProjectEventTypeFiltersResource]:
+        """getProjectLogs: GET /projects/{project_id}/logs."""
+        return await self._client._request('getProjectLogs', path_params={'project_id': project_id}, query={'view': view, 'from': from_, 'to': to, 'api_key_id': api_key_id, 'chat_id': chat_id, 'type': type, 'types[]': types, 'workspace_ids[]': workspace_ids, 'api_key_ids[]': api_key_ids, 'page': page, 'per_page': per_page}, headers={'X-Envai-Project-Id': x_envai_project_id}, request_options=request_options)
 
 
 class AsyncImagesService:

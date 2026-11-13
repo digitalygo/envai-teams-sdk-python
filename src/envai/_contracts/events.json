@@ -111,7 +111,7 @@
         },
         "model": {
           "type": "string",
-          "description": "Resolved model id, present on `agent.started`."
+          "description": "Selected logical model id, present on `agent.started`. Internal adapter, provider key and upstream model ids never replace this value."
         }
       }
     },
@@ -445,7 +445,7 @@
         },
         "model": {
           "type": "string",
-          "description": "Resolved model id."
+          "description": "Selected logical model id for this agent. Internal adapter, provider key and upstream model ids never replace this value."
         },
         "parent_id": {
           "type": [
@@ -910,11 +910,11 @@
         },
         "requested_model": {
           "type": "string",
-          "description": "Exposed on SSE only with native-tasks-v1. Root agent model ID selected for provider requests. With strict_model this is the configured ID without resolver fallback."
+          "description": "Exposed on SSE only with native-tasks-v1. Selected logical root model ID for provider requests and current billing medians. With strict_model and no explicit model this is the configured ID without resolver fallback; an explicit model is exact without fallback. Internal route metadata is never exposed here."
         },
         "model": {
           "type": "string",
-          "description": "Exposed on SSE only with native-tasks-v1. Last nonempty model ID reported by the provider for the root agent. Canonical aliases or suffixes may differ from requested_model; omitted if no provider model was reported."
+          "description": "Exposed on SSE only with native-tasks-v1. Last nonempty model ID reported by the provider for the root agent. Canonical aliases or suffixes may differ from requested_model and never rewrite it; omitted if no provider model was reported, without inventing an observed model."
         }
       }
     },

@@ -1,26 +1,27 @@
 # Envai Teams Python SDK
 
 Typed synchronous and asynchronous clients for the current Envai Teams API and
-Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The published **alpha prerelease** is
-[`1.0.0a2` on PyPI](https://pypi.org/project/envai-teams-sdk/1.0.0a2/).
+Agent Team Protocol (ATP3 with strict historical ATP2 replay). Python 3.11+. The package baseline in this
+source tree is the **alpha prerelease** `1.0.0a6`; the source on this branch is **unreleased** and asserts no new published version.
 Prerelease APIs may change; pin the version and review upgrades before production use.
 
 - [Installation and configuration](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md)
-- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [reviewed 78-operation subset](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [HTTP API and models](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-reference.md) · [reviewed 92-operation subset](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md)
+- [Per-turn model selection](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/model-selection.md)
 - [Streaming and error recovery](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/streaming.md)
 - [Signed client tools and deployment](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/client-tools.md)
 
-## Install from PyPI
+## Package installation
 
 ```sh
 python -m venv .venv
 # Activate .venv using the command for your shell, then:
-python -m pip install "envai-teams-sdk==1.0.0a2"
+python -m pip install "envai-teams-sdk==1.0.0a6"
 ```
 
-**Compatibility note:** this branch adds a breaking contract3 migration. The published `1.0.0a2` baseline below predates it; use the normal release produced from this branch for Wiki V1/contract3, or the documented source install while reviewing.
+**Compatibility note:** the `1.0.0a6` baseline above already contains the contract3 migration. This branch adds project resources, crons, skills, project reports and `PaymentRequiredError` on top of it. They are not in `1.0.0a6`; use the release produced from this branch, or the documented source install while reviewing.
 
-The explicit version selects the alpha prerelease; no `--pre` flag is needed with this exact pin. The distribution is `envai-teams-sdk`; import `envai`. GitHub release `v1.0.0-alpha.2` uses Python package version `1.0.0a2`. For source installation and development, see [getting started](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md).
+The explicit version selects the alpha prerelease; no `--pre` flag is needed with this exact pin. The distribution is `envai-teams-sdk`; import `envai`. GitHub release tag `v1.0.0-alpha.6` uses Python package version `1.0.0a6`. The baseline tag is an unreleased repository baseline; publication to PyPI is not claimed unless independently verified on the index. For source installation and development, see [getting started](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/getting-started.md).
 
 HTTP uses HTTPX, models use
 Pydantic, schema validation uses the pinned JSON Schema, and client-tool signatures
@@ -83,13 +84,14 @@ explicit mutation; closing a local stream never cancels a remote turn.
 
 ## API surface
 
-Services: `workspaces`, `tools`, `chats`, `completions`, `files`, `agents`, `teams`,
+Services: `workspaces`, `tools`, `chats`, `chat_crons`, `project_skills`,
+`project_reports`, `completions`, `files`, `agents`, `teams`,
 `models`, `api_keys`, `images`, `capabilities`. Resources and ordinary collections
-are unwrapped from `data`; completion pages preserve `data`, `links`, and `meta`.
+are unwrapped from `data`; completion, usage and project log pages preserve `data`, `links`, and `meta`.
 `completions.iterate(workspace_id, chat_id)` follows numeric pages on the configured
 origin, never a response-supplied URL.
 
-The generated primitive layer retains the reviewed **78 operation IDs** in
+The generated primitive layer retains the reviewed **92 operation IDs** (89 callable plus 3 unsupported API-key stubs, from a 146-operation server contract) in
 `src/envai/_contracts/operations.json`; every primitive has a snake_case method
 (e.g. `send_chat_message` for `sendChatMessage`) in both clients. See
 [the generated API inventory](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/api-inventory.md). Health uses `/api/v1/up`;
@@ -98,7 +100,7 @@ JWKS is public and defaults to the **origin** `/.well-known/jwks.json`.
 are included for inventory completeness and are **experimental integration
 surfaces**, not normal application workflows.
 
-Generated request and response models are in `envai.models`; 28 typed event
+Generated request and response models are in `envai.models`; 39 typed ATP event
 classes and their payloads are in `envai.event_models` / `envai.models`.
 Known events are validated strictly against the current contract. A malformed
 known event raises `ProtocolError` with the original data in `.raw`; a valid
@@ -141,6 +143,14 @@ receives credentials, URLs, tool arguments, output, or response bodies. Observer
 exceptions are isolated from delivery behavior. Typed HTTP exceptions expose
 `http_status`, `type`, `code`, `message`, `details`, and `request_id`; their string
 representation deliberately omits potentially sensitive server messages/details.
+
+## Per-turn model selection
+
+Pass `model="<id>"` to sync or async `send_and_stream` and `send_and_wait` (or put `model` in the `send_message` body) to pin the root model for that turn only. Use an exact, case-sensitive `id` from `GET /models`; omit it for the normal cascade. `selectable=False` is guidance, not a client-side gate. See [per-turn model selection](https://github.com/digitalygo/envai-teams-sdk-python/blob/alpha/docs/model-selection.md) for errors, idempotency and limits.
+
+```python
+result = client.chats.send_and_wait(chat_id, "Summarize the project", model="vendor/model-id")
+```
 
 ## Opt-in client tools
 
@@ -235,7 +245,7 @@ turn; it does not infer permission to execute unrelated turns.
 ## Development and contract provenance
 
 The bundled contract3 HTTP and ATP contracts include strict immutable numeric ATP2 replay schemas. Default clients select contract3 and fail closed against older servers. See [migration](docs/migration-contract3.md) and [Wiki V1](docs/wiki.md).
-`tests/fixtures/contract3-provenance.json` records the six current shared contract snapshots. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
+`tests/fixtures/contract3-provenance.json` records the six current shared contract snapshots, pinned to backend commit `f970714c0a358ff94b14f15eabde197c55861e74` of `digitalygo/envai-teams`. The immutable baseline `tests/fixtures/provenance.json` separately records two historical byte-exact snapshots
 from five SDK-authored fixtures. Guards verify the source commit/path, byte count,
 SHA-256, and Git blob identity. Public guides are SDK documentation rather than
 copied contract files. Building or reading the SDK does not require access to a
@@ -258,16 +268,16 @@ are excluded from coverage but independently covered by the operation inventory
 and response-schema tests. Tests never call Envai production endpoints or require
 credentials. MIT, Copyright (c) 2026 DigItalyGo.
 
-
 Wiki V1 and contract3 validation results, database crash/concurrency scope and release limits: [validation report](docs/wiki-validation.md).
 
 See [chat attachments](docs/chat-attachments.md) for upload, conversion, retry and streaming with files. This surface is unreleased until the matching backend is deployed.
 
 ## Native background tasks and delegated jobs
 
-Canonical schemas and byte provenance are pinned to Envai server
-[`964c11fe72887329e8d06c2afb483442d643b290`](https://github.com/digitalygo/envai-teams/commit/964c11fe72887329e8d06c2afb483442d643b290),
-including the PR 56 compatibility review fixes.
+Canonical schemas and byte provenance are pinned to backend commit
+`f970714c0a358ff94b14f15eabde197c55861e74` of `digitalygo/envai-teams`. Earlier
+native-task reviews targeted Envai server `964c11fe72887329e8d06c2afb483442d643b290`;
+that commit is historical and no longer the pin.
 
 Opt in explicitly with `EnvaiClient(api_key, native_tasks=True)` (or
 `AsyncEnvaiClient`). This sends `X-Envai-Extensions: native-tasks-v1` on
@@ -346,7 +356,6 @@ provider-reported IDs. Resident delivery receipts, task state and deduplication 
 be lost after server restart/eviction. This source integration does not assert
 compatibility of any previously published package.
 
-
 ### Managed delegation and recovery
 
 Both clients provide `chats.delegate_and_wait(...)` and `chats.resume_delegation(...)`.
@@ -411,7 +420,6 @@ Diagnostic image requests accept `files={"files": [("a.png", image_bytes, "image
 and `data={"prompt": "...", "model_code": "..."}` in `test_generate_image`. The SDK encodes
 one `files[]` multipart field per image and validates the canonical one-to-four bound.
 
-
 ### Portable definitions and deployment CLI
 
 The `envai.definitions` package compiles JSON/YAML manifests and Markdown agents,
@@ -425,7 +433,7 @@ run them in a deployment/startup worker for async applications.
 
 ### Independent jobs and finite choices
 
-The native surface is pinned to Envai commit `964c11fe72887329e8d06c2afb483442d643b290`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
+The native surface is pinned to backend commit `f970714c0a358ff94b14f15eabde197c55861e74`. Native extensions remain opt-in and default to disabled. Capability discovery is read-only; admission requires `independent_jobs`, choice classification requires `finite_choice_classification`, and delivery without an origin requires `originless_deliveries`. Explicit `strict_model: true` also requires `strict_model`.
 
 Independent jobs start without a parent turn. Their receipt identifies the initial coordinator; final task `output` and `result_turn_id` identify the completed job. Task snapshots keep the required `origin_turn_id` key with the empty string for independent jobs. Missing origin is invalid. Keep the execution chat’s native SSE subscription and client-tool runner alive while waiting; polling helpers do not execute tools.
 
@@ -458,4 +466,39 @@ Workspaces, chats, agents and teams now expose immutable `project_id` ownership 
 
 Tool registrations are project-wide, not user-wide. Use `create_project_tool`, `list_project_tools`, etc., or `client.tools`. Deprecated UserTool names forward to the same project-scoped operations and do not preserve user-wide visibility. A project key determines the project; an optional project header must match the authenticated project.
 
-The event snapshot defines 39 typed ATP event types. The exact server HTTP snapshot contains 146 operations. This SDK generates only the reviewed 78-operation allowlist in `scripts/sdk-operations.json`: 75 callable operations plus 3 API-key administration stubs that fail locally. New human-session, internal and billing administration methods are not generated. This is not full parity with all 146 server operations.
+The event snapshot defines 39 typed ATP event types. The exact server HTTP snapshot contains 146 operations. This SDK generates only the reviewed 92-operation allowlist in `scripts/sdk-operations.json`: 89 callable operations plus 3 API-key administration stubs that fail locally. Human-session, internal, financial and billing administration methods are not generated. This is not full parity with all 146 server operations.
+
+## Project resources, crons, skills and reports
+
+Unreleased on this branch; 14 operations were added to the `1.0.0a6` baseline. Sync and async clients expose the same names (await the async ones).
+
+```python
+from envai import EnvaiClient, models, errors
+
+with EnvaiClient(api_key, base_url=base_url) as client:
+    client.chats.update(workspace_id, chat_id, body=models.ChatUpdateRequest(title="Q3 rollout plan"))  # title only
+    skill = client.project_skills.create(
+        project_id, body=models.ProjectSkillCreateRequest(name="incident_response", content="# Response\n"))
+    crons = client.chat_crons.list(workspace_id, status="active")
+    client.chat_crons.update(workspace_id, crons[0].id, body={"prompt": "Check the rollout"})
+    cleanup = client.chats.delete(workspace_id, chat_id)  # HTTP 200, cleanup[0].status == "pending"
+    client.project_skills.delete(project_id, skill.id)    # HTTP 204, returns None
+
+    window = {"from": "2026-10-01", "to": "2026-10-31", "per_page": 50}
+    for day in client.project_reports.iterate_usage(project_id, window):
+        print(day.date, [(m.currency, m.amount) for m in day.totals])  # amounts are decimal strings
+    analytics = client.project_reports.analytics(project_id, {"from": "2026-10-01", "to": "2026-10-07"})
+    event_types = client.project_reports.filters(project_id).types
+```
+
+- New groups: `chat_crons` (list/get/update/delete), `project_skills` (list/create/get/update/delete) and `project_reports` (usage, logs, analytics, filters). `workspaces.delete`, `chats.update` and `chats.delete` extend existing groups. Crons have no create operation.
+- Deleting a workspace or chat returns a `CleanupResult` with `pending` cleanup intents. This is a request accepted, not data purged. Cron and skill deletes return `None`. A 409 is surfaced as `ConflictError`; the SDK never stops crons or cancels work to retry a deletion.
+- `project_reports` takes one filters dictionary with canonical wire keys (`from`, `to`, `api_key_id`, `chat_id`, `type`, `types[]`, `workspace_ids[]`, `api_key_ids[]`, `view`, `page`, `per_page`). Invalid filters (bad dates, windows over 90 days, unknown keys, conflicting scalar and array filters, view-prohibited keys) raise `ValueError` before any request.
+- `iterate_usage` and `iterate_logs` page numerically and locally, preserve all filters including `per_page`, honor an explicit start page over `filters["page"]`, and never follow server URLs. `usage` and `logs` return pages with `meta`; `analytics` and `filters` return unwrapped data.
+- The low-level `get_project_logs` returns the wrapped union of the three view payloads. Use the typed helpers when you want the unwrapped analytics or filter data.
+- Log entries' `agent`/`data` of `[]` are coerced to `{}`; non-empty arrays are rejected.
+- HTTP 402 raises `errors.PaymentRequiredError` (an `EnvaiError`). 503 `provider_configuration_error` is a `ServerError`; 503 `provider_error` remains `ProviderError` and `file_*` types remain `FileError`. Mutations are never retried and the SDK never funds an account after a 402.
+- Project keys do not gain API-key administration or financial rights. Those operations remain unsupported.
+- Four server effects are already typed and are not new: `chat.title.updated`, `chat.cron.wakeup`, `billing.limit_reached`, `billing.credit_exhausted`. They are nonterminal; billing notices may have a null `turn_id`. The ATP2 catalog is frozen, and native extensions remain opt-in.
+
+See the [API reference](docs/api-reference.md#project-resources) for signatures and the [inventory](docs/api-inventory.md) for paths.

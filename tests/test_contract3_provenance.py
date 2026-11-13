@@ -10,12 +10,12 @@ ROOT = Path(__file__).parents[1]
 PINS = {'events-v2.json': (47787,
                     '88d41835f88c0cc4ad071b06ed4623882c6b64144baf312c4a095504c98cd7d6',
                     '02b13b23cd06eacd81059d1ed99e0027769d75e4'),
- 'events.json': (67983,
-                 '3e21302b1e2cbef0269aa293d75d6cd8d8cc82b8832a5dbba409530ed876a460',
-                 '13f60940fbf107e6ee5b1c6e02b051f9403843e5'),
- 'openapi.yaml': (493110,
-                  '382c85424131410826df59935948b4a9f1aaf6ee8137bec14ebdce26574eec24',
-                  '1d2d7b67677b79e830c05b443f9fb07af0ef65a5'),
+ 'events.json': (68376,
+                 '7522d63756d624e7ebc7a2a5787f8ab2d6fc0099c5c70e56e65cf08e93daae85',
+                 'e4713436407e2c27cdecb8d49dd3f815cc2e5870'),
+ 'openapi.yaml': (500235,
+                  '13a177fd31dc61e108e61c5209b1395e57735ca6049f3737e33e3be9eb3109e0',
+                  '388995332129814273560703eb16a36cb51e4d73'),
  'smidja-native.json': (13825,
                         '035065640fa4946a2e54297b1a22c69ea736827d38765b0cdaa80a28c3058f8b',
                         '6fd7074e23381d8875fc6e0b3aef4df99ab6297d'),
@@ -31,8 +31,10 @@ def test_current_contract_sources_are_exact_and_separate_from_legacy():
     manifest = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["repository"] == "digitalygo/envai-teams"
     assert manifest["source_state"] == "immutable_backend_commit"
-    assert manifest["commit"] == "964c11fe72887329e8d06c2afb483442d643b290"
-    assert manifest["contract_version"] == 3 and manifest["operations"] == 78
+    assert manifest["commit"] == "f970714c0a358ff94b14f15eabde197c55861e74"
+    assert manifest["contract_version"] == 3 and manifest["operations"] == 92
+    assert manifest["server_operations"] == 146
+    assert len(PINS) == 6
     assert set(manifest["sources"]) == set(PINS)
     for name, (size, digest, blob) in PINS.items():
         raw = (ROOT / "src/envai/_contracts" / name).read_bytes()
@@ -52,8 +54,12 @@ def test_current_contract_sources_are_exact_and_separate_from_legacy():
 def test_actual_http_fixture_hashes_and_origin():
     fixtures = ROOT / "tests/fixtures/contract3-http"
     manifest = json.loads((fixtures / "provenance.json").read_text())
+    current = json.loads((ROOT / "tests/fixtures/contract3-provenance.json").read_text())
     assert manifest["backend_commit"] == "c27963d0848540679bccf30d2aeab354097b1a38"
-    assert manifest["origin"].startswith("Synthetic authenticated control-plane")
+    assert manifest["backend_commit"] != current["commit"]
+    assert manifest["origin"].startswith(
+        "Synthetic authenticated control-plane HTTP-kernel integration test"
+    )
     for name, digest in manifest["sha256"].items():
         assert hashlib.sha256((fixtures / name).read_bytes()).hexdigest() == digest
 

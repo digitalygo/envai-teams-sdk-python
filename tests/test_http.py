@@ -17,13 +17,18 @@ from envai.errors import (
     AuthenticationError,
     CancelledError,
     ConflictError,
+    EnvaiError,
+    FileError,
     NotFoundError,
+    PaymentRequiredError,
     ProtocolError,
+    ProviderError,
     RateLimitError,
     ServerError,
     TransportError,
     UnsupportedOperationError,
     ValidationError,
+    from_response,
 )
 
 
@@ -250,7 +255,7 @@ async def test_full_surface_async(name, op):
 
 def test_operation_inventory_exact():
     shared = json.loads((Path(__file__).parent / "fixtures/operations.json").read_text())
-    assert len(OPERATIONS) == 78
+    assert len(OPERATIONS) == 92
     for op in shared:
         assert OPERATIONS[op["id"].replace("UserTool", "ProjectTool")]["method"] == op["method"]
         assert OPERATIONS[op["id"].replace("UserTool", "ProjectTool")]["path"] == (
@@ -267,6 +272,7 @@ def test_operation_inventory_exact():
     "status,cls",
     [
         (401, AuthenticationError),
+        (402, PaymentRequiredError),
         (403, AccessDeniedError),
         (404, NotFoundError),
         (409, ConflictError),
@@ -296,6 +302,60 @@ def test_errors_preserved_redacted(status, cls):
         assert e.value.message == "secret-token" and e.value.code == "example_code"
         assert e.value.details == {"x": "secret"} and e.value.request_id == "id"
         assert "secret" not in str(e.value) and "secret" not in repr(client)
+
+
+@pytest.mark.parametrize("async_", [False, True])
+@pytest.mark.parametrize("status,cls,kind,code", [
+    (402, PaymentRequiredError, "billing_error", "credit_exhausted"),
+    (503, ServerError, "provider_configuration_error", "provider_configuration_error"),
+])
+async def test_mutation_payment_and_provider_errors_are_not_retried(async_, status, cls, kind, code):
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(status, json={"error": {"type": kind, "code": code}})
+
+    client = (AsyncEnvaiClient if async_ else EnvaiClient)(
+        "project-key", transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(base_delay=0, max_delay=0),
+    )
+    try:
+        with pytest.raises(cls) as exc:
+            result = client.update_workspace("ws", body={"name": "new"})
+            if async_:
+                await result
+        assert exc.value.code == code and exc.value.http_status == status
+        assert len(seen) == 1 and seen[0].method == "PUT"
+    finally:
+        await client.aclose() if async_ else client.close()
+
+
+@pytest.mark.parametrize(
+    "status,kind,cls",
+    [
+        (402, "billing_error", PaymentRequiredError),
+        (503, "provider_configuration_error", ServerError),
+        (503, "provider_error", ProviderError),
+        (503, "file_service_unavailable", FileError),
+        (500, "provider_error", ProviderError),
+        (500, "file_service_unavailable", FileError),
+    ],
+)
+def test_error_mapping_preserves_base_catch_codes_and_provider_types(status, kind, cls):
+    error = from_response(
+        status,
+        {"error": {"type": kind, "code": "stable_code", "message": "secret", "details": None}},
+        "request-id",
+    )
+    assert isinstance(error, EnvaiError) and isinstance(error, cls)
+    assert error.http_status == status and error.type == kind and error.code == "stable_code"
+    assert error.details is None and error.request_id == "request-id"
+    assert error.message == "secret" and "secret" not in str(error) and "secret" not in repr(error)
+    try:
+        raise error
+    except EnvaiError as caught:
+        assert caught is error
 
 
 @pytest.mark.parametrize("method", ["send_chat_message", "update_workspace", "delete_user_tool"])

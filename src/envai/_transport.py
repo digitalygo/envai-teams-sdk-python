@@ -26,6 +26,7 @@ from .errors import (
     ProtocolError,
     TransportError,
     UnsupportedOperationError,
+    ValidationError,
     from_response,
 )
 
@@ -258,6 +259,11 @@ class TransportBase:
                 code="session_required",
             )
         op["path_params"] = dict(path_params)
+        if operation == "getProjectLogs":
+            from .project_reports import validate_project_log_query
+
+            validate_project_log_query(query)
+            op["view"] = query.get("view") or "events"
         if operation == "uploadWikiSource" and data is not None:
             if not isinstance(data, dict):
                 raise ValueError("Multipart data must be a dictionary")
@@ -332,6 +338,10 @@ class TransportBase:
         }
         if isinstance(body, BaseModel):
             body = body.model_dump(mode="json", by_alias=True, exclude_unset=True)
+        if operation == "updateChat" and (
+            not isinstance(body, dict) or set(body) - {"title"}
+        ):
+            raise ValidationError("Chat update accepts only title", type="validation_error")
         if body is not None:
             validate(op["request"], body, request=True)
             kwargs["json"] = body
@@ -477,6 +487,10 @@ class TransportBase:
             value = strict_json(response.content)
         except (ValueError, UnicodeError) as exc:
             raise ProtocolError("Response is not valid JSON", raw=response.content) from exc
+        if op.get("operation") == "getProjectLogs":
+            from .project_reports import normalize_project_log_payload
+
+            value = normalize_project_log_payload(value)
         if version == 2:
             if op.get("operation") in ("getCompletion", "listCompletions"):
                 validate_legacy_costs(value)
@@ -561,11 +575,20 @@ class TransportBase:
 
             annotation = LegacyCompletionCollection if op["operation"] == "listCompletions" else LegacyCompletion
         try:
-            return TypeAdapter(annotation).validate_python(value)
+            hydrated = TypeAdapter(annotation).validate_python(value)
         except ValueError as exc:
             raise ProtocolError(
                 "Response cannot be hydrated under the selected contract", raw=value
             ) from exc
+        if op.get("operation") == "getProjectLogs":
+            from .project_reports import PROJECT_LOG_VIEW_TYPES
+
+            expected = PROJECT_LOG_VIEW_TYPES[op.get("view", "events")]
+            if not isinstance(hydrated, expected):
+                raise ProtocolError(
+                    "Project log view did not match the returned payload", raw=value
+                )
+        return hydrated
 
 
 class SyncTransport(TransportBase):

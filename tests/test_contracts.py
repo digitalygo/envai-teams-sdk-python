@@ -31,8 +31,11 @@ PINNED_SOURCES = {
 def test_exact_source_provenance_and_schema_validity():
     root = Path(__file__).parents[1]
     provenance = json.loads((F / "provenance.json").read_text())
+    current = json.loads((F / "contract3-provenance.json").read_text())
     assert provenance["repository"] == "digitalygo/envai-teams"
     assert provenance["commit"] == "55275860c9a950eaad8e39e9d2b728149084779c"
+    assert provenance["commit"] != current["commit"]
+    assert provenance["repository"] == current["repository"]
     assert provenance["protocol_version"] == 2
     assert provenance["operations"] == 52
     assert set(provenance["sources"]) == set(PINNED_SOURCES)
@@ -99,7 +102,7 @@ def test_derived_operation_inventory_matches_pinned_source():
         }
         for name, operation in OPERATIONS.items()
     ]
-    assert len(current) == 78
+    assert len(current) == 92
     assert current == [
         {
             "id": op["operationId"],

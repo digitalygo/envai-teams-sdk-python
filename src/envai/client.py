@@ -25,6 +25,7 @@ from ._transport import (
 from .attachments import AsyncAttachmentsService, AttachmentsService
 from .errors import CompatibilityError, ProtocolError, TransportError
 from .events import Event, TurnAccumulator, TurnResult
+from .project_reports import AsyncProjectReportsService, ProjectReportsService
 from .stream import AsyncEventStream, EventStream
 from .tool_state import ToolStateStore
 from .tool_verification import AsyncJwksVerifier, JwksVerifier
@@ -32,6 +33,7 @@ from .tools import ClientToolRegistry
 from .wiki import AsyncWikiService, WikiService
 
 TASK_TERMINAL_STATES = frozenset(("completed", "failed", "cancelled"))
+_MISSING = object()
 
 
 def _poll_bounds(timeout: float, poll_interval: float) -> None:
@@ -150,6 +152,7 @@ class ChatsService(generated.ChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> Generator[Event, None, None]:
@@ -172,7 +175,8 @@ class ChatsService(generated.ChatsService):
                     accepted = self.send_message(
                         chat_id,
                         body={"message": message, "attachment_ids": attachment_ids or [],
-                              **({"strict_model": strict_model} if strict_model is not False else {})},
+                              **({"strict_model": strict_model} if strict_model is not False else {}),
+                              **({"model": model} if model is not _MISSING else {})},
                         idempotency_key=idempotency_key, request_options=options,
                     )
                     for previous in _safe_replay(replay, accepted.turn_id):
@@ -196,6 +200,7 @@ class ChatsService(generated.ChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -206,6 +211,7 @@ class ChatsService(generated.ChatsService):
             timeout=timeout,
             attachment_ids=attachment_ids,
             strict_model=strict_model,
+            model=model,
             idempotency_key=idempotency_key,
             **stream_options,
         )
@@ -296,6 +302,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> AsyncGenerator[Event, None]:
@@ -318,7 +325,8 @@ class AsyncChatsService(generated.AsyncChatsService):
                         accepted = await self.send_message(
                             chat_id,
                             body={"message": message, "attachment_ids": attachment_ids or [],
-                              **({"strict_model": strict_model} if strict_model is not False else {})},
+                              **({"strict_model": strict_model} if strict_model is not False else {}),
+                              **({"model": model} if model is not _MISSING else {})},
                             idempotency_key=idempotency_key, request_options=options,
                         )
                         for previous in _safe_replay(replay, accepted.turn_id):
@@ -342,6 +350,7 @@ class AsyncChatsService(generated.AsyncChatsService):
         timeout: float = 120,
         attachment_ids: list[str] | None = None,
         strict_model: bool = False,
+        model: str | None | object = _MISSING,
         idempotency_key: str | None = None,
         **stream_options: Any,
     ) -> TurnResult:
@@ -352,6 +361,7 @@ class AsyncChatsService(generated.AsyncChatsService):
             timeout=timeout,
             attachment_ids=attachment_ids,
             strict_model=strict_model,
+            model=model,
             idempotency_key=idempotency_key,
             **stream_options,
         )
@@ -508,6 +518,9 @@ class EnvaiClient(SyncTransport, generated.Operations):
         self.workspaces = generated.WorkspacesService(self)
         self.tools = generated.ToolsService(self)
         self.chats = ChatsService(self)
+        self.chat_crons = generated.ChatCronsService(self)
+        self.project_skills = generated.ProjectSkillsService(self)
+        self.project_reports = ProjectReportsService(self)
         self.completions = CompletionsService(self)
         self.files = generated.FilesService(self)
         self.agents = generated.AgentsService(self)
@@ -571,6 +584,9 @@ class AsyncEnvaiClient(AsyncTransport, generated.AsyncOperations):
         self.workspaces = generated.AsyncWorkspacesService(self)
         self.tools = generated.AsyncToolsService(self)
         self.chats = AsyncChatsService(self)
+        self.chat_crons = generated.AsyncChatCronsService(self)
+        self.project_skills = generated.AsyncProjectSkillsService(self)
+        self.project_reports = AsyncProjectReportsService(self)
         self.completions = AsyncCompletionsService(self)
         self.files = generated.AsyncFilesService(self)
         self.agents = generated.AsyncAgentsService(self)
