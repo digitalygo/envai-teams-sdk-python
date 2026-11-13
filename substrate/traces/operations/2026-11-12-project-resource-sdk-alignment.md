@@ -1,7 +1,7 @@
 ---
 status: completed
 created_at: 2026-11-12
-updated_at: 2026-11-13
+updated_at: 2026-11-14
 files_edited:
   - docs/model-selection.md
   - src/envai/_contracts/events.json
@@ -36,6 +36,7 @@ rationale:
   - Align synchronous and asynchronous project-key clients with the existing backend resources.
   - Preserve strict wire validation, error compatibility and safe local report pagination.
   - Carry an exact model override through synchronous and asynchronous turn helpers.
+  - Pin the reviewed model-only server commit and reject boundary Unicode White_Space in model values, with no adoption of unrelated server API changes.
 supporting_docs:
   - https://github.com/digitalygo/envai-teams/tree/7f4085dbfdd3f208b82716119cff1860fbd502bb
   - ../../../docs/model-selection.md
@@ -44,6 +45,7 @@ supporting_docs:
   - ../../../docs/api-inventory.md
   - ../../../tests/fixtures/contract3-provenance.json
   - https://github.com/digitalygo/1-1-5-envai-aaas/tree/ba021aa61e30e379880f809d45f90e5d3564d43e
+  - https://github.com/digitalygo/envai-teams/commit/f970714c0a358ff94b14f15eabde197c55861e74
 ---
 
 # Project-resource SDK alignment
@@ -195,3 +197,28 @@ provider, release or deployment verification is claimed.
 Evidence remains under `/tmp/envai-model-sdk-verify/leader-python-*`. Task
 containers, database volumes, private connection files and the wheel test
 environment were removed after verification, leaving unrelated resources intact.
+
+## Update: 2026-11-14 model input validation follow-up
+
+### Follow-up summary of changes
+
+A minor finding on the model input was corrected. The four SDK OpenAPI copies and the six source provenance and current-docs assertions were synced to the reviewed server commit [f970714c0a35](https://github.com/digitalygo/envai-teams/commit/f970714c0a358ff94b14f15eabde197c55861e74), which holds only the canonical `not.pattern` that forbids the 25 exact Go Unicode `White_Space` code points at the start or end of `model`. Python DTOs for `model` use a scoped `Field(strict=True)`, generated from the source generator, so `bytes` and `bytearray` are rejected without coercion. An explicit `None` in the constructor is preserved and rejected on send.
+
+### Follow-up technical reasoning
+
+The server runtime was already correct and is unchanged; the published schema is now as strict. The rule uses a YAML-decoded Unicode positive class, so it avoids Python final line feed and ECMAScript NEL escape differences. The string type, `minLength`, optional omission and non-null wire behavior are unchanged, and nothing is coerced, trimmed, normalized or case-folded. Valid Unicode IDs, interior whitespace and the `FEFF` and `001C` to `001F` code points that Go does not treat as space stay accepted. Null and omission semantics of other DTO types are not tightened globally.
+
+The server working `alpha` branch has also merged unrelated Wiki PR 60 and image PR 61. The SDKs intentionally pin the reviewed model-only commit instead of adopting those unrelated API features. The pin commit exists locally and its push is pending; it will be a public `alpha` ancestor before any SDK push, and publication is not claimed yet. The user explicitly approved pushing server `alpha` and the four SDK `feature/user-company-projects` branches, with repo-admin team membership and bypass verified by the leader and no policy change.
+
+### Follow-up impact assessment
+
+No package version, dependency, CI, endpoint, count, authentication, billing, provider, hold or restart change was made, and no deployment, paid or live provider test, or new release is claimed. Public DTO behavior is stricter only for byte-like `model` values.
+
+### Follow-up validation steps
+
+- Python 3.13.5: generator `--check`, ruff and mypy passed. The full SQL pytest run passed 1926 tests with zero skips and 96.09% coverage; the build passed. A fresh `1.0.0a6` wheel was installed outside the source tree and verified for isolated import, strict DTO rejection and the corrected bundled schema.
+- The leader instrumented the modified generator lines 117 to 118: 2/2 executed, with both `if` branch outcomes covered at 100%. Generated metadata has no independent line instrumentation, but 307 model tests verify the DTO and transport paths in both synchronous and asynchronous clients.
+- Documentation-only record update on 2026-11-14. Checked that the five operation records are the only files written by this step and that the reviewed source files remain identical to the manifest at `/tmp/envai-sdk-model-minor-20261113/review/manifest.json` (50 changed paths across the five repositories; trace records are excluded from the gate).
+- Quality judgment `PASS` and security review `PASS` over combined source and test snapshot `cb56581c5f2e5c9f947901e63a56521d126a3bdee4a025afc48339952e902e60` (lexically sorted repository name and path, NUL, bytes, NUL). All 50 paths were read and their diffs matched. Security review found no authentication, payer, provider or retry change and verified the six pinned sources.
+- This is local completion of the code task. Commit and push are pending, so green remote CI and remote publication are not claimed. Python 3.11 and 3.12, Go 1.24 and 1.26, other PHP editions, Laravel 11 and 12, and Node 22 were not run locally; the remote CI matrices run after commit and push. `git diff --check` passed in every repository.
+- Test resources were limited to task-named isolated Podman PostgreSQL and MySQL containers; `envai-netbird-demo-*` resources were not touched. Cleanup stays pending until the publication tests complete, and the leader owns removal at closure.

@@ -1228,7 +1228,7 @@ class ChatAttachmentUploadRequest(Model):
 class ChatMessageRequest(Model):
     message: str
     attachment_ids: Union[list[str], None] = Field(default=None)
-    model: Union[str, None] = Field(default=None)
+    model: Union[str, None] = Field(default=None, strict=True)
     strict_model: Union[bool, None] = Field(default=None)
 
 

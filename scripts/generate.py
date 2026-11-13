@@ -114,6 +114,8 @@ def annotation(schema, name):
                         ann = f"Union[{ann}, None]"
                     if field(key) != key:
                         args.append("alias=" + repr(key))
+                    if name == "ChatMessageRequest" and key == "model":
+                        args.append("strict=True")
                     if key in ("token", "signature", "output", "args", "content", "prompt"):
                         args.append("repr=False")
                     default = (" = Field(" + ", ".join(args) + ")") if args else ""

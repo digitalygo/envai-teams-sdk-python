@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from negotiated_transport import negotiated_transport
+from pydantic import ValidationError as PydanticValidationError
 
 from envai import AsyncEnvaiClient, EnvaiClient, models
 from envai.errors import EnvaiError, ValidationError
@@ -69,7 +70,7 @@ async def test_helpers_forward_model_per_turn(async_mode, helper, monkeypatch, v
 
 
 @pytest.mark.parametrize("async_mode", [False, True])
-@pytest.mark.parametrize("value", [None, 2, True, [], {}, "", " x", "x ", "\tx"])
+@pytest.mark.parametrize("value", [None, 2, True, [], {}, b"vendor/model", bytearray(b"vendor/model"), "", " x", "x ", "\tx"])
 async def test_invalid_model_rejected_without_send(async_mode, value):
     sent = []
     client = (AsyncEnvaiClient if async_mode else EnvaiClient)(
@@ -80,6 +81,66 @@ async def test_invalid_model_rejected_without_send(async_mode, value):
         if async_mode:
             await result
     assert not sent
+    if async_mode:
+        await client.aclose()
+    else:
+        client.close()
+
+
+GO_WHITESPACE = (
+    "\u0009\u000a\u000b\u000c\u000d\u0020\u0085\u00a0\u1680"
+    "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000"
+)
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+@pytest.mark.parametrize("dto", [False, True])
+@pytest.mark.parametrize("padding", [*GO_WHITESPACE, "\r\n"])
+@pytest.mark.parametrize("prefix", [False, True])
+async def test_unicode_padding_rejected_before_post(async_mode, dto, padding, prefix):
+    sent = []
+    client = (AsyncEnvaiClient if async_mode else EnvaiClient)(
+        "key", transport=negotiated_transport(lambda request: sent.append(request) or httpx.Response(500))
+    )
+    value = padding + "Vendor/模型" if prefix else "Vendor/模型" + padding
+    data = {"message": "hi", "model": value}
+    body = models.ChatMessageRequest(**data) if dto else data
+    with pytest.raises(ValidationError):
+        result = client.chats.send_message("c", body=body)
+        if async_mode:
+            await result
+    assert not sent
+    if async_mode:
+        await client.aclose()
+    else:
+        client.close()
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+@pytest.mark.parametrize("dto", [False, True])
+@pytest.mark.parametrize("value", ["Vendor/模型", "Vendor/Exact", "vendor/Exact", "a\nb", "a\u00a0b", "\ufeffx\ufeff", *[c + "x" + c for c in "\x1c\x1d\x1e\x1f"]])
+async def test_valid_model_sent_exactly_with_attachments(async_mode, dto, value):
+    from test_chat_attachments import CAPS, response
+
+    sent = []
+
+    def handler(request):
+        if request.url.path.endswith("/capabilities"):
+            return response(CAPS)
+        sent.append(request)
+        return response({"status": "accepted", "turn_id": "cmpl_01j5abcdefghjkmnpqrstvwxyz", "attachment_ids": ["a"]}, 202)
+
+    client = (AsyncEnvaiClient if async_mode else EnvaiClient)(
+        "key", transport=httpx.MockTransport(handler))
+    data = {"message": "hi", "model": value, "attachment_ids": ["a"]}
+    body = models.ChatMessageRequest(**data) if dto else data
+    result = client.chats.send_message("c", body=body, idempotency_key="stable")
+    if async_mode:
+        await result
+    assert len(sent) == 1
+    assert json.loads(sent[0].content) == data
+    assert sent[0].headers["Idempotency-Key"] == "stable"
     if async_mode:
         await client.aclose()
     else:
@@ -162,6 +223,47 @@ async def test_catalog_retains_both_selectable_values(async_mode):
         client.close()
 
 
+@pytest.mark.parametrize("value", [b"vendor/model", bytearray(b"vendor/model"), 2, True, [], {}])
+def test_dto_rejects_non_string_model(value):
+    with pytest.raises(PydanticValidationError):
+        models.ChatMessageRequest(message="hi", model=value)
+
+
 def test_dto_preserves_omission_and_null():
     assert "model" not in models.ChatMessageRequest(message="hi").model_dump(exclude_unset=True)
     assert models.ChatMessageRequest(message="hi", model=None).model_dump(exclude_unset=True)["model"] is None
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+@pytest.mark.parametrize("model_value", ["omitted", "null", "unicode"])
+async def test_dto_send_preserves_model_semantics(async_mode, model_value):
+    from test_chat_attachments import response
+
+    sent = []
+
+    def handler(request):
+        sent.append(request)
+        return response({"status": "accepted", "turn_id": "cmpl_01j5abcdefghjkmnpqrstvwxyz"}, 202)
+
+    client = (AsyncEnvaiClient if async_mode else EnvaiClient)(
+        "key", transport=negotiated_transport(handler))
+    kwargs = {"message": "hi"}
+    if model_value != "omitted":
+        kwargs["model"] = None if model_value == "null" else "Vendor/模型"
+    body = models.ChatMessageRequest(**kwargs)
+    if model_value == "null":
+        with pytest.raises(ValidationError):
+            result = client.chats.send_message("c", body=body)
+            if async_mode:
+                await result
+        assert not sent
+    else:
+        result = client.chats.send_message("c", body=body)
+        if async_mode:
+            await result
+        assert len(sent) == 1
+        assert json.loads(sent[0].content) == kwargs
+    if async_mode:
+        await client.aclose()
+    else:
+        client.close()

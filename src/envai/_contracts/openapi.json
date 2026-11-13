@@ -15423,7 +15423,9 @@
           "model": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^\\S(?:.*\\S)?$",
+            "not": {
+              "pattern": "^[\t-\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[\t-\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$"
+            },
             "description": "Exact case-sensitive nonempty llm catalog id that pins this turn. Omitted keeps the configured or default cascade. No trimming, coercion, normalization, prefix stripping, provider, host or route selection is applied.",
             "example": "vendor/not-in-client-list"
           },

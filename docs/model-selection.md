@@ -2,7 +2,7 @@
 
 [README](../README.md) · [Configuration](getting-started.md) · [API reference](api-reference.md) · [Streaming](streaming.md) · [Chat attachments](chat-attachments.md)
 
-This is unreleased source, verified with offline tests and fake providers only. The bundled contracts are fixed at `digitalygo/envai-teams` commit `7f4085dbfdd3f208b82716119cff1860fbd502bb`. That is a source pin, not a claim about any deployed server.
+This is unreleased source, verified with offline tests and fake providers only. The bundled contracts are fixed at `digitalygo/envai-teams` commit `f970714c0a358ff94b14f15eabde197c55861e74`. That is a source pin, not a claim about any deployed server.
 
 ## Usage
 

@@ -27,7 +27,7 @@ Tool registrations and deprecated UserTool aliases now use project scope. API-ke
 
 ## Project resources, crons, skills and reports (unreleased)
 
-This source adds 14 operations on top of the `1.0.0a6` baseline (78 to 92 operations; 89 callable plus 3 unsupported API-key stubs), pinned to backend commit `7f4085dbfdd3f208b82716119cff1860fbd502bb`. They are additive and need no negotiation change, but they are not in any published package until a release is cut from this source.
+This source adds 14 operations on top of the `1.0.0a6` baseline (78 to 92 operations; 89 callable plus 3 unsupported API-key stubs), pinned to backend commit `f970714c0a358ff94b14f15eabde197c55861e74`. They are additive and need no negotiation change, but they are not in any published package until a release is cut from this source.
 
 - HTTP 402 now raises `PaymentRequiredError` instead of a generic `EnvaiError`. It is a subclass, so broad `except EnvaiError` handlers keep working; narrow `except` clauses on other classes may need an update. Other mappings are unchanged: 503 `provider_error` is `ProviderError`, 503 `file_*` is `FileError`, and 503 `provider_configuration_error` is `ServerError`.
 - `chats.update` sends only `title`; other keys fail locally with `ValidationError`.
